@@ -1,4 +1,5 @@
 import React from 'react'
+import { surfaceLinks } from '../../config/surfaceConfig'
 
 interface MarketingFooterProps {
   className?: string
@@ -9,6 +10,9 @@ interface MarketingFooterProps {
  * 样式完全独立，避免与主应用样式冲突
  */
 export default function MarketingFooter({ className = "" }: MarketingFooterProps) {
+  const homeLink = surfaceLinks.marketingHome
+  const featuresLink = `${homeLink}#features`
+
   return (
     <footer className={`marketing-footer bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 border-t border-white/40 ${className}`}>
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -31,19 +35,19 @@ export default function MarketingFooter({ className = "" }: MarketingFooterProps
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-800 mb-4">Quick Links</h3>
             <div className="space-y-3">
-              <a href="/home#features" className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
+              <a href={featuresLink} className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
                 <span>Features</span>
                 <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </a>
-              <a href="/pricing" className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
+              <a href={surfaceLinks.marketingPricing} className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
                 <span>Pricing</span>
                 <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </a>
-              <a href="/enterprise" className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
+              <a href={surfaceLinks.marketingEnterprise} className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
                 <span>Enterprise</span>
                 <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </a>
-              <a href="/home" className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
+              <a href={homeLink} className="marketing-link flex items-center text-gray-600 hover:text-purple-600 transition-colors group">
                 <span>About Us</span>
                 <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </a>

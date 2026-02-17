@@ -1,19 +1,15 @@
 import '../styles/globals.css'
 import type { AppProps } from 'next/app'
-import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { AnalyticsProvider } from '../src/providers/AnalyticsProvider'
+import { isMarketingHostname } from '../src/config/surfaceConfig'
 
 export default function App({ Component, pageProps }: AppProps) {
-  const router = useRouter()
-  const [isMarketingSite, setIsMarketingSite] = useState(false)
-
   useEffect(() => {
     // 检测是否为营销站点
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
-      const isMarketing = hostname === 'www.iapro.ai' || hostname.includes('www.')
-      setIsMarketingSite(isMarketing)
+      const isMarketing = isMarketingHostname(hostname)
       console.log(`🌍 _app.tsx: hostname=${hostname}, isMarketing=${isMarketing}`)
     }
   }, [])

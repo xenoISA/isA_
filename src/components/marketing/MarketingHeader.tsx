@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { surfaceLinks } from '../../config/surfaceConfig'
 
 /**
  * 营销页面专用Header组件
@@ -9,6 +10,9 @@ import { useState, useEffect } from 'react'
  */
 export default function MarketingHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
+  const homeLink = surfaceLinks.marketingHome
+  const featuresLink = `${homeLink}#features`
+  const demoLink = `${homeLink}#demo`
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,7 +38,7 @@ export default function MarketingHeader() {
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <a 
-            href="/home" 
+            href={homeLink}
             className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent no-underline"
           >
             iapro.ai
@@ -43,25 +47,25 @@ export default function MarketingHeader() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <a 
-              href="/home#features" 
+              href={featuresLink}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors no-underline"
             >
               Features
             </a>
             <a 
-              href="/home#demo" 
+              href={demoLink}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors no-underline"
             >
               Demo
             </a>
             <a 
-              href="/pricing" 
+              href={surfaceLinks.marketingPricing}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors no-underline"
             >
               Pricing
             </a>
             <a 
-              href="/enterprise" 
+              href={surfaceLinks.marketingEnterprise}
               className="text-gray-700 hover:text-blue-600 font-medium transition-colors no-underline"
             >
               Enterprise
@@ -70,13 +74,13 @@ export default function MarketingHeader() {
             {/* User Actions */}
             <div className="flex items-center space-x-4">
               <a 
-                href="https://app.iapro.ai"
+                href={surfaceLinks.appEntry}
                 className="text-gray-700 hover:text-blue-600 font-medium transition-colors no-underline"
               >
                 Sign In
               </a>
               <a 
-                href="https://app.iapro.ai"
+                href={surfaceLinks.appEntry}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full font-medium hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 no-underline"
               >
                 Get Started

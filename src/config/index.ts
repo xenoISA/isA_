@@ -112,7 +112,7 @@ export const config: AppConfiguration = {
     domain: getEnvVar('REACT_APP_AUTH0_DOMAIN', 'dev-47zcqarlxizdkads.us.auth0.com').trim(),
     clientId: getEnvVar('REACT_APP_AUTH0_CLIENT_ID', 'Vsm0s23JTKzDrq9bq0foKyYieOCyeoQJ').trim(),
     audience: getEnvVar('REACT_APP_AUTH0_AUDIENCE', 'https://dev-47zcqarlxizdkads.us.auth0.com/api/v2/').trim(),
-    redirectUri: getEnvVar('REACT_APP_AUTH0_REDIRECT_URI', `${getEnvVar('REACT_APP_BASE_URL', typeof window !== 'undefined' ? window.location.origin : 'https://app.iapro.ai')}/api/auth/callback`).trim(),
+    redirectUri: getEnvVar('REACT_APP_AUTH0_REDIRECT_URI', `${getEnvVar('REACT_APP_BASE_URL', typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173')}/api/auth/callback`).trim(),
     scope: getEnvVar('REACT_APP_AUTH0_SCOPE', 'openid profile email read:users update:users create:users offline_access').trim()
   },
 

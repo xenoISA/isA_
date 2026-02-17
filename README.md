@@ -180,3 +180,16 @@ const { currentApp, setCurrentApp } = useAppStore();
 ```
 
 This architecture provides a robust, scalable foundation for building AI-powered applications with multiple specialized tools and comprehensive session management.
+
+## 🌐 Surface Integration
+
+`isA_` is the entry-point surface for platform navigation. Cross-surface links are configured via env vars in `.env.local`:
+
+- `NEXT_PUBLIC_MARKETING_URL` - marketing domain/base URL
+- `NEXT_PUBLIC_APP_URL` - end-user app entry URL
+- `NEXT_PUBLIC_APP_DASHBOARD_URL` - account/subscription destination
+- `NEXT_PUBLIC_CONSOLE_URL` - developer console URL
+- `NEXT_PUBLIC_DOCS_URL` - docs URL
+- `NEXT_PUBLIC_MARKETING_HOSTS` - host allowlist used to decide whether `/` renders marketing or redirects to app
+
+All cross-surface links and hostname detection are centralized in `src/config/surfaceConfig.ts`.

@@ -2,6 +2,14 @@ import React, { useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import MarketingHome from './home';
+import {
+  appendSearchParams,
+  extractHostname,
+  getMarketingHostnames,
+  isAbsoluteUrl,
+  isMarketingHostname,
+  surfaceLinks,
+} from '../src/config/surfaceConfig';
 
 interface IndexPageProps {
   isMarketingSite: boolean;
@@ -22,8 +30,14 @@ const IndexPage: React.FC<IndexPageProps> = ({ isMarketingSite, hostname }) => {
     if (!isMarketingSite) {
       console.log('🔄 Redirecting to /app for main application');
       // 保留URL参数（包括Auth0回调参数）
-      const urlParams = window.location.search;
-      router.replace(`/app${urlParams}`);
+      const redirectTarget = appendSearchParams(surfaceLinks.appEntry, window.location.search);
+
+      if (isAbsoluteUrl(redirectTarget)) {
+        window.location.replace(redirectTarget);
+        return;
+      }
+
+      router.replace(redirectTarget);
       return;
     }
   }, [isMarketingSite, router]);
@@ -47,14 +61,17 @@ const IndexPage: React.FC<IndexPageProps> = ({ isMarketingSite, hostname }) => {
 };
 
 export const getServerSideProps: GetServerSideProps<IndexPageProps> = async (context) => {
-  const hostname = context.req.headers.host || '';
-  const isMarketingSite = hostname === 'www.iapro.ai' || hostname.includes('www.');
+  const rawHost = context.req.headers.host || '';
+  const hostname = extractHostname(rawHost);
+  const isMarketingSite = isMarketingHostname(hostname);
   
   // 详细日志记录
   console.log(`🔍 Server-side detection:`, {
     hostname,
+    rawHost,
     allHeaders: context.req.headers,
     isMarketingSite,
+    marketingHosts: getMarketingHostnames(),
     userAgent: context.req.headers['user-agent']
   });
   

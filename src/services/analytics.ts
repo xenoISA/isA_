@@ -1,5 +1,6 @@
 
 import { RudderAnalytics } from '@rudderstack/analytics-js';
+import { isMarketingHostname } from '../config/surfaceConfig';
 
 interface AnalyticsConfig {
   writeKey: string;
@@ -33,8 +34,8 @@ class AnalyticsService {
         // 基础配置
         logLevel: this.config.debugMode ? 'DEBUG' : 'ERROR',
         
-        // 本地控制平面配置 - 指向我们的 Next.js API
-        configUrl: 'http://localhost:5173/api/rudderstack',
+        // 通过相对路径避免硬编码端口/域名
+        configUrl: '/api/rudderstack',
         
         // 会话跟踪
         sessions: {
@@ -388,8 +389,7 @@ class AnalyticsService {
     const currentPath = window.location.pathname;
     
     return marketingPages.includes(currentPath) || 
-           window.location.hostname.includes('www.') ||
-           window.location.hostname === 'www.iapro.ai';
+           isMarketingHostname(window.location.hostname);
   }
 }
 
