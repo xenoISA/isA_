@@ -135,8 +135,12 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
       return currentContext.organization.id;
     }
 
+    if (pendingOrgContextId) {
+      return pendingOrgContextId;
+    }
+
     return currentContext.userId || null;
-  }, [currentContext]);
+  }, [currentContext, pendingOrgContextId]);
 
   useEffect(() => {
     const incomingOrgId = consumeOrgContextFromCurrentUrl() || getStoredOrgContextId();
@@ -192,6 +196,10 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     const targetOrg = availableOrganizations.find((org) => org.id === pendingOrgContextId);
+    if (!availableOrganizations.length) {
+      return;
+    }
+
     if (!targetOrg) {
       setPendingOrgContextId(null);
       logger.info(LogCategory.USER_AUTH, 'Incoming org context was not available in this app session', {
