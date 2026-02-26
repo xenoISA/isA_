@@ -193,3 +193,13 @@ This architecture provides a robust, scalable foundation for building AI-powered
 - `NEXT_PUBLIC_MARKETING_HOSTS` - host allowlist used to decide whether `/` renders marketing or redirects to app
 
 All cross-surface links and hostname detection are centralized in `src/config/surfaceConfig.ts`.
+
+## 🔐 Cross-Surface Auth and Org Context
+
+`isA_` now includes a shared auth/session handoff contract for app-to-console navigation:
+
+- Shared org context storage key: `isa_current_org_id`
+- Cross-surface params: `currentOrgId`, `returnTo`, `sso`
+- Logout return target: `NEXT_PUBLIC_AUTH_LOGOUT_RETURN_TO`
+
+Reference contract: `docs/cross-surface-auth-contract.md`

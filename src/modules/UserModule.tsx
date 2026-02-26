@@ -38,6 +38,11 @@ import { UserService } from '../api/userService';
 import { logger, LogCategory } from '../utils/logger';
 import { PlanType, CreateExternalUserData, CreditConsumption } from '../types/userTypes';
 import { useUser } from '../hooks/useUser';
+import {
+  getCurrentRelativeUrl,
+  getLogoutReturnToUrl,
+  setStoredOrgContextId,
+} from '../config/authSessionConfig';
 import '../utils/creditMonitor'; // 🎯 初始化信用监控系统
 
 // ================================================================================
@@ -190,6 +195,9 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const login = useCallback(() => {
     loginWithRedirect({
+      appState: {
+        returnTo: getCurrentRelativeUrl()
+      },
       authorizationParams: {
         screen_hint: 'login'
       }
@@ -198,6 +206,9 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const signup = useCallback(() => {
     loginWithRedirect({
+      appState: {
+        returnTo: getCurrentRelativeUrl()
+      },
       authorizationParams: {
         screen_hint: 'signup'
       }
@@ -357,9 +368,10 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   const logout = useCallback(() => {
     // Use userHook's clearUser method instead of direct store access
     userHook.clearUser();
+    setStoredOrgContextId(null);
     auth0Logout({
       logoutParams: {
-        returnTo: window.location.origin
+        returnTo: getLogoutReturnToUrl()
       }
     });
   }, [userHook.clearUser, auth0Logout]);

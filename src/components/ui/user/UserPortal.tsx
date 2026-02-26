@@ -17,6 +17,7 @@ import { PlanType } from '../../../types/userTypes';
 import { Modal } from '../../shared/ui/Modal';
 import { Avatar } from '../../shared/ui/Avatar';
 import { Button, PrimaryButton, SecondaryButton, DangerButton } from '../../shared/ui/Button';
+import { buildConsoleEntryUrl } from '../../../config/authSessionConfig';
 import CreateOrganizationModal, { CreateOrganizationData } from '../organization/CreateOrganizationModal';
 
 interface UserPortalProps {
@@ -122,6 +123,17 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
+  const handleOpenConsole = () => {
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const consoleUrl = buildConsoleEntryUrl({
+      currentOrgId: contextModule.currentOrgId,
+      returnTo: currentUrl,
+      requestSso: true
+    });
+
+    window.open(consoleUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // Handle organization creation
   const handleCreateOrganization = async (data: CreateOrganizationData) => {
     setCreateLoading(true);
@@ -166,10 +178,27 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
                   <span style={{ color: 'var(--text-secondary)' }}>{t('user.plan')}</span>
                   <span className="font-medium capitalize" style={{ color: 'var(--text-primary)' }}>{getPlanDisplayName(currentPlan)}</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span style={{ color: 'var(--text-secondary)' }}>Current Context</span>
+                  <span className="font-mono text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {contextModule.currentOrgId || 'N/A'}
+                  </span>
+                </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleOpenConsole}
+                fullWidth
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17l4 4 4-4m-4-5v9m9-13H3a2 2 0 00-2 2v6a2 2 0 002 2h6" />
+                  </svg>
+                }
+              >
+                Open Developer Console
+              </Button>
               <Button
                 onClick={handleRefreshUser}
                 disabled={userModule.isLoading}

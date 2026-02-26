@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Auth0Provider as Auth0ProviderBase, useAuth0 } from '@auth0/auth0-react';
 import { LoginScreen } from '../components/ui/LoginScreen';
 import { config } from '../config';
+import { getCurrentRelativeUrl } from '../config/authSessionConfig';
 
 interface Auth0ProviderProps {
   children: React.ReactNode;
@@ -69,6 +70,14 @@ export const Auth0Provider: React.FC<Auth0ProviderProps> = ({ children }) => {
     <Auth0ProviderBase
       domain={domain}
       clientId={clientId}
+      onRedirectCallback={(appState) => {
+        const target = typeof appState === 'object' && appState && 'returnTo' in appState
+          ? String((appState as { returnTo?: string }).returnTo || '/app')
+          : '/app';
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, target);
+        }
+      }}
       authorizationParams={{
         redirect_uri: redirectUri,
         audience: audience,
@@ -125,7 +134,17 @@ const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Show login screen if not authenticated
   if (!isAuthenticated) {
     console.log('🔐 AuthGate: User not authenticated, showing login screen');
-    return <LoginScreen onLogin={() => loginWithRedirect()} />;
+    return (
+      <LoginScreen
+        onLogin={() =>
+          loginWithRedirect({
+            appState: {
+              returnTo: getCurrentRelativeUrl()
+            }
+          })
+        }
+      />
+    );
   }
 
   // Show main app if authenticated
