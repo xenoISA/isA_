@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { surfaceLinks } from '../../../config/surfaceConfig'
 
 interface HeroSectionProps {
   currentTime: string
@@ -32,7 +33,7 @@ export default function HeroSection({ currentTime, className = "" }: HeroSection
       setTaglineIndex((prev) => (prev + 1) % taglines.length)
     }, 4000)
     return () => clearInterval(interval)
-  }, [])
+  }, [taglines.length])
 
   return (
     <div className={`marketing-hero text-center mb-8 ${className}`}>
@@ -66,13 +67,13 @@ export default function HeroSection({ currentTime, className = "" }: HeroSection
       
       <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
         <a 
-          href="https://app.iapro.ai" 
+          href={surfaceLinks.appEntry}
           className="marketing-cta-button bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-full text-sm font-semibold hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-center no-underline"
         >
           Start Free Trial
         </a>
         <a 
-          href="https://app.iapro.ai" 
+          href={surfaceLinks.appEntry}
           className="marketing-cta-button bg-white/80 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-full text-sm font-semibold hover:bg-white transition-all border border-gray-200 hover:shadow-lg text-center no-underline"
         >
           Sign In

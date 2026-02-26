@@ -34,6 +34,7 @@ import { useUserModule } from '../../modules/UserModule';
 import { useAuth } from '../../hooks/useAuth';
 import { PlanType, CreditConsumption } from '../../types/userTypes';
 import { logger, LogCategory } from '../../utils/logger';
+import { surfaceLinks } from '../../config/surfaceConfig';
 
 // ================================================================================
 // User Handler Interface
@@ -183,12 +184,12 @@ export const UserHandler: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleViewPricing = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Opening pricing page');
-    window.open('https://iapro.ai/pricing', '_blank');
+    window.open(surfaceLinks.marketingPricing, '_blank');
   }, []);
 
   const handleManageSubscription = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Opening subscription management');
-    window.open('https://iapro.ai/dashboard', '_blank');
+    window.open(surfaceLinks.appDashboard, '_blank');
   }, []);
 
   // ================================================================================

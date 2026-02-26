@@ -22,6 +22,11 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useUserModule } from './UserModule';
 import { logger, LogCategory } from '../utils/logger';
+import {
+  consumeOrgContextFromCurrentUrl,
+  getStoredOrgContextId,
+  setStoredOrgContextId,
+} from '../config/authSessionConfig';
 
 // ================================================================================
 // Context Types
@@ -71,6 +76,7 @@ export interface AvailableOrganization {
 export interface ContextModuleInterface {
   // Current Context
   currentContext: UserContext | null;
+  currentOrgId: string | null;
   contextType: UserContextType;
   isContextLoading: boolean;
   contextError: string | null;
@@ -115,10 +121,39 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
   const [availableOrganizations, setAvailableOrganizations] = useState<AvailableOrganization[]>([]);
   const [isContextLoading, setIsContextLoading] = useState(false);
   const [contextError, setContextError] = useState<string | null>(null);
+  const [pendingOrgContextId, setPendingOrgContextId] = useState<string | null>(null);
 
   // Computed Values
   const contextType: UserContextType = currentContext?.type || 'personal';
   const canCreateOrganization = currentContext?.type === 'personal';
+  const currentOrgId = useMemo(() => {
+    if (!currentContext) {
+      return null;
+    }
+
+    if (currentContext.type === 'organization') {
+      return currentContext.organization.id;
+    }
+
+    if (pendingOrgContextId) {
+      return pendingOrgContextId;
+    }
+
+    return currentContext.userId || null;
+  }, [currentContext, pendingOrgContextId]);
+
+  useEffect(() => {
+    const incomingOrgId = consumeOrgContextFromCurrentUrl() || getStoredOrgContextId();
+    if (!incomingOrgId) {
+      return;
+    }
+
+    setPendingOrgContextId(incomingOrgId);
+    setStoredOrgContextId(incomingOrgId);
+    logger.info(LogCategory.USER_AUTH, 'Detected incoming org context from cross-surface navigation', {
+      orgId: incomingOrgId,
+    });
+  }, []);
 
   // ================================================================================
   // Initialize Context from UserModule
@@ -140,9 +175,62 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
       // Clear context when user logs out
       setCurrentContext(null);
       setAvailableOrganizations([]);
+      setStoredOrgContextId(null);
       logger.info(LogCategory.USER_AUTH, 'Cleared context on user logout');
     }
   }, [userModule.isAuthenticated, userModule.auth0User, currentContext]);
+
+  useEffect(() => {
+    if (!userModule.isAuthenticated || !currentContext || !pendingOrgContextId) {
+      return;
+    }
+
+    if (pendingOrgContextId === currentContext.userId) {
+      setPendingOrgContextId(null);
+      return;
+    }
+
+    if (currentContext.type === 'organization' && currentContext.organization.id === pendingOrgContextId) {
+      setPendingOrgContextId(null);
+      return;
+    }
+
+    const targetOrg = availableOrganizations.find((org) => org.id === pendingOrgContextId);
+    if (!availableOrganizations.length) {
+      return;
+    }
+
+    if (!targetOrg) {
+      setPendingOrgContextId(null);
+      logger.info(LogCategory.USER_AUTH, 'Incoming org context was not available in this app session', {
+        orgId: pendingOrgContextId,
+      });
+      return;
+    }
+
+    const organizationContext: OrganizationContext = {
+      type: 'organization',
+      userId: currentContext.userId,
+      email: currentContext.email,
+      name: currentContext.name,
+      organization: targetOrg,
+    };
+
+    setCurrentContext(organizationContext);
+    setPendingOrgContextId(null);
+    logger.info(LogCategory.USER_AUTH, 'Applied incoming organization context', {
+      orgId: pendingOrgContextId,
+      organizationName: targetOrg.name,
+    });
+  }, [userModule.isAuthenticated, currentContext, pendingOrgContextId, availableOrganizations]);
+
+  useEffect(() => {
+    if (!currentContext) {
+      return;
+    }
+
+    setStoredOrgContextId(currentOrgId);
+  }, [currentContext, currentOrgId]);
 
   // ================================================================================
   // Context Switching Logic
@@ -337,6 +425,7 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
   const moduleInterface: ContextModuleInterface = useMemo(() => ({
     // Current Context
     currentContext,
+    currentOrgId,
     contextType,
     isContextLoading,
     contextError,
@@ -362,6 +451,7 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
     canAccessFeature
   }), [
     currentContext,
+    currentOrgId,
     contextType,
     isContextLoading,
     contextError,

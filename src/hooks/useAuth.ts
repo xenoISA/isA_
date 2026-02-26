@@ -31,6 +31,7 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { useCallback, useMemo } from 'react';
 import { logger, LogCategory } from '../utils/logger';
+import { getCurrentRelativeUrl, getLogoutReturnToUrl } from '../config/authSessionConfig';
 
 // ================================================================================
 // Auth Hook Interface
@@ -124,6 +125,9 @@ export const useAuth = (): UseAuthReturn => {
   const login = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'Initiating Auth0 login');
     loginWithRedirect({
+      appState: {
+        returnTo: getCurrentRelativeUrl()
+      },
       authorizationParams: {
         screen_hint: 'login'
       }
@@ -133,6 +137,9 @@ export const useAuth = (): UseAuthReturn => {
   const signup = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'Initiating Auth0 signup');
     loginWithRedirect({
+      appState: {
+        returnTo: getCurrentRelativeUrl()
+      },
       authorizationParams: {
         screen_hint: 'signup'
       }
@@ -143,7 +150,7 @@ export const useAuth = (): UseAuthReturn => {
     logger.info(LogCategory.USER_AUTH, 'Initiating Auth0 logout');
     auth0Logout({
       logoutParams: {
-        returnTo: window.location.origin
+        returnTo: getLogoutReturnToUrl()
       }
     });
   }, [auth0Logout]);

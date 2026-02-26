@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { surfaceLinks } from '../../../config/surfaceConfig'
 
 interface CTASectionProps {
   className?: string
@@ -38,7 +39,7 @@ export default function CTASection({ className = "" }: CTASectionProps) {
       setValueIndex((prev) => (prev + 1) % valueProps.length)
     }, 4000)
     return () => clearInterval(interval)
-  }, [])
+  }, [valueProps.length])
   
   const currentValue = valueProps[valueIndex]
 
@@ -74,7 +75,7 @@ export default function CTASection({ className = "" }: CTASectionProps) {
         
         <div className="flex flex-col space-y-2">
           <a 
-            href="https://app.iapro.ai" 
+            href={surfaceLinks.appEntry}
             className="cta-button bg-white text-purple-600 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transform hover:scale-105 transition-all shadow-xl duration-300 text-sm whitespace-nowrap no-underline"
           >
             Try Free Now
