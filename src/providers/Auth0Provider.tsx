@@ -71,9 +71,10 @@ export const Auth0Provider: React.FC<Auth0ProviderProps> = ({ children }) => {
       domain={domain}
       clientId={clientId}
       onRedirectCallback={(appState) => {
-        const target = typeof appState === 'object' && appState && 'returnTo' in appState
+        const rawTarget = typeof appState === 'object' && appState && 'returnTo' in appState
           ? String((appState as { returnTo?: string }).returnTo || '/app')
           : '/app';
+        const target = rawTarget.startsWith('/') ? rawTarget : '/app';
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, document.title, target);
         }
