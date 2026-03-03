@@ -711,9 +711,17 @@ export const useChatStore = create<ChatStore>()(
           },
         });
 
-        const statusData = res.ok
-          ? await res.json()
-          : { status: 'unknown', interrupts: [] };
+        if (!res.ok) {
+          const errorMsg = `Execution status check failed with HTTP ${res.status}`;
+          if (res.status === 401) {
+            logger.error(LogCategory.CHAT_FLOW, 'Auth expired during execution status check', { sessionId, status: res.status });
+            throw new Error('Authentication expired — please log in again');
+          }
+          logger.error(LogCategory.CHAT_FLOW, errorMsg, { sessionId, status: res.status });
+          throw new Error(errorMsg);
+        }
+
+        const statusData = await res.json();
 
         logger.info(LogCategory.CHAT_FLOW, 'Execution status retrieved', {
           sessionId,
