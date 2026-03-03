@@ -107,7 +107,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const data = await res.json();
-      saveAuthToken(data.token || data.access_token);
+      const tokenValue = data.token || data.access_token;
+      if (tokenValue) {
+        saveAuthToken(tokenValue);
+      }
       setAuthUser({
         sub: data.user_id || data.sub || '',
         email: data.email || email,

@@ -86,8 +86,13 @@ export const GATEWAY_SERVICES = {
 // API端点配置 - 统一通过网关访问
 // ================================================================================
 
+/**
+ * Build gateway endpoint URL.
+ * Gateway routes: {BASE_URL}/{service}{path}
+ * Paths that need /api/v1/ include it explicitly in the path parameter.
+ */
 const buildEndpoint = (service: string, path: string = '') => {
-  return `${GATEWAY_CONFIG.BASE_URL}/api/${GATEWAY_CONFIG.API_VERSION}/${service}${path}`;
+  return `${GATEWAY_CONFIG.BASE_URL}/${service}${path}`;
 };
 
 export const GATEWAY_ENDPOINTS = {
