@@ -36,6 +36,30 @@ export type {
   UpdateSessionData
 } from '../types/sessionTypes';
 
+import type {
+  Session,
+  SessionMetadata,
+  SessionResponse,
+  SessionListResponse,
+  SessionMessagesResponse,
+  SessionMessage,
+  SessionSearchResponse,
+  SessionExportData,
+  GetSessionsOptions,
+  GetSessionMessagesOptions,
+  SearchSessionsOptions,
+  UpdateSessionData,
+  SessionExportFormat,
+} from '../types/sessionTypes';
+
+/** Metadata passed to createSession */
+interface CreateSessionMetadata {
+  user_id: string;
+  name?: string;
+  context?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 // ================================================================================
 // SessionService Wrapper
 // ================================================================================
@@ -57,12 +81,16 @@ export class SessionService {
   /**
    * Create new session
    */
-  async createSession(metadata?: any): Promise<any> {
+  async createSession(metadata: CreateSessionMetadata): Promise<SessionResponse> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Creating new session', { metadata });
 
+      if (!metadata.user_id) {
+        throw new Error('user_id is required to create a session');
+      }
+
       const session = await this.coreSessionService.createSession({
-        user_id: metadata?.user_id || 'default_user',
+        user_id: metadata.user_id,
         title: metadata?.name || `Session ${Date.now()}`,
         conversation_data: metadata?.context || {},
         metadata: metadata || {}
@@ -85,7 +113,7 @@ export class SessionService {
   /**
    * Get session by ID
    */
-  async getSession(sessionId: string, options?: any): Promise<any> {
+  async getSession(sessionId: string, options?: { include_history?: boolean }): Promise<SessionResponse> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting session', { sessionId, options });
 
@@ -109,7 +137,7 @@ export class SessionService {
   /**
    * Get user sessions
    */
-  async getUserSessions(userId: string, options?: any): Promise<any> {
+  async getUserSessions(userId: string, options?: GetSessionsOptions): Promise<SessionListResponse> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting user sessions', { userId, options });
 
@@ -134,7 +162,7 @@ export class SessionService {
   /**
    * Update session
    */
-  async updateSession(sessionId: string, updates: any): Promise<any> {
+  async updateSession(sessionId: string, updates: UpdateSessionData): Promise<SessionResponse> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Updating session', { sessionId, updates });
 
@@ -159,7 +187,7 @@ export class SessionService {
   /**
    * Delete session
    */
-  async deleteSession(sessionId: string): Promise<any> {
+  async deleteSession(sessionId: string): Promise<{ success: boolean; message: string }> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Deleting session', { sessionId });
 
@@ -183,7 +211,7 @@ export class SessionService {
   /**
    * Get session messages
    */
-  async getSessionMessages(sessionId: string, options?: any): Promise<any> {
+  async getSessionMessages(sessionId: string, options?: GetSessionMessagesOptions): Promise<SessionMessagesResponse> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting session messages', { sessionId, options });
 
@@ -207,7 +235,7 @@ export class SessionService {
   /**
    * Add message to session
    */
-  async addSessionMessage(sessionId: string, message: any): Promise<any> {
+  async addSessionMessage(sessionId: string, message: { role?: string; content: string; message_type?: string; metadata?: Record<string, unknown>; tokens_used?: number; cost_usd?: number }): Promise<SessionMessage> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Adding session message', { sessionId, message });
 
@@ -242,7 +270,7 @@ export class SessionService {
   /**
    * Search sessions
    */
-  async searchSessions(options: any): Promise<any> {
+  async searchSessions(options: SearchSessionsOptions & { query?: string }): Promise<SessionSearchResponse> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Searching sessions', { options });
 
@@ -283,7 +311,7 @@ export class SessionService {
   /**
    * Export session
    */
-  async exportSession(sessionId: string, format: string = 'json'): Promise<any> {
+  async exportSession(sessionId: string, format: SessionExportFormat = 'json'): Promise<{ format: string; data: string | object; filename: string }> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Exporting session', { sessionId, format });
 
@@ -319,7 +347,7 @@ export class SessionService {
   /**
    * Health check
    */
-  async healthCheck(): Promise<any> {
+  async healthCheck(): Promise<{ status: string; timestamp: string; service: string }> {
     try {
       logger.info(LogCategory.API_REQUEST, 'Performing session service health check');
 

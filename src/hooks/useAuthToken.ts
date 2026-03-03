@@ -11,8 +11,7 @@
  */
 
 import { useCallback } from 'react';
-
-const AUTH_TOKEN_KEY = 'isa_auth_token';
+import { GATEWAY_CONFIG } from '../config/gatewayConfig';
 
 export interface UseAuthTokenReturn {
   getToken: () => Promise<string>;
@@ -21,7 +20,7 @@ export interface UseAuthTokenReturn {
 
 export const useAuthToken = (): UseAuthTokenReturn => {
   const getToken = useCallback(async (): Promise<string> => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const token = localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
     if (!token) {
       throw new Error('No auth token available. Please log in.');
     }
@@ -29,7 +28,7 @@ export const useAuthToken = (): UseAuthTokenReturn => {
   }, []);
 
   const hasToken = useCallback((): boolean => {
-    return !!localStorage.getItem(AUTH_TOKEN_KEY);
+    return !!localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
   }, []);
 
   return { getToken, hasToken };

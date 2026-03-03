@@ -50,6 +50,7 @@ import { getChatServiceInstance } from '../hooks/useChatService';
 import { ChatMetadata, ChatMessage, StreamingStatus } from '../types/chatTypes';
 import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
+import { GATEWAY_CONFIG } from '../config/gatewayConfig';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
 import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
@@ -604,8 +605,8 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('ChatService not available for HIL resume');
         }
 
-        // 获取认证信息
-        const authToken = token || localStorage.getItem('isa_auth_token') || '';
+        // 获取认证信息 (centralized token key)
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
         if (!authToken) {
           throw new Error('No auth token available for HIL resume');
         }
@@ -614,8 +615,11 @@ export const useChatStore = create<ChatStore>()(
         const userStore = useUserStore.getState();
         const userId = userStore.externalUser?.auth0_id || '';
 
-        // 调用resumeHIL API — pass full metadata + token + callbacks
-        await chatService.resumeHIL(String(resumeValue), {
+        // 调用resumeHIL API — serialize objects, pass strings through
+        const message = typeof resumeValue === 'string'
+          ? resumeValue
+          : JSON.stringify(resumeValue);
+        await chatService.resumeHIL(message, {
           user_id: userId,
           session_id: sessionId,
         }, authToken, {
@@ -646,8 +650,7 @@ export const useChatStore = create<ChatStore>()(
             updateTaskStatus(taskId, status as any, result);
           },
           onBillingUpdate: (billingData: any) => {
-            // Handle billing updates by delegating to UserStore
-            const { useUserStore } = require('./useUserStore');
+            // Handle billing updates by delegating to UserStore (imported at top)
             if (typeof billingData.creditsRemaining === 'number') {
               useUserStore.getState().updateCredits(billingData.creditsRemaining, 'billing');
               logger.info(LogCategory.CHAT_FLOW, 'User credits updated from billing event', { 
@@ -697,8 +700,8 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('ChatService not available for status check');
         }
 
-        // 获取认证信息
-        const authToken = token || localStorage.getItem('isa_auth_token') || '';
+        // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
 
         // 调用execution status API via gateway
         const { GATEWAY_ENDPOINTS } = await import('../config/gatewayConfig');
