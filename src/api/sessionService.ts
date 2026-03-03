@@ -68,8 +68,11 @@ interface CreateSessionMetadata {
 export class SessionService {
   private coreSessionService: CoreSessionService;
 
+  private getAuthHeadersFn?: () => Promise<Record<string, string>>;
+
   constructor(getAuthHeadersFn?: () => Promise<Record<string, string>>) {
     this.coreSessionService = new CoreSessionService();
+    this.getAuthHeadersFn = getAuthHeadersFn;
 
     // Wire auth token from localStorage into the SDK instance
     const headers = getAuthHeaders();
@@ -81,8 +84,16 @@ export class SessionService {
     logger.info(LogCategory.API_REQUEST, 'SessionService initialized with @isa/core SDK');
   }
 
-  /** Refresh the SDK auth token from current localStorage state */
-  refreshAuth(): void {
+  /** Refresh the SDK auth token from current localStorage state (or custom fn) */
+  async refreshAuth(): Promise<void> {
+    if (this.getAuthHeadersFn) {
+      const headers = await this.getAuthHeadersFn();
+      const authHeader = headers['Authorization'];
+      if (authHeader) {
+        this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+        return;
+      }
+    }
     const headers = getAuthHeaders();
     const authHeader = headers['Authorization'];
     if (authHeader) {
@@ -159,9 +170,11 @@ export class SessionService {
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting user sessions', { userId, options });
 
+      const pageSize = options?.limit || 20;
+      const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
       const sessions = await this.coreSessionService.getUserSessions(userId, {
-        page: options?.page || 1,
-        pageSize: options?.limit || 20
+        page,
+        pageSize
       });
 
       // sessions is a SessionListResponse, handle accordingly
@@ -233,9 +246,11 @@ export class SessionService {
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting session messages', { sessionId, options });
 
+      const pageSize = options?.limit || 20;
+      const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
       const messages = await this.coreSessionService.getSessionMessages(sessionId, {
-        page: options?.page || 1,
-        pageSize: options?.limit || 20
+        page,
+        pageSize
       });
 
       return {
@@ -298,9 +313,11 @@ export class SessionService {
         return { sessions: [], total: 0, has_more: false };
       }
 
+      const pageSize = options?.limit || 50;
+      const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
       const result = await this.coreSessionService.getUserSessions(userId, {
-        page: options?.page || 1,
-        pageSize: options?.limit || 50,
+        page,
+        pageSize,
       });
 
       let sessions = result.sessions || [];
@@ -369,7 +386,9 @@ export class SessionService {
     try {
       logger.info(LogCategory.API_REQUEST, 'Performing session service health check');
 
-      const stats = await this.coreSessionService.getSessionStats();
+      // Use a lightweight SDK call as a health probe (getSessionStats endpoint
+      // may not be defined in the frontend gateway config).
+      await this.coreSessionService.getUserSessions('_health_check', { page: 1, pageSize: 1 });
       return {
         status: 'healthy',
         timestamp: new Date().toISOString(),

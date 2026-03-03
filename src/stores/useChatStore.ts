@@ -614,6 +614,9 @@ export const useChatStore = create<ChatStore>()(
         // 获取用户信息
         const userStore = useUserStore.getState();
         const userId = userStore.externalUser?.auth0_id || '';
+        if (!userId) {
+          throw new Error('No user ID available for HIL resume');
+        }
 
         // 调用resumeHIL API — serialize objects, pass strings through
         const message = typeof resumeValue === 'string'

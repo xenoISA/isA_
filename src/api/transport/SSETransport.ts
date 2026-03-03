@@ -12,8 +12,6 @@
  * ✅ Types: SDK-provided type safety
  */
 
-import { HttpClient } from '@isa/transport';
-
 // Re-export compatibility types
 export enum ConnectionState {
   IDLE = 'idle',
