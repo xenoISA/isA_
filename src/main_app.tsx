@@ -403,7 +403,7 @@ export const MainApp: React.FC = () => {
       }}
     >
       <AuthProvider>
-        <AIProvider apiEndpoint={process.env.REACT_APP_API_ENDPOINT || "http://localhost:8080"}>
+        <AIProvider>
           <MainAppContent />
         </AIProvider>
       </AuthProvider>
