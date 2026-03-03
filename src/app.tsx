@@ -14,14 +14,14 @@
  * 
  * Architecture:
  * - Uses proper provider layering with clear separation
- * - ErrorBoundary -> Auth0 -> Session -> AI -> Modules
+ * - ErrorBoundary -> Auth -> Session -> AI -> Modules
  * - Each provider has single responsibility
  * - Clean dependency flow without circular references
  */
 
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
-import { Auth0Provider } from './providers/Auth0Provider';
+import { AuthProvider } from './providers/AuthProvider';
 import { SessionProvider } from './providers/SessionProvider';
 import { AIProvider } from './providers/AIProvider';
 import { AnalyticsProvider } from './providers/AnalyticsProvider';
@@ -154,7 +154,7 @@ export const MainAppContainer: React.FC = () => {
         )}
       >
         <AnalyticsProvider>
-          <Auth0Provider>
+          <AuthProvider>
             <UserModule>
               <SessionProvider>
                 <AIProvider apiEndpoint={process.env.REACT_APP_AGENT_SERVICE_URL || "http://localhost:8080"}>
@@ -162,7 +162,7 @@ export const MainAppContainer: React.FC = () => {
                 </AIProvider>
               </SessionProvider>
             </UserModule>
-          </Auth0Provider>
+          </AuthProvider>
         </AnalyticsProvider>
       </ErrorBoundary>
     </InitializationTracker>

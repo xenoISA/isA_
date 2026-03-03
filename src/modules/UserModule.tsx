@@ -32,7 +32,7 @@
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuthContext } from '../providers/AuthProvider';
 import { useUserStore } from '../stores/useUserStore';
 import { UserService } from '../api/userService';
 import { logger, LogCategory } from '../utils/logger';
@@ -51,7 +51,7 @@ export interface UserModuleInterface {
   error: string | null;
   
   // User Data
-  auth0User: any;
+  authUser: any;
   externalUser: any;
   subscription: any;
   
@@ -117,16 +117,18 @@ const UserModuleContext = React.createContext<UserModuleInterface | null>(null);
 // ================================================================================
 
 export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auth0 Integration
+  // Auth Integration (gateway-based)
   const {
-    user: auth0User,
-    isLoading: auth0Loading,
-    error: auth0Error,
+    authUser,
+    isLoading: authLoading,
+    error: authError,
     isAuthenticated,
-    loginWithRedirect,
-    logout: auth0Logout,
-    getAccessTokenSilently
-  } = useAuth0();
+    login: authLogin,
+    signup: authSignup,
+    logout: authLogout,
+    getAccessToken: getStoredToken,
+    getAuthHeadersAsync
+  } = useAuthContext();
 
   // User Hook Integration (正确的架构：通过useUser访问store)
   const userHook = useUser();
@@ -141,68 +143,32 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Create authenticated userService instance
   const userService = useMemo(() => {
-    
-    const getAuthHeaders = async () => {
-      if (!isAuthenticated) {
-        throw new Error('Not authenticated');
-      }
-      const token = await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
-      logger.debug(LogCategory.USER_AUTH, 'Auth0 access token retrieved', { tokenLength: token?.length });
-      return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-    };
-    
-    return new UserService(undefined, getAuthHeaders);
-  }, [isAuthenticated, getAccessTokenSilently]);
+    return new UserService(undefined, getAuthHeadersAsync);
+  }, [getAuthHeadersAsync]);
 
   // ================================================================================
   // Authentication Methods
   // ================================================================================
 
   const getAccessToken = useCallback(async (): Promise<string> => {
-    try {
-      return await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
-    } catch (error) {
-      logger.error(LogCategory.USER_AUTH, 'Failed to get access token', { error });
-      
-      // If token refresh fails, user needs to re-authenticate
-      if (error instanceof Error && error.message.includes('Missing Refresh Token')) {
-        logger.info(LogCategory.USER_AUTH, 'Refresh token missing, redirecting to login');
-        loginWithRedirect();
-        throw new Error('Authentication required');
-      }
-      
-      throw error;
+    const token = getStoredToken();
+    if (!token) {
+      logger.error(LogCategory.USER_AUTH, 'No access token available');
+      throw new Error('Authentication required');
     }
-  }, [getAccessTokenSilently, loginWithRedirect]);
+    return token;
+  }, [getStoredToken]);
 
   const login = useCallback(() => {
-    loginWithRedirect({
-      authorizationParams: {
-        screen_hint: 'login'
-      }
-    });
-  }, [loginWithRedirect]);
+    // Login is now handled by LoginScreen component via AuthProvider
+    // This is kept for interface compatibility
+    logger.info(LogCategory.USER_AUTH, 'Login requested via UserModule');
+  }, []);
 
   const signup = useCallback(() => {
-    loginWithRedirect({
-      authorizationParams: {
-        screen_hint: 'signup'
-      }
-    });
-  }, [loginWithRedirect]);
+    // Signup is now handled by LoginScreen component via AuthProvider
+    logger.info(LogCategory.USER_AUTH, 'Signup requested via UserModule');
+  }, []);
 
   // ================================================================================
   // User Synchronization Logic
@@ -210,11 +176,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const initializeUser = useCallback(async (): Promise<void> => {
     // 🔒 防护：检查认证状态
-    if (!auth0User?.sub || !auth0User?.email || !auth0User?.name || !isAuthenticated) {
+    if (!authUser?.sub || !authUser?.email || !authUser?.name || !isAuthenticated) {
       const missingData = {
-        sub: !auth0User?.sub,
-        email: !auth0User?.email,
-        name: !auth0User?.name,
+        sub: !authUser?.sub,
+        email: !authUser?.email,
+        name: !authUser?.name,
         authenticated: !isAuthenticated
       };
       throw new Error(`User initialization blocked - missing: ${Object.entries(missingData).filter(([, missing]) => missing).map(([key]) => key).join(', ')}`);
@@ -222,15 +188,15 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
     const startTime = Date.now();
     const userData: CreateExternalUserData = {
-      auth0_id: auth0User.sub,
-      email: auth0User.email,
-      name: auth0User.name
+      auth0_id: authUser.sub,
+      email: authUser.email,
+      name: authUser.name
     };
 
     try {
       console.log('👤 UserModule: 🚀 Initializing user', {
-        auth0_id: auth0User.sub,
-        email: auth0User.email,
+        auth0_id: authUser.sub,
+        email: authUser.email,
         timestamp: new Date().toISOString()
       });
 
@@ -268,18 +234,18 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('👤 UserModule: ❌ User initialization failed', {
         error: errorMessage,
-        auth0_id: auth0User.sub,
+        auth0_id: authUser.sub,
         executionTime: Date.now() - startTime + 'ms'
       });
       
       logger.error(LogCategory.USER_AUTH, 'User initialization failed', { 
         error: errorMessage,
-        auth0_id: auth0User.sub 
+        auth0_id: authUser.sub 
       });
       
       throw error; // 重新抛出错误供调用者处理
     }
-  }, [auth0User?.sub, auth0User?.email, auth0User?.name, isAuthenticated, userService]);
+  }, [authUser?.sub, authUser?.email, authUser?.name, isAuthenticated, userService]);
 
   const refreshUser = useCallback(async () => {
     if (!isAuthenticated) {
@@ -291,8 +257,8 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       console.log('👤 UserModule: Starting user refresh process...');
       console.log('👤 UserModule: Auth status:', { 
         isAuthenticated, 
-        hasAuth0User: !!auth0User,
-        auth0UserSub: auth0User?.sub 
+        hasAuth0User: !!authUser,
+        authUserSub: authUser?.sub 
       });
       
       // Get access token with detailed logging
@@ -314,7 +280,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         if (error instanceof Error && error.message.includes('404')) {
           console.log('👤 UserModule: User not found (404), attempting to initialize user...');
           
-          if (auth0User?.sub && auth0User?.email && auth0User?.name) {
+          if (authUser?.sub && authUser?.email && authUser?.name) {
             console.log('👤 UserModule: Initializing user via ensureUserExists...');
             await initializeUser();
             console.log('👤 UserModule: User initialized, retrying fetchCurrentUser...');
@@ -352,17 +318,12 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to refresh user', { error });
       throw error;
     }
-  }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, auth0User, initializeUser]);
+  }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, authUser, initializeUser]);
 
   const logout = useCallback(() => {
-    // Use userHook's clearUser method instead of direct store access
     userHook.clearUser();
-    auth0Logout({
-      logoutParams: {
-        returnTo: window.location.origin
-      }
-    });
-  }, [userHook.clearUser, auth0Logout]);
+    authLogout();
+  }, [userHook.clearUser, authLogout]);
 
   // ================================================================================
   // Business Logic Methods
@@ -423,11 +384,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   
   // 统一的用户初始化Effect - 避免重复初始化
   useEffect(() => {
-    const currentUserId = auth0User?.sub;
-    const hasRequiredData = auth0User?.sub && auth0User?.email && auth0User?.name;
+    const currentUserId = authUser?.sub;
+    const hasRequiredData = authUser?.sub && authUser?.email && authUser?.name;
     
     console.log('👤 UserModule: Auth state changed', {
-      auth0Loading,
+      authLoading,
       isAuthenticated,
       hasRequiredData,
       currentUserId,
@@ -436,7 +397,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     // 🔄 情况1：正在加载 - 等待
-    if (auth0Loading) {
+    if (authLoading) {
       console.log('👤 UserModule: Auth0 still loading, waiting...');
       return;
     }
@@ -484,11 +445,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         });
     }
   }, [
-    auth0Loading, 
+    authLoading, 
     isAuthenticated, 
-    auth0User?.sub, 
-    auth0User?.email, 
-    auth0User?.name,
+    authUser?.sub, 
+    authUser?.email, 
+    authUser?.name,
     initializationStatus,
     initializeUser, 
     userHook.clearUser
@@ -501,11 +462,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   const moduleInterface: UserModuleInterface = useMemo(() => ({
     // Auth State
     isAuthenticated,
-    isLoading: auth0Loading || userHook.isLoading,
-    error: auth0Error?.message || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
+    isLoading: authLoading || userHook.isLoading,
+    error: authError || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
     
     // User Data
-    auth0User,
+    authUser,
     externalUser,
     subscription,
     
@@ -528,13 +489,13 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     checkHealth
   }), [
     isAuthenticated,
-    auth0Loading,
+    authLoading,
     userHook.isLoading,
-    auth0Error,
+    authError,
     userHook.userError,
     userHook.creditsError,
     userHook.subscriptionError,
-    auth0User,
+    authUser,
     externalUser,
     subscription,
     credits,

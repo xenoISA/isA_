@@ -33,7 +33,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { AIProvider } from './providers/AIProvider';
-import { Auth0Provider } from './providers/Auth0Provider';
+import { AuthProvider } from './providers/AuthProvider';
 import { ChatModule } from './modules/ChatModule';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { AppHeader } from './components/ui/AppHeader';
@@ -57,7 +57,7 @@ const MainAppContent: React.FC = () => {
   const { 
     isAuthenticated, 
     isLoading: authLoading, 
-    auth0User: externalUser, 
+    authUser: externalUser, 
     login
   } = useAuth();
   
@@ -402,11 +402,11 @@ export const MainApp: React.FC = () => {
         console.error('Global error caught:', error, errorInfo);
       }}
     >
-      <Auth0Provider>
+      <AuthProvider>
         <AIProvider apiEndpoint={process.env.REACT_APP_API_ENDPOINT || "http://localhost:8080"}>
           <MainAppContent />
         </AIProvider>
-      </Auth0Provider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 };

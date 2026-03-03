@@ -1,26 +1,21 @@
 /**
  * ============================================================================
- * Auth Hook (useAuth.ts) - Clean Auth0 Wrapper
+ * Auth Hook (useAuth.ts) - Gateway Auth Wrapper
  * ============================================================================
- * 
+ *
  * Core Responsibilities:
- * - Auth0 authentication integration only
+ * - Authentication state via AuthProvider (gateway-based)
  * - Token management and access
- * - Authentication state management
  * - Login/logout/signup actions
- * 
- * Architecture Separation:
- * ✅ Auth0 Service: useAuth (this file)
- * ✅ User Service: UserModule + useUser (localhost:8100)
- * ✅ Clean separation: Auth != User Management
- * 
+ * - Auth headers creation
+ *
  * Separation of Concerns:
  * ✅ Responsible for:
- *   - Auth0 authentication state
+ *   - Authentication state
  *   - Access token retrieval
  *   - Login/logout actions
  *   - Auth headers creation
- * 
+ *
  * ❌ Not responsible for:
  *   - External user data (handled by UserModule)
  *   - Credit management (handled by UserModule)
@@ -28,8 +23,8 @@
  *   - User service API calls (handled by userService)
  */
 
-import { useAuth0 } from '@auth0/auth0-react';
 import { useCallback, useMemo } from 'react';
+import { useAuthContext } from '../providers/AuthProvider';
 import { logger, LogCategory } from '../utils/logger';
 
 // ================================================================================
@@ -37,24 +32,24 @@ import { logger, LogCategory } from '../utils/logger';
 // ================================================================================
 
 export interface UseAuthReturn {
-  // Auth0 State
-  auth0User: any;
+  // Auth State
+  authUser: any;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: any;
-  
+
   // Token Management
   getAccessToken: () => Promise<string>;
   getAuthHeaders: () => Promise<Record<string, string>>;
-  
+
   // Authentication Actions
-  login: () => void;
-  signup: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => void;
-  
+
   // Utilities
   makeAuthenticatedRequest: (url: string, options?: RequestInit) => Promise<Response | undefined>;
-  
+
   // Computed Properties
   userEmail: string | null;
   userName: string | null;
@@ -66,87 +61,42 @@ export interface UseAuthReturn {
 // ================================================================================
 
 export const useAuth = (): UseAuthReturn => {
-  const { 
-    user: auth0User, 
-    isLoading: auth0Loading, 
-    error: auth0Error, 
-    isAuthenticated,
-    loginWithRedirect,
-    logout: auth0Logout,
-    getAccessTokenSilently
-  } = useAuth0();
+  const auth = useAuthContext();
 
   // ================================================================================
   // Token Management
   // ================================================================================
 
   const getAccessToken = useCallback(async (): Promise<string> => {
-    try {
-      logger.debug(LogCategory.USER_AUTH, 'Getting Auth0 access token');
-      
-      const token = await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
-
-      if (!token) {
-        throw new Error('No access token received from Auth0');
-      }
-
-      logger.debug(LogCategory.USER_AUTH, 'Auth0 access token retrieved successfully');
-      return token;
-    } catch (error) {
-      logger.error(LogCategory.USER_AUTH, 'Failed to get Auth0 access token', { error });
-      throw error;
+    const token = auth.getAccessToken();
+    if (!token) {
+      throw new Error('No access token available');
     }
-  }, [getAccessTokenSilently]);
+    return token;
+  }, [auth]);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    try {
-      const accessToken = await getAccessToken();
-      
-      return {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      };
-    } catch (error) {
-      logger.error(LogCategory.USER_AUTH, 'Failed to create auth headers', { error });
-      throw error;
-    }
-  }, [getAccessToken]);
+    return auth.getAuthHeadersAsync();
+  }, [auth]);
 
   // ================================================================================
   // Authentication Actions
   // ================================================================================
 
-  const login = useCallback(() => {
-    logger.info(LogCategory.USER_AUTH, 'Initiating Auth0 login');
-    loginWithRedirect({
-      authorizationParams: {
-        screen_hint: 'login'
-      }
-    });
-  }, [loginWithRedirect]);
+  const login = useCallback(async (email: string, password: string) => {
+    logger.info(LogCategory.USER_AUTH, 'Initiating login');
+    return auth.login(email, password);
+  }, [auth]);
 
-  const signup = useCallback(() => {
-    logger.info(LogCategory.USER_AUTH, 'Initiating Auth0 signup');
-    loginWithRedirect({
-      authorizationParams: {
-        screen_hint: 'signup'
-      }
-    });
-  }, [loginWithRedirect]);
+  const signup = useCallback(async (email: string, password: string, name?: string) => {
+    logger.info(LogCategory.USER_AUTH, 'Initiating signup');
+    return auth.signup(email, password, name);
+  }, [auth]);
 
   const logout = useCallback(() => {
-    logger.info(LogCategory.USER_AUTH, 'Initiating Auth0 logout');
-    auth0Logout({
-      logoutParams: {
-        returnTo: window.location.origin
-      }
-    });
-  }, [auth0Logout]);
+    logger.info(LogCategory.USER_AUTH, 'Initiating logout');
+    auth.logout();
+  }, [auth]);
 
   // ================================================================================
   // Utility Functions
@@ -155,18 +105,17 @@ export const useAuth = (): UseAuthReturn => {
   const makeAuthenticatedRequest = useCallback(async (url: string, options: RequestInit = {}): Promise<Response | undefined> => {
     try {
       logger.debug(LogCategory.USER_AUTH, 'Making authenticated request', { url });
-      
+
       const headers = await getAuthHeaders();
-      
+
       const response = await fetch(url, {
         ...options,
         headers: { ...headers, ...options.headers }
       });
 
-      // Handle token expiration
       if (response.status === 401) {
-        logger.warn(LogCategory.USER_AUTH, 'Auth token expired, redirecting to login');
-        await loginWithRedirect();
+        logger.warn(LogCategory.USER_AUTH, 'Auth token expired or invalid');
+        auth.logout();
         return;
       }
 
@@ -175,7 +124,7 @@ export const useAuth = (): UseAuthReturn => {
       logger.error(LogCategory.USER_AUTH, 'Authenticated request failed', { error, url });
       throw error;
     }
-  }, [getAuthHeaders, loginWithRedirect]);
+  }, [getAuthHeaders, auth]);
 
   // ================================================================================
   // Computed Properties
@@ -183,63 +132,39 @@ export const useAuth = (): UseAuthReturn => {
 
   const computedProperties = useMemo(() => {
     return {
-      userEmail: auth0User?.email || null,
-      userName: auth0User?.name || null,
-      hasValidUser: !!(auth0User?.email && auth0User?.name)
+      userEmail: auth.authUser?.email || null,
+      userName: auth.authUser?.name || null,
+      hasValidUser: !!(auth.authUser?.email && auth.authUser?.name)
     };
-  }, [auth0User]);
+  }, [auth.authUser]);
 
   // ================================================================================
   // Return Interface
   // ================================================================================
 
   return {
-    // Auth0 State
-    auth0User,
-    isAuthenticated,
-    isLoading: auth0Loading,
-    error: auth0Error,
-    
+    // Auth State
+    authUser: auth.authUser,
+    isAuthenticated: auth.isAuthenticated,
+    isLoading: auth.isLoading,
+    error: auth.error,
+
     // Token Management
     getAccessToken,
     getAuthHeaders,
-    
+
     // Authentication Actions
     login,
     signup,
     logout,
-    
+
     // Utilities
     makeAuthenticatedRequest,
-    
+
     // Computed Properties
     userEmail: computedProperties.userEmail,
     userName: computedProperties.userName,
     hasValidUser: computedProperties.hasValidUser
-  };
-};
-
-// ================================================================================
-// Backward Compatibility Exports
-// ================================================================================
-
-/**
- * @deprecated Use useAuth() instead for cleaner interface
- */
-export const useAuthLegacy = () => {
-  const auth = useAuth();
-  
-  // Provide legacy interface for existing components
-  return {
-    ...auth,
-    user: auth.auth0User, // Legacy alias
-    creditsRemaining: 0, // Deprecated - use UserModule instead
-    currentPlan: 'unknown', // Deprecated - use UserModule instead  
-    hasCredits: false, // Deprecated - use UserModule instead
-    isPremium: false, // Deprecated - use UserModule instead
-    refreshUser: async () => { console.warn('refreshUser is deprecated, use UserModule instead'); },
-    initializeUser: async () => { console.warn('initializeUser is deprecated, use UserModule instead'); },
-    checkHealth: async () => { console.warn('checkHealth is deprecated, use UserModule instead'); }
   };
 };
 

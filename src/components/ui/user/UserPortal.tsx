@@ -38,7 +38,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
 
   // Handle unauthenticated state
-  if (!userModule.isAuthenticated || !userModule.auth0User) {
+  if (!userModule.isAuthenticated || !userModule.authUser) {
     return (
       <Modal
         isOpen={isOpen}
@@ -73,7 +73,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
     );
   }
 
-  const user = userModule.auth0User;
+  const user = userModule.authUser;
   const credits = userModule.credits;
   const totalCredits = userModule.totalCredits;
   const hasCredits = userModule.hasCredits;
