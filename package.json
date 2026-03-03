@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next export"
+    "export": "next export",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
@@ -30,5 +32,11 @@
     "tailwindcss": "^3.3.0",
     "typescript": "^5.0.0",
     "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "happy-dom": "^20.7.0",
+    "vitest": "^2.1.9"
   }
 }

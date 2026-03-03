@@ -17,6 +17,18 @@
  */
 
 // ================================================================================
+// Re-export sub-module configs for barrel imports
+// ================================================================================
+
+export * from './apiConfig';
+export * from './timeoutConfig';
+export * from './errorMessages';
+
+import { API_ENDPOINTS } from './apiConfig';
+import { TIMEOUT_CONFIG } from './timeoutConfig';
+import { ERROR_MESSAGES } from './errorMessages';
+
+// ================================================================================
 // 环境变量接口定义
 // ================================================================================
 
@@ -216,5 +228,30 @@ if (isDevelopment()) {
   }
   console.groupEnd();
 }
+
+// ================================================================================
+// Aggregate validation and summary helpers (used by tests)
+// ================================================================================
+
+export const validateAllConfigs = (): { isValid: boolean; errors: string[] } => {
+  return validateConfig();
+};
+
+export const getConfigSummary = () => {
+  const countNested = (obj: Record<string, any>): number =>
+    Object.values(obj).reduce<number>(
+      (sum, v) => sum + (typeof v === 'object' && v !== null ? Object.keys(v).length : 1),
+      0
+    );
+
+  const validation = validateConfig();
+
+  return {
+    apiEndpoints: Object.keys(API_ENDPOINTS).length,
+    timeoutConfigs: Object.keys(TIMEOUT_CONFIG).length,
+    errorMessages: countNested(ERROR_MESSAGES),
+    isValid: validation.isValid,
+  };
+};
 
 export default config;
