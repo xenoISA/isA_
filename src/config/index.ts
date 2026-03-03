@@ -28,12 +28,9 @@ export interface ApiConfig {
   supportedFileTypes: string[];
 }
 
-export interface Auth0Config {
-  domain: string;
-  clientId: string;
-  audience?: string;
-  redirectUri: string;
-  scope: string;
+export interface AuthConfig {
+  gatewayUrl: string;
+  tokenStorageKey: string;
 }
 
 export interface ExternalApiConfig {
@@ -61,7 +58,7 @@ export interface FeatureFlags {
 
 export interface AppConfiguration {
   api: ApiConfig;
-  auth0: Auth0Config;
+  auth: AuthConfig;
   externalApis: ExternalApiConfig;
   app: AppConfig;
   features: FeatureFlags;
@@ -107,13 +104,10 @@ export const config: AppConfiguration = {
     supportedFileTypes: (getEnvVar('REACT_APP_SUPPORTED_FILE_TYPES', 'jpg,jpeg,png,pdf,txt,md,json') || '').split(',')
   },
 
-  // Auth0配置 (使用现有的环境变量)
-  auth0: {
-    domain: getEnvVar('REACT_APP_AUTH0_DOMAIN', 'dev-47zcqarlxizdkads.us.auth0.com').trim(),
-    clientId: getEnvVar('REACT_APP_AUTH0_CLIENT_ID', 'Vsm0s23JTKzDrq9bq0foKyYieOCyeoQJ').trim(),
-    audience: getEnvVar('REACT_APP_AUTH0_AUDIENCE', 'https://dev-47zcqarlxizdkads.us.auth0.com/api/v2/').trim(),
-    redirectUri: getEnvVar('REACT_APP_AUTH0_REDIRECT_URI', `${getEnvVar('REACT_APP_BASE_URL', typeof window !== 'undefined' ? window.location.origin : 'https://app.iapro.ai')}/api/auth/callback`).trim(),
-    scope: getEnvVar('REACT_APP_AUTH0_SCOPE', 'openid profile email read:users update:users create:users offline_access').trim()
+  // Gateway auth configuration
+  auth: {
+    gatewayUrl: getEnvVar('REACT_APP_GATEWAY_URL', 'http://localhost:9080'),
+    tokenStorageKey: 'isa_auth_token',
   },
 
   // 外部API配置 (使用现有的环境变量结构)
@@ -151,12 +145,8 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
   // 验证必需的配置项
-  if (!config.auth0.domain || config.auth0.domain === 'your-domain.auth0.com') {
-    errors.push('Auth0 domain is not configured properly');
-  }
-
-  if (!config.auth0.clientId || config.auth0.clientId === 'your-client-id') {
-    errors.push('Auth0 client ID is not configured properly');
+  if (!config.auth.gatewayUrl) {
+    errors.push('Gateway URL is not configured');
   }
 
   if (config.api.timeout < 5000) {
