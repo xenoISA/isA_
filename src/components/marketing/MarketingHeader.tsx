@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 /**
  * 营销页面专用Header组件
  * 样式完全独立，避免与主应用样式冲突
- * 不依赖 Auth0，直接提供链接到主应用
+ * 不依赖认证，直接提供链接到主应用
  */
 export default function MarketingHeader() {
   const [isScrolled, setIsScrolled] = useState(false)

@@ -4,17 +4,17 @@
  * ============================================================================
  * 
  * Core Responsibilities:
- * - Orchestrate Auth0 authentication with external user management
+ * - Orchestrate gateway authentication with external user management
  * - Bridge useAuth hook with useUserStore state management
  * - Handle user initialization and synchronization flows
  * - Provide clean business logic interfaces for UI components
  * - Manage user subscription and billing workflows
  * 
  * Architecture Integration:
- *  Auth Layer: useAuth (Auth0) � UserModule � useUserStore (External)
+ *  Auth Layer: useAuth (Gateway) � UserModule � useUserStore (External)
  *  Business Logic: Complex user flows handled here, not in UI
  *  Service Integration: Uses new userService class instead of deprecated functions
- *  State Coordination: Synchronizes Auth0 state with external user state
+ *  State Coordination: Synchronizes auth state with external user state
  * 
  * Separation of Concerns:
  *  Responsible for:
@@ -28,7 +28,7 @@
  *   - UI rendering (handled by UI components)
  *   - Direct API calls (handled by userService)
  *   - Raw state management (handled by useUserStore)
- *   - Auth0 token management (handled by useAuth)
+ *   - Auth token management (handled by useAuth)
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';
@@ -117,7 +117,7 @@ const UserModuleContext = React.createContext<UserModuleInterface | null>(null);
 // ================================================================================
 
 export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auth0 Integration
+  // Auth Integration
   const {
     user: auth0User,
     isLoading: auth0Loading,
@@ -152,7 +152,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
           scope: 'openid profile email read:users update:users create:users'
         }
       });
-      logger.debug(LogCategory.USER_AUTH, 'Auth0 access token retrieved', { tokenLength: token?.length });
+      logger.debug(LogCategory.USER_AUTH, 'Access token retrieved', { tokenLength: token?.length });
       return {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -321,7 +321,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
             await userHook.fetchCurrentUser(token);
             console.log('👤 UserModule: User data refreshed successfully after initialization');
           } else {
-            throw new Error('Cannot initialize user: missing Auth0 user data');
+            throw new Error('Cannot initialize user: missing auth user data');
           }
         } else {
           throw error;
@@ -437,7 +437,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
     // 🔄 情况1：正在加载 - 等待
     if (auth0Loading) {
-      console.log('👤 UserModule: Auth0 still loading, waiting...');
+      console.log('👤 UserModule: Auth still loading, waiting...');
       return;
     }
 

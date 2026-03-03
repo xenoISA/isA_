@@ -7,7 +7,7 @@ User Service API 是统一的用户数据管理服务，提供用户认证、使
 **🌐 基础信息**
 - **服务地址**: `http://localhost:8100`
 - **API文档**: `http://localhost:8100/docs`
-- **认证方式**: Bearer Token (Auth0 JWT)
+- **认证方式**: Bearer Token (Gateway JWT)
 - **数据格式**: JSON
 
 ## 📊 性能指标 (已测试)
@@ -164,11 +164,10 @@ curl -X POST "http://localhost:8100/auth/dev-token?user_id=auth0%7Ctest123&email
 
 ### 生产环境JWT Token
 ```javascript
-// 前端JavaScript示例
-const token = await auth0.getAccessTokenSilently({
-  audience: 'https://your-domain.auth0.com/api/v2/',
-  scope: 'read:users write:users'
-});
+// 前端JavaScript示例 — via AuthProvider
+import { useAuthContext } from '../providers/AuthProvider';
+const { getAccessToken } = useAuthContext();
+const token = getAccessToken();
 ```
 
 ### API请求头设置

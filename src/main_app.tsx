@@ -10,7 +10,7 @@
  * - 协调聊天界面、应用侧边栏、会话管理等核心功能
  * 
  * 【架构设计】
- * - 使用Provider模式提供Auth0认证和SimpleAI客户端
+ * - 使用Provider模式提供Gateway认证和SimpleAI客户端
  * - 通过Zustand进行集中状态管理
  * - 采用组件化架构，分离关注点
  * - 支持多应用集成（Dream、Hunt、Knowledge等）
@@ -53,7 +53,7 @@ import { logger, LogCategory } from './utils/logger';
 const MainAppContent: React.FC = () => {
   logger.trackComponentRender('MainApp', { timestamp: Date.now() });
   
-  // Auth0 authentication state - 必须在所有条件渲染之前调用
+  // Authentication state - 必须在所有条件渲染之前调用
   const { 
     isAuthenticated, 
     isLoading: authLoading, 

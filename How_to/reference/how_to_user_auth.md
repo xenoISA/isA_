@@ -7,7 +7,7 @@ The User Resource Authorization Management system provides fine-grained access c
 **🌐 Basic Information**
 - **Service URL**: `http://localhost:8100`
 - **API Docs**: `http://localhost:8100/docs`
-- **Authentication**: Bearer Token (Auth0 JWT or Supabase JWT)
+- **Authentication**: Bearer Token (Gateway JWT)
 - **Data Format**: JSON
 
 ## 🔧 Permission System

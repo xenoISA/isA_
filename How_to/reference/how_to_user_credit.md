@@ -13,15 +13,14 @@ The user credit management system provides the following core features:
 
 ## Authentication
 
-All APIs use Bearer Token authentication (supports both Auth0 and Supabase JWT):
+All APIs use Bearer Token authentication (Gateway JWT):
 
 ```bash
 Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
-**Supported Token Types:**
-- **Auth0 JWT**: RS256 signature algorithm  
-- **Supabase JWT**: HS256 signature algorithm
+**Token Source:**
+- **Gateway JWT**: Issued by APISIX gateway auth endpoints
 
 The system automatically detects token type and routes to appropriate authentication service.
 
@@ -205,17 +204,17 @@ class UserCreditAPI {
 
 ```javascript
 import { useState, useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuthContext } from '../providers/AuthProvider';
 
 export function useUserCredits() {
-  const { getAccessTokenSilently, user } = useAuth0();
+  const { authUser: user, getAccessToken } = useAuthContext();
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const api = new UserCreditAPI(
     'http://localhost:8100',
-    getAccessTokenSilently
+    () => Promise.resolve(getAccessToken() || '')
   );
 
   // Get credit balance
@@ -342,7 +341,7 @@ async function processBatchTasks(tasks) {
    {"detail": "Could not validate credentials"}
    ```
    - Check if token is expired
-   - Confirm Auth0/Supabase configuration is correct
+   - Confirm gateway auth configuration is correct
    - Verify token format and signature
 
 2. **422 Unprocessable Entity**

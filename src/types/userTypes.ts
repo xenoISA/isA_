@@ -121,7 +121,7 @@ export type PlanType = 'free' | 'pro' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'canceled' | 'incomplete' | 'past_due';
 
-// Auth state that combines Auth0 and external user data
+// Auth state that combines gateway auth and external user data
 export interface UserAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;

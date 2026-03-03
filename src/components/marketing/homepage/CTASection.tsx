@@ -7,7 +7,7 @@ interface CTASectionProps {
 /**
  * Marketing homepage CTA section component
  * Isolated styles to avoid conflicts with main app
- * No Auth0 dependency, direct links to main app
+ * No auth dependency, direct links to main app
  */
 export default function CTASection({ className = "" }: CTASectionProps) {
   const [valueIndex, setValueIndex] = useState(0)

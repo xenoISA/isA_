@@ -499,7 +499,7 @@ curl -v "http://localhost:8080/api/sessions/invalid_session_id"
 
 #### 1. 认证和Token管理 ✅
 - **Dev Token生成**: 成功生成User Service API开发环境JWT Token  
-- **Auth0兼容**: Session API正确处理Auth0格式用户ID (`auth0|test123`)
+- **用户ID兼容**: Session API正确处理用户ID格式 (`auth0|test123`)
 - **Token传递**: 正确提取和传递认证token到User Service API
 
 #### 2. Session管理 ✅  
@@ -533,7 +533,7 @@ curl -v "http://localhost:8080/api/sessions/invalid_session_id"
 4. ✅ `GET /api/sessions/search` - 会话搜索
 
 **技术验证结果**:
-- ✅ Auth0 JWT token认证流程完整
+- ✅ JWT token认证流程完整
 - ✅ URL参数编码正确处理 (`%7C` for `|`)
 - ✅ JSON metadata序列化/反序列化正常
 - ✅ User Service API (8100) 集成无缝对接
@@ -566,8 +566,8 @@ curl -v "http://localhost:8080/api/sessions/invalid_session_id"
 
 **推荐使用方式**:
 ```javascript
-// 1. 获取认证token (生产环境使用Auth0)
-const token = await getAuth0Token(); // 或开发环境使用dev-token
+// 1. 获取认证token (via AuthProvider)
+const token = getAccessToken(); // 或开发环境使用dev-token
 
 // 2. 创建会话
 const session = await fetch('http://localhost:8080/api/sessions', {
