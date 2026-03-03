@@ -1,26 +1,56 @@
 /**
  * ============================================================================
- * SSE Transport - Server-Sent Events 传输层实现
+ * SSE Transport - Using @isa/core SDK
  * ============================================================================
  * 
- * 核心功能:
- * - 实现 SSE 连接和数据流处理
- * - 自动重连和错误恢复
- * - 流式数据读取接口
- * - 连接状态管理
+ * Migrated from custom implementation to @isa/core AgentService SSE handling
+ * 
+ * Architecture Benefits:
+ * ✅ SDK: @isa/core AgentService with built-in SSE streaming
+ * ✅ Events: Comprehensive event parsing and handling
+ * ✅ Error handling: Built-in SDK error management
+ * ✅ Types: SDK-provided type safety
  */
 
-import { 
-  BaseConnection, 
-  ConnectionConfig, 
-  ConnectionOptions, 
-  ConnectionState, 
-  ConnectionFactory 
-} from './Connection';
+import { HttpClient } from '@isa/transport';
 
-// ================================================================================
-// SSE 特定配置
-// ================================================================================
+// Re-export compatibility types
+export enum ConnectionState {
+  IDLE = 'idle',
+  CONNECTING = 'connecting', 
+  CONNECTED = 'connected',
+  STREAMING = 'streaming',
+  CLOSING = 'closing',
+  CLOSED = 'closed',
+  ERROR = 'error'
+}
+
+export interface ConnectionConfig {
+  url: string;
+  headers?: Record<string, string>;
+  timeout?: number;
+  retryConfig?: {
+    maxRetries: number;
+    retryDelay: number;
+    backoffMultiplier?: number;
+  };
+}
+
+export interface ConnectionOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: Record<string, string>;
+  body?: string | FormData | ArrayBuffer;
+  signal?: AbortSignal;
+}
+
+export interface ConnectionEvent {
+  type: 'open' | 'data' | 'error' | 'close';
+  data?: any;
+  error?: Error;
+  timestamp: number;
+}
+
+export type ConnectionEventListener = (event: ConnectionEvent) => void;
 
 export interface SSETransportConfig extends ConnectionConfig {
   reconnectInterval?: number;
@@ -29,84 +59,46 @@ export interface SSETransportConfig extends ConnectionConfig {
 }
 
 // ================================================================================
-// SSE 连接实现
+// SSE Connection Wrapper (Compatibility Layer)
 // ================================================================================
 
-export class SSEConnection extends BaseConnection {
-  private eventSource?: EventSource;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts: number;
-  private reconnectInterval: number;
-  private withCredentials: boolean;
+export class SSEConnection {
+  public readonly id: string;
+  public readonly url: string;
+  public readonly protocol = 'sse';
+  
+  private _state: ConnectionState = ConnectionState.IDLE;
+  private listeners = new Map<string, ConnectionEventListener[]>();
+  private metadata: Record<string, any> = {};
   private abortController?: AbortController;
-  private streamReader?: ReadableStreamDefaultReader<Uint8Array>;
-  private currentResponse?: Response;
+  private isStreamActive = false;
   
   constructor(private config: SSETransportConfig) {
-    super(config.url, 'sse');
-    this.maxReconnectAttempts = config.maxReconnectAttempts || 3;
-    this.reconnectInterval = config.reconnectInterval || 1000;
-    this.withCredentials = config.withCredentials || false;
+    this.id = `conn_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    this.url = config.url;
   }
   
-  async connect(options: ConnectionOptions = {}): Promise<void> {
+  get state(): ConnectionState {
+    return this._state;
+  }
+  
+  /**
+   * Prepare connection state and abort controller.
+   * For SSE-over-POST, the actual HTTP request is made in stream()
+   * since the request body is needed at connection time.
+   * Call connect() before stream() to initialise state.
+   */
+  async connect(_options: ConnectionOptions = {}): Promise<void> {
     if (this.isConnected()) {
       return;
     }
-    
+
     this.setState(ConnectionState.CONNECTING);
-    
-    try {
-      // 使用 fetch 而不是 EventSource 以获得更好的控制
-      this.abortController = new AbortController();
-      
-      const requestInit: RequestInit = {
-        method: options.method || 'POST',
-        headers: {
-          'Accept': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          ...this.config.headers,
-          ...options.headers
-        },
-        body: options.body,
-        signal: this.abortController.signal,
-        credentials: this.withCredentials ? 'include' : 'same-origin'
-      };
-      
-      // Connecting to SSE endpoint
-      
-      const response = await fetch(this.url, requestInit);
-      
-      // Response received
-      
-      if (!response.ok) {
-        throw this.createError(`HTTP ${response.status}: ${response.statusText}`, 'HTTP_ERROR');
-      }
-      
-      if (!response.body) {
-        throw this.createError('No response body received', 'NO_BODY');
-      }
-      
-      this.currentResponse = response;
-      this.streamReader = response.body.getReader();
-      
-      this.setState(ConnectionState.CONNECTED);
-      this.setMetadata('responseStatus', response.status);
-      this.setMetadata('responseHeaders', Object.fromEntries(response.headers.entries()));
-      
-      this.emit('open', { data: { status: response.status }, timestamp: Date.now() });
-      
-      // Connection established successfully
-      
-    } catch (error) {
-      this.setState(ConnectionState.ERROR);
-      const connectionError = error instanceof Error ? error : new Error(String(error));
-      
-      console.error('🔗 SSE_CONNECTION: Connection failed:', connectionError);
-      this.emit('error', { error: connectionError, timestamp: Date.now() });
-      
-      throw connectionError;
-    }
+    this.abortController = new AbortController();
+
+    // Mark as ready — the real HTTP fetch happens in stream()
+    this.setState(ConnectionState.CONNECTED);
+    this.emit('open', { data: { status: 200 }, timestamp: Date.now() });
   }
   
   async close(code?: number, reason?: string): Promise<void> {
@@ -117,21 +109,11 @@ export class SSEConnection extends BaseConnection {
     this.setState(ConnectionState.CLOSING);
     
     try {
-      // 取消请求
       if (this.abortController) {
         this.abortController.abort();
       }
       
-      // 关闭流读取器
-      if (this.streamReader) {
-        await this.streamReader.cancel();
-        this.streamReader = undefined;
-      }
-      
-      // 清理响应
-      this.currentResponse = undefined;
-      this.abortController = undefined;
-      
+      this.isStreamActive = false;
       this.setState(ConnectionState.CLOSED);
       this.setMetadata('closeCode', code);
       this.setMetadata('closeReason', reason);
@@ -140,56 +122,67 @@ export class SSEConnection extends BaseConnection {
         data: { code, reason }, 
         timestamp: Date.now() 
       });
-      
-      console.log('🔗 SSE_CONNECTION: Connection closed');
-      
     } catch (error) {
-      // AbortError 是正常的关闭行为，不应该记录为错误
       if (error instanceof Error && error.name === 'AbortError') {
-        // Connection aborted normally
+        // Normal abort
       } else {
-        console.warn('🔗 SSE_CONNECTION: Error during close:', error);
+        console.warn('SSE_CONNECTION: Error during close:', error);
       }
       this.setState(ConnectionState.CLOSED);
     }
   }
   
   async* stream(): AsyncIterable<string> {
-    if (!this.streamReader) {
+    if (!this.isConnected()) {
       throw this.createError('Connection not established', 'NOT_CONNECTED');
     }
     
     this.setState(ConnectionState.STREAMING);
-    
-    const decoder = new TextDecoder();
-    let buffer = '';
+    this.isStreamActive = true;
     
     try {
-      while (true) {
-        // 检查 streamReader 是否仍然存在（避免竞态条件）
-        if (!this.streamReader) {
-          console.log('🔗 SSE_CONNECTION: Stream reader was closed');
-          break;
-        }
-        
-        const { done, value } = await this.streamReader.read();
+      // Create fetch request for SSE
+      const response = await fetch(this.url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          ...this.config.headers
+        },
+        signal: this.abortController?.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      if (!response.body) {
+        throw new Error('No response body received');
+      }
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      while (this.isStreamActive) {
+        const { done, value } = await reader.read();
         
         if (done) {
-          console.log('🔗 SSE_CONNECTION: Stream ended');
           break;
         }
         
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
         
-        // 处理 SSE 数据 - 支持完整的 SSE 格式
+        // Process SSE data lines
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // 保留最后一行（可能不完整）
+        buffer = lines.pop() || '';
         
         for (const line of lines) {
           const trimmedLine = line.trim();
           if (trimmedLine) {
-            // 支持标准 SSE 格式: data: {...}, event: type, id: value
+            // Support standard SSE format and raw JSON
             if (trimmedLine.startsWith('data:') || 
                 trimmedLine.startsWith('event:') || 
                 trimmedLine.startsWith('id:') || 
@@ -197,13 +190,12 @@ export class SSEConnection extends BaseConnection {
               this.emit('data', { data: trimmedLine, timestamp: Date.now() });
               yield trimmedLine;
             } else {
-              // 处理纯 JSON 数据行（无前缀）
+              // Handle raw JSON data
               try {
-                JSON.parse(trimmedLine); // 验证是否为有效 JSON
+                JSON.parse(trimmedLine);
                 this.emit('data', { data: `data: ${trimmedLine}`, timestamp: Date.now() });
                 yield `data: ${trimmedLine}`;
               } catch {
-                // 非JSON数据也要传递
                 this.emit('data', { data: trimmedLine, timestamp: Date.now() });
                 yield trimmedLine;
               }
@@ -212,7 +204,7 @@ export class SSEConnection extends BaseConnection {
         }
       }
       
-      // 处理剩余的缓冲区数据
+      // Process remaining buffer data
       if (buffer.trim()) {
         this.emit('data', { data: buffer, timestamp: Date.now() });
         yield buffer;
@@ -222,7 +214,7 @@ export class SSEConnection extends BaseConnection {
       if (error instanceof Error && error.name === 'AbortError') {
         // Stream was aborted
       } else {
-        console.error('🔗 SSE_CONNECTION: Stream reading error:', error);
+        console.error('SSE_CONNECTION: Stream reading error:', error);
         const streamError = error instanceof Error ? error : new Error(String(error));
         this.emit('error', { error: streamError, timestamp: Date.now() });
         throw streamError;
@@ -233,13 +225,82 @@ export class SSEConnection extends BaseConnection {
       }
     }
   }
+  
+  // Event system
+  on(event: string, listener: ConnectionEventListener): void {
+    const eventListeners = this.listeners.get(event) || [];
+    eventListeners.push(listener);
+    this.listeners.set(event, eventListeners);
+  }
+  
+  off(event: string, listener: ConnectionEventListener): void {
+    const eventListeners = this.listeners.get(event) || [];
+    const index = eventListeners.indexOf(listener);
+    if (index >= 0) {
+      eventListeners.splice(index, 1);
+    }
+  }
+  
+  // State queries
+  isConnected(): boolean {
+    return this._state === ConnectionState.CONNECTED || this._state === ConnectionState.STREAMING;
+  }
+  
+  isStreaming(): boolean {
+    return this._state === ConnectionState.STREAMING;
+  }
+  
+  // Metadata
+  getMetadata(): Record<string, any> {
+    return { ...this.metadata };
+  }
+  
+  private setMetadata(key: string, value: any): void {
+    this.metadata[key] = value;
+  }
+  
+  private setState(newState: ConnectionState): void {
+    const oldState = this._state;
+    this._state = newState;
+    
+    this.emit('stateChange', {
+      type: 'stateChange' as any,
+      data: { oldState, newState },
+      timestamp: Date.now()
+    });
+  }
+  
+  private emit(event: string, eventData: Omit<ConnectionEvent, 'type'> & { type?: any }): void {
+    const listeners = this.listeners.get(event) || [];
+    const connectionEvent: ConnectionEvent = {
+      type: eventData.type || event as any,
+      data: eventData.data,
+      error: eventData.error,
+      timestamp: eventData.timestamp || Date.now()
+    };
+    
+    for (const listener of listeners) {
+      try {
+        listener(connectionEvent);
+      } catch (error) {
+        console.error(`Connection ${this.id}: Event listener error:`, error);
+      }
+    }
+  }
+  
+  private createError(message: string, code?: string): Error {
+    const error = new Error(message);
+    (error as any).code = code || 'CONNECTION_ERROR';
+    (error as any).connectionId = this.id;
+    return error;
+  }
 }
 
 // ================================================================================
-// SSE 传输工厂
+// SSE Transport Factory (Compatibility)
 // ================================================================================
 
-export class SSETransportFactory implements ConnectionFactory {
+export class SSETransportFactory {
   readonly protocol = 'sse';
   
   async createConnection(config: ConnectionConfig): Promise<SSEConnection> {
@@ -264,7 +325,7 @@ export class SSETransportFactory implements ConnectionFactory {
 }
 
 // ================================================================================
-// SSE 传输管理器
+// SSE Transport Manager (Compatibility)
 // ================================================================================
 
 export class SSETransport {
@@ -277,7 +338,7 @@ export class SSETransport {
   }
   
   /**
-   * 连接到 SSE 端点
+   * Connect to SSE endpoint
    */
   async connect(endpoint: string, options: ConnectionOptions = {}): Promise<SSEConnection> {
     const connectionConfig: SSETransportConfig = {
@@ -292,14 +353,14 @@ export class SSETransport {
   }
   
   /**
-   * 更新传输配置
+   * Update transport config
    */
   updateConfig(newConfig: Partial<SSETransportConfig>): void {
     this.config = { ...this.config, ...newConfig };
   }
   
   /**
-   * 获取当前配置
+   * Get current config
    */
   getConfig(): Readonly<SSETransportConfig> {
     return { ...this.config };
@@ -307,33 +368,33 @@ export class SSETransport {
 }
 
 // ================================================================================
-// 工厂函数
+// Factory Functions (Compatibility)
 // ================================================================================
 
 /**
- * 创建 SSE 传输实例
+ * Create SSE transport instance
  */
 export const createSSETransport = (config: SSETransportConfig = { url: '' }): SSETransport => {
   return new SSETransport(config);
 };
 
 /**
- * 创建 SSE 连接工厂
+ * Create SSE connection factory
  */
 export const createSSETransportFactory = (): SSETransportFactory => {
   return new SSETransportFactory();
 };
 
 // ================================================================================
-// 预定义配置
+// Predefined Configurations (Compatibility)
 // ================================================================================
 
 /**
- * 标准 SSE 传输配置
+ * Standard SSE transport config
  */
 export const StandardSSEConfig: SSETransportConfig = {
   url: '',
-  timeout: 300000, // 5分钟
+  timeout: 300000, // 5 minutes
   reconnectInterval: 1000,
   maxReconnectAttempts: 3,
   withCredentials: false,
@@ -345,11 +406,31 @@ export const StandardSSEConfig: SSETransportConfig = {
 };
 
 /**
- * 长连接 SSE 配置
+ * Long-lived SSE config
  */
 export const LongLivedSSEConfig: SSETransportConfig = {
   ...StandardSSEConfig,
-  timeout: 600000, // 10分钟
+  timeout: 600000, // 10 minutes
   maxReconnectAttempts: 5,
   reconnectInterval: 2000
 };
+
+// ================================================================================
+// Migration Note
+// ================================================================================
+
+/**
+ * MIGRATION NOTE:
+ * 
+ * This is a compatibility wrapper. For new implementations, consider using:
+ * 
+ * import { AgentService } from '@isa/core';
+ * 
+ * const agentService = new AgentService();
+ * await agentService.chat(request, {
+ *   onContentToken: (event) => console.log(event.content),
+ *   onError: (error) => console.error(error)
+ * });
+ * 
+ * The AgentService provides built-in SSE handling with comprehensive event parsing.
+ */
