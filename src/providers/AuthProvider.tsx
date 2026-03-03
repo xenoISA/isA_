@@ -1,0 +1,249 @@
+/**
+ * ============================================================================
+ * Auth Provider - Gateway-based authentication
+ * ============================================================================
+ *
+ * Replaces Auth0Provider with custom gateway auth flow.
+ * Uses localStorage JWT tokens managed by gatewayConfig.
+ */
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { GATEWAY_ENDPOINTS, GATEWAY_CONFIG } from '../config/gatewayConfig';
+import { getAuthHeaders, saveAuthToken, clearAuth } from '../config/gatewayConfig';
+import { logger, LogCategory } from '../utils/logger';
+
+// ================================================================================
+// Types
+// ================================================================================
+
+export interface AuthUser {
+  sub: string;
+  email: string;
+  name: string;
+  [key: string]: any;
+}
+
+export interface AuthContextValue {
+  authUser: AuthUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name?: string) => Promise<void>;
+  verify: (code: string) => Promise<void>;
+  logout: () => void;
+  getAccessToken: () => string | null;
+  getAuthHeadersAsync: () => Promise<Record<string, string>>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// ================================================================================
+// Provider
+// ================================================================================
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const isAuthenticated = authUser !== null;
+
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY)
+      : null;
+
+    if (token) {
+      verifyExistingToken(token);
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const verifyExistingToken = async (token: string) => {
+    try {
+      const res = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAuthUser({
+          sub: data.user_id || data.sub || '',
+          email: data.email || '',
+          name: data.name || data.email || '',
+          ...data,
+        });
+        logger.info(LogCategory.USER_AUTH, 'Restored session from stored token');
+      } else {
+        // Token expired or invalid — clear it silently
+        clearAuth();
+        logger.info(LogCategory.USER_AUTH, 'Stored token invalid, cleared');
+      }
+    } catch {
+      // Network error verifying token — keep user logged out
+      clearAuth();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `Login failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      saveAuthToken(data.token || data.access_token);
+      setAuthUser({
+        sub: data.user_id || data.sub || '',
+        email: data.email || email,
+        name: data.name || email,
+        ...data.user,
+      });
+      logger.info(LogCategory.USER_AUTH, 'Login successful');
+    } catch (err: any) {
+      const msg = err.message || 'Login failed';
+      setError(msg);
+      logger.error(LogCategory.USER_AUTH, 'Login failed', { error: msg });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const signup = useCallback(async (email: string, password: string, name?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: name || email }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `Signup failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      // Some flows require email verification before issuing a token
+      if (data.token || data.access_token) {
+        saveAuthToken(data.token || data.access_token);
+        setAuthUser({
+          sub: data.user_id || data.sub || '',
+          email: data.email || email,
+          name: data.name || name || email,
+          ...data.user,
+        });
+      }
+      logger.info(LogCategory.USER_AUTH, 'Signup successful');
+    } catch (err: any) {
+      const msg = err.message || 'Signup failed';
+      setError(msg);
+      logger.error(LogCategory.USER_AUTH, 'Signup failed', { error: msg });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const verify = useCallback(async (code: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `Verification failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      if (data.token || data.access_token) {
+        saveAuthToken(data.token || data.access_token);
+        setAuthUser({
+          sub: data.user_id || data.sub || '',
+          email: data.email || '',
+          name: data.name || data.email || '',
+          ...data.user,
+        });
+      }
+      logger.info(LogCategory.USER_AUTH, 'Verification successful');
+    } catch (err: any) {
+      const msg = err.message || 'Verification failed';
+      setError(msg);
+      logger.error(LogCategory.USER_AUTH, 'Verification failed', { error: msg });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    clearAuth();
+    setAuthUser(null);
+    setError(null);
+    logger.info(LogCategory.USER_AUTH, 'User logged out');
+  }, []);
+
+  const getAccessToken = useCallback((): string | null => {
+    return typeof window !== 'undefined'
+      ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY)
+      : null;
+  }, []);
+
+  const getAuthHeadersAsync = useCallback(async (): Promise<Record<string, string>> => {
+    return {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    };
+  }, []);
+
+  const value: AuthContextValue = {
+    authUser,
+    isAuthenticated,
+    isLoading,
+    error,
+    login,
+    signup,
+    verify,
+    logout,
+    getAccessToken,
+    getAuthHeadersAsync,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// ================================================================================
+// Hook
+// ================================================================================
+
+export const useAuthContext = (): AuthContextValue => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuthContext must be used within an AuthProvider');
+  }
+  return ctx;
+};
+
+export default AuthProvider;
