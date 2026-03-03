@@ -702,6 +702,9 @@ export const useChatStore = create<ChatStore>()(
 
         // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
         const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+        if (!authToken) {
+          throw new Error('No auth token available for execution status check');
+        }
 
         // 调用execution status API via gateway
         const { GATEWAY_ENDPOINTS } = await import('../config/gatewayConfig');

@@ -13,10 +13,27 @@
  */
 
 import { SessionService as CoreSessionService } from '@isa/core';
-import { HttpClient } from '@isa/transport';
-import { BaseApiService } from './BaseApiService';
 import { getAuthHeaders } from '../config/gatewayConfig';
 import { logger, LogCategory } from '../utils/logger';
+
+import type {
+  Session,
+  SessionMessage,
+  SessionMetadata,
+  SessionResponse,
+  SessionListResponse,
+  SessionMessagesResponse,
+  SessionContext,
+  SessionExportFormat,
+  GetSessionsOptions,
+  GetUserSessionsOptions,
+  GetSessionOptions,
+  GetSessionMessagesOptions,
+  SearchSessionsOptions,
+  UpdateSessionData,
+  SessionSearchResponse,
+  SessionExportData,
+} from '../types/sessionTypes';
 
 // Re-export types for compatibility
 export type {
@@ -33,24 +50,8 @@ export type {
   GetSessionOptions,
   GetSessionMessagesOptions,
   SearchSessionsOptions,
-  UpdateSessionData
-} from '../types/sessionTypes';
-
-import type {
-  Session,
-  SessionMetadata,
-  SessionResponse,
-  SessionListResponse,
-  SessionMessagesResponse,
-  SessionMessage,
-  SessionSearchResponse,
-  SessionExportData,
-  GetSessionsOptions,
-  GetSessionMessagesOptions,
-  SearchSessionsOptions,
   UpdateSessionData,
-  SessionExportFormat,
-} from '../types/sessionTypes';
+};
 
 /** Metadata passed to createSession */
 interface CreateSessionMetadata {
@@ -68,10 +69,27 @@ export class SessionService {
   private coreSessionService: CoreSessionService;
 
   constructor(getAuthHeadersFn?: () => Promise<Record<string, string>>) {
-    // Initialize core session service with BaseApiService
     this.coreSessionService = new CoreSessionService();
 
+    // Wire auth token from localStorage into the SDK instance
+    const headers = getAuthHeaders();
+    const authHeader = headers['Authorization'];
+    if (authHeader) {
+      this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+    }
+
     logger.info(LogCategory.API_REQUEST, 'SessionService initialized with @isa/core SDK');
+  }
+
+  /** Refresh the SDK auth token from current localStorage state */
+  refreshAuth(): void {
+    const headers = getAuthHeaders();
+    const authHeader = headers['Authorization'];
+    if (authHeader) {
+      this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+    } else {
+      this.coreSessionService.clearAuth();
+    }
   }
 
   // ================================================================================
@@ -351,15 +369,19 @@ export class SessionService {
     try {
       logger.info(LogCategory.API_REQUEST, 'Performing session service health check');
 
+      const stats = await this.coreSessionService.getSessionStats();
       return {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        service: 'SessionService'
+        service: 'SessionService',
       };
-
     } catch (error) {
       logger.error(LogCategory.API_REQUEST, 'Health check failed', { error });
-      throw error;
+      return {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        service: 'SessionService',
+      };
     }
   }
 }

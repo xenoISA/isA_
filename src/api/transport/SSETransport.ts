@@ -72,6 +72,7 @@ export class SSEConnection {
   private metadata: Record<string, any> = {};
   private abortController?: AbortController;
   private isStreamActive = false;
+  private connectOptions: ConnectionOptions = {};
   
   constructor(private config: SSETransportConfig) {
     this.id = `conn_${Date.now()}_${Math.random().toString(36).substring(2)}`;
@@ -88,17 +89,18 @@ export class SSEConnection {
    * since the request body is needed at connection time.
    * Call connect() before stream() to initialise state.
    */
-  async connect(_options: ConnectionOptions = {}): Promise<void> {
+  async connect(options: ConnectionOptions = {}): Promise<void> {
     if (this.isConnected()) {
       return;
     }
 
+    // Store options (method, body, headers) for use in stream()
+    this.connectOptions = options;
     this.setState(ConnectionState.CONNECTING);
     this.abortController = new AbortController();
 
     // Mark as ready — the real HTTP fetch happens in stream()
     this.setState(ConnectionState.CONNECTED);
-    this.emit('open', { data: { status: 200 }, timestamp: Date.now() });
   }
   
   async close(code?: number, reason?: string): Promise<void> {
@@ -141,16 +143,18 @@ export class SSEConnection {
     this.isStreamActive = true;
     
     try {
-      // Create fetch request for SSE
+      // Create fetch request for SSE, merging connect() options
       const response = await fetch(this.url, {
-        method: 'POST',
+        method: this.connectOptions.method || 'POST',
         headers: {
           'Accept': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Content-Type': 'application/json',
-          ...this.config.headers
+          ...this.config.headers,
+          ...this.connectOptions.headers,
         },
-        signal: this.abortController?.signal
+        body: this.connectOptions.body,
+        signal: this.abortController?.signal,
       });
       
       if (!response.ok) {
