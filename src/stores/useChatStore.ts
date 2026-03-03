@@ -50,6 +50,7 @@ import { getChatServiceInstance } from '../hooks/useChatService';
 import { ChatMetadata, ChatMessage, StreamingStatus } from '../types/chatTypes';
 import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
+import { GATEWAY_CONFIG } from '../config/gatewayConfig';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
 import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
@@ -57,6 +58,10 @@ import { createContentParser, ParsedContent } from '../api/parsing/ContentParser
 interface ChatStoreState {
   // 聊天消息
   messages: ChatMessage[];
+  
+  // Streaming buffers to reduce per-chunk string concatenation cost
+  streamingBuffers: Record<string, string[]>;
+  streamingLastFlush: Record<string, number>;
   
   // 聊天状态
   isTyping: boolean;
@@ -123,6 +128,8 @@ export const useChatStore = create<ChatStore>()(
   subscribeWithSelector((set, get) => ({
     // 初始状态
     messages: [],
+    streamingBuffers: {},
+    streamingLastFlush: {},
     isTyping: false,
     chatLoading: false,
     
@@ -174,7 +181,7 @@ export const useChatStore = create<ChatStore>()(
     },
 
     clearMessages: () => {
-      set({ messages: [] });
+      set({ messages: [], streamingBuffers: {}, streamingLastFlush: {} });
       
       // 同时清空当前session的消息
       const sessionStore = useSessionStore.getState();
@@ -236,11 +243,11 @@ export const useChatStore = create<ChatStore>()(
     updateTaskProgress: (progress) => {
       set({ taskProgress: progress });
       if (progress) {
-        logger.info(LogCategory.CHAT_FLOW, 'Task progress updated', { 
-          toolName: progress.toolName, 
-          status: progress.status,
+        logger.info(LogCategory.CHAT_FLOW, 'Task progress updated', {
           step: progress.currentStep,
-          total: progress.totalSteps
+          stepName: progress.currentStepName,
+          total: progress.totalSteps,
+          percentage: progress.percentage
         });
       }
     },
@@ -332,7 +339,9 @@ export const useChatStore = create<ChatStore>()(
         // Messages array updated
         
         return {
-          messages: newMessages
+          messages: newMessages,
+          streamingBuffers: { ...state.streamingBuffers, [id]: [] },
+          streamingLastFlush: { ...state.streamingLastFlush, [id]: Date.now() }
         };
       });
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message started in chat store', { id, status });
@@ -345,14 +354,24 @@ export const useChatStore = create<ChatStore>()(
         if (!lastMessage) {
           return state;
         }
-        
+
+        if (!lastMessage.isStreaming) {
+          return state;
+        }
+
+        const messageId = lastMessage.id;
+        const existingBuffer = state.streamingBuffers[messageId] || [];
+        const updatedBuffer = [...existingBuffer, content];
+
+        const now = Date.now();
+        const lastFlush = state.streamingLastFlush[messageId] || 0;
+        const shouldFlush = updatedBuffer.length >= 20 || now - lastFlush >= 50;
+        const flushContent = shouldFlush ? updatedBuffer.join('') : '';
+        const nextBuffer = shouldFlush ? [] : updatedBuffer;
+
         // Handle both RegularMessage and ArtifactMessage types
         if (lastMessage.type === 'regular') {
-          if (!lastMessage.isStreaming) {
-            return state;
-          }
-          
-          const newContent = lastMessage.content + content;
+          const newContent = shouldFlush ? lastMessage.content + flushContent : lastMessage.content;
           
           const updatedMessages = [...state.messages];
           updatedMessages[updatedMessages.length - 1] = {
@@ -360,15 +379,17 @@ export const useChatStore = create<ChatStore>()(
             content: newContent
           };
           
-          return { messages: updatedMessages };
+          return {
+            messages: updatedMessages,
+            streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
+            streamingLastFlush: shouldFlush
+              ? { ...state.streamingLastFlush, [messageId]: now }
+              : state.streamingLastFlush
+          };
         } else if (lastMessage.type === 'artifact') {
-          if (!lastMessage.isStreaming) {
-            return state;
-          }
-          
           // For artifact messages, append to the artifact content
           const currentArtifactContent = typeof lastMessage.artifact.content === 'string' ? lastMessage.artifact.content : '';
-          const newArtifactContent = currentArtifactContent + content;
+          const newArtifactContent = shouldFlush ? currentArtifactContent + flushContent : currentArtifactContent;
           
           const updatedMessages = [...state.messages];
           updatedMessages[updatedMessages.length - 1] = {
@@ -379,10 +400,16 @@ export const useChatStore = create<ChatStore>()(
             }
           };
           
-          return { messages: updatedMessages };
-        } else {
-          return state;
+          return {
+            messages: updatedMessages,
+            streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
+            streamingLastFlush: shouldFlush
+              ? { ...state.streamingLastFlush, [messageId]: now }
+              : state.streamingLastFlush
+          };
         }
+
+        return state;
       });
     },
 
@@ -390,13 +417,33 @@ export const useChatStore = create<ChatStore>()(
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
         if (!lastMessage || !lastMessage.isStreaming) return state;
+
+        const messageId = lastMessage.id;
+        const buffer = state.streamingBuffers[messageId] || [];
+        const flushContent = buffer.length > 0 ? buffer.join('') : '';
+
+        const finalizedMessage =
+          lastMessage.type === 'regular'
+            ? { ...lastMessage, content: lastMessage.content + flushContent }
+            : lastMessage.type === 'artifact'
+              ? {
+                  ...lastMessage,
+                  artifact: {
+                    ...lastMessage.artifact,
+                    content:
+                      (typeof lastMessage.artifact.content === 'string'
+                        ? lastMessage.artifact.content
+                        : '') + flushContent
+                  }
+                }
+              : lastMessage;
         
         // 解析消息内容（仅对常规消息进行解析）
         let parsedContent: ParsedContent | undefined;
-        if (lastMessage.type === 'regular' && lastMessage.content) {
+        if (finalizedMessage.type === 'regular' && finalizedMessage.content) {
           try {
             const contentParser = createContentParser();
-            parsedContent = contentParser.parse(lastMessage.content) || undefined;
+            parsedContent = contentParser.parse(finalizedMessage.content) || undefined;
             // Content parsed successfully
           } catch (error) {
             console.warn('🔍 CONTENT_PARSER: Failed to parse content:', error);
@@ -404,10 +451,10 @@ export const useChatStore = create<ChatStore>()(
         }
         
         const finishedMessage = {
-          ...lastMessage,
+          ...finalizedMessage,
           isStreaming: false,
           streamingStatus: undefined,
-          ...(lastMessage.type === 'regular' && parsedContent && {
+          ...(finalizedMessage.type === 'regular' && parsedContent && {
             parsedContent
           })
         };
@@ -441,7 +488,16 @@ export const useChatStore = create<ChatStore>()(
           });
         }
         
-        return { messages: updatedMessages };
+        const nextBuffers = { ...state.streamingBuffers };
+        const nextLastFlush = { ...state.streamingLastFlush };
+        delete nextBuffers[messageId];
+        delete nextLastFlush[messageId];
+
+        return {
+          messages: updatedMessages,
+          streamingBuffers: nextBuffers,
+          streamingLastFlush: nextLastFlush
+        };
       });
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message finished in chat store');
     },
@@ -549,15 +605,27 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('ChatService not available for HIL resume');
         }
 
-        // 使用token或默认值
-        const authToken = token || 'dev_key_test';
-        
+        // 获取认证信息 (centralized token key)
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+        if (!authToken) {
+          throw new Error('No auth token available for HIL resume');
+        }
+
         // 获取用户信息
         const userStore = useUserStore.getState();
-        const userId = 'test_user'; // TODO: Fix user store access
+        const userId = userStore.externalUser?.auth0_id || '';
+        if (!userId) {
+          throw new Error('No user ID available for HIL resume');
+        }
 
-        // 调用resumeChat API
-        await chatService.resumeChat(sessionId, userId, resumeValue, authToken, {
+        // 调用resumeHIL API — serialize objects, pass strings through
+        const message = typeof resumeValue === 'string'
+          ? resumeValue
+          : JSON.stringify(resumeValue);
+        await chatService.resumeHIL(message, {
+          user_id: userId,
+          session_id: sessionId,
+        }, authToken, {
           onStreamStart: (messageId: string, status?: string) => {
             startStreamingMessage(messageId, status || '🔄 Resuming HIL execution...');
             setExecutingPlan(true);
@@ -583,6 +651,17 @@ export const useChatStore = create<ChatStore>()(
           },
           onTaskStatusUpdate: (taskId: string, status: string, result?: any) => {
             updateTaskStatus(taskId, status as any, result);
+          },
+          onBillingUpdate: (billingData: any) => {
+            // Handle billing updates by delegating to UserStore (imported at top)
+            if (typeof billingData.creditsRemaining === 'number') {
+              useUserStore.getState().updateCredits(billingData.creditsRemaining, 'billing');
+              logger.info(LogCategory.CHAT_FLOW, 'User credits updated from billing event', { 
+                creditsRemaining: billingData.creditsRemaining,
+                modelCalls: billingData.modelCalls,
+                toolCalls: billingData.toolCalls 
+              });
+            }
           },
           // HIL回调 - 处理可能的嵌套HIL中断
           onHILInterruptDetected: (hilEvent: any) => {
@@ -624,27 +703,29 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('ChatService not available for status check');
         }
 
-        // 使用token或默认值
-        const authToken = token || 'dev_key_test';
-
-        // 调用getExecutionStatus API
-        const statusData = await chatService.getExecutionStatus(sessionId, authToken);
-        
-        // 根据status数据更新HIL状态
-        if (statusData.status === 'interrupted' && statusData.interrupts?.length > 0) {
-          const { setHILStatus, setCurrentThreadId } = get();
-          setHILStatus('waiting_for_human');
-          setCurrentThreadId(statusData.thread_id);
-          
-          logger.info(LogCategory.CHAT_FLOW, 'Execution interrupted detected via status check', {
-            sessionId,
-            status: statusData.status,
-            interruptCount: statusData.interrupts.length
-          });
-        } else if (statusData.status === 'running') {
-          const { setHILStatus } = get();
-          setHILStatus('idle');
+        // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+        if (!authToken) {
+          throw new Error('No auth token available for execution status check');
         }
+
+        // 调用execution status API via gateway
+        const { GATEWAY_ENDPOINTS } = await import('../config/gatewayConfig');
+        const res = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.STATUS}/${sessionId}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const statusData = res.ok
+          ? await res.json()
+          : { status: 'unknown', interrupts: [] };
+
+        logger.info(LogCategory.CHAT_FLOW, 'Execution status retrieved', {
+          sessionId,
+          status: statusData.status,
+        });
 
         return statusData;
         

@@ -1,0 +1,375 @@
+/**
+ * ============================================================================
+ * Gateway API Configuration - 统一网关接入配置
+ * ============================================================================
+ *
+ * 【架构说明】
+ * 所有API请求通过Gateway (http://localhost:9080) 统一路由
+ * Gateway负责：认证验证、权限检查、服务发现、负载均衡
+ *
+ * 【服务架构】
+ * Frontend → Gateway(9080) → Microservices(8xxx)
+ *
+ * 【认证方式】
+ * 1. JWT Token (推荐)
+ * 2. API Key (备用)
+ */
+
+import { getGatewayUrl } from './runtimeEnv';
+
+// ================================================================================
+// 网关基础配置
+// ================================================================================
+
+export const GATEWAY_CONFIG = {
+  // 网关基础URL
+  BASE_URL: getGatewayUrl(),
+  
+  // API版本
+  API_VERSION: 'v1',
+  
+  // 认证配置
+  AUTH: {
+    // JWT Token存储key
+    TOKEN_KEY: 'isa_auth_token',
+    // API Key存储key  
+    API_KEY: 'isa_api_key',
+    // 认证头名称
+    AUTH_HEADER: 'Authorization',
+    API_KEY_HEADER: 'X-API-Key',
+  },
+  
+  // 超时配置
+  TIMEOUT: {
+    DEFAULT: 30000,      // 30秒
+    CHAT_SSE: 300000,    // 5分钟 (聊天流式响应)
+    UPLOAD: 120000,      // 2分钟 (文件上传)
+  }
+} as const;
+
+// ================================================================================
+// 服务名称映射 (Consul注册名)
+// ================================================================================
+
+export const GATEWAY_SERVICES = {
+  // 核心AI服务
+  AGENTS: 'agents',           // Agent聊天服务 (8080)
+  MCP: 'mcp',                 // MCP工具服务 (8081)
+  
+  // 用户相关服务  
+  ACCOUNTS: 'accounts',       // 账户服务 (8201)
+  AUTH: 'auth',              // 认证服务 (8202)
+  AUTHORIZATION: 'authorization', // 授权服务 (8203)
+  SESSIONS: 'sessions',       // 会话服务 (8205)
+  
+  // 业务服务
+  PAYMENT: 'payment',         // 支付服务 (8207)
+  ORDER: 'order',            // 订单服务 (8210)
+  ORGANIZATION: 'organization', // 组织服务 (8212)
+  INVITATION: 'invitation',   // 邀请服务 (8213)
+  
+  // 基础服务
+  NOTIFICATION: 'notification', // 通知服务 (8206)
+  STORAGE: 'storage',         // 存储服务 (8208)
+  WALLET: 'wallet',          // 钱包服务 (8209)
+  TASK: 'task_service',      // 任务服务 (8211)
+  AUDIT: 'audit',            // 审计服务 (8204)
+  
+  // 区块链服务
+  BLOCKCHAIN: 'blockchain',   // 区块链网关
+  
+  // 网关管理
+  GATEWAY: 'gateway'         // 网关自身管理
+} as const;
+
+// ================================================================================
+// API端点配置 - 统一通过网关访问
+// ================================================================================
+
+/**
+ * Build gateway endpoint URL.
+ * Gateway routes: {BASE_URL}/{service}{path}
+ * Paths that need /api/v1/ include it explicitly in the path parameter.
+ */
+const buildEndpoint = (service: string, path: string = '') => {
+  return `${GATEWAY_CONFIG.BASE_URL}/${service}${path}`;
+};
+
+export const GATEWAY_ENDPOINTS = {
+  // ==== Agent服务端点 (聊天、执行控制) ====
+  AGENTS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.AGENTS),
+    CHAT: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/chat'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/health'),
+    STATS: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/stats'),
+    CAPABILITIES: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/capabilities'),
+    
+    // 执行控制相关
+    EXECUTION: {
+      HEALTH: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/execution/health'),
+      STATUS: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/execution/status'),
+      HISTORY: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/execution/history'),
+      ROLLBACK: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/execution/rollback'),
+      RESUME: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/execution/resume'),
+      RESUME_STREAM: buildEndpoint(GATEWAY_SERVICES.AGENTS, '/execution/resume-stream'),
+    }
+  },
+  
+  // ==== MCP服务端点 (工具调用) ====
+  MCP: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.MCP),
+    SEARCH: buildEndpoint(GATEWAY_SERVICES.MCP, '/search'),
+    TOOLS_CALL: buildEndpoint(GATEWAY_SERVICES.MCP, '/mcp/tools/call'),
+    PROMPTS_GET: buildEndpoint(GATEWAY_SERVICES.MCP, '/mcp/prompts/get'),
+    RESOURCES_READ: buildEndpoint(GATEWAY_SERVICES.MCP, '/mcp/resources/read'),
+  },
+  
+  // ==== 账户服务端点 (原User服务) ====
+  ACCOUNTS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS),
+    ME: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/me'),
+    ENSURE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/ensure'),
+    CREDITS: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/{userId}/credits/consume'),
+    SUBSCRIPTION: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/{userId}/subscription'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/health'),
+  },
+  
+  // ==== 会话服务端点 ====
+  SESSIONS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.SESSIONS),
+    LIST: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions'),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions'),
+    GET: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/{sessionId}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/{sessionId}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/{sessionId}'),
+    USER: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/user'),
+    ACTIVE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/active'),
+    SEARCH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/search'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/health'),
+  },
+  
+  // ==== 认证服务端点 ====
+  AUTH: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.AUTH),
+    VERIFY_TOKEN: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/verify-token'),
+    VERIFY_API_KEY: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/verify-api-key'),
+    DEV_TOKEN: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/dev-token'),
+    API_KEYS: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/api-keys'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.AUTH, '/health'),
+  },
+  
+  // ==== 授权服务端点 ====
+  AUTHORIZATION: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION),
+    CHECK_ACCESS: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/check-access'),
+    GRANT: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/grant'),
+    REVOKE: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/revoke'),
+    USER_PERMISSIONS: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/user-permissions'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/health'),
+  },
+  
+  // ==== 支付服务端点 ====
+  PAYMENT: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.PAYMENT),
+    CREATE_CHECKOUT: buildEndpoint(GATEWAY_SERVICES.PAYMENT, '/api/v1/payments/create-checkout'),
+    WEBHOOK: buildEndpoint(GATEWAY_SERVICES.PAYMENT, '/api/v1/payments/webhook'),
+    STATUS: buildEndpoint(GATEWAY_SERVICES.PAYMENT, '/api/v1/payments/{paymentId}/status'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.PAYMENT, '/health'),
+  },
+  
+  // ==== 区块链服务端点 ====
+  BLOCKCHAIN: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.BLOCKCHAIN),
+    STATUS: buildEndpoint(GATEWAY_SERVICES.BLOCKCHAIN, '/status'),
+    BALANCE: buildEndpoint(GATEWAY_SERVICES.BLOCKCHAIN, '/balance/{address}'),
+    TRANSACTION: buildEndpoint(GATEWAY_SERVICES.BLOCKCHAIN, '/transaction'),
+    BLOCK: buildEndpoint(GATEWAY_SERVICES.BLOCKCHAIN, '/block/{number}'),
+  },
+  
+  // ==== 网关管理端点 ====
+  GATEWAY: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.GATEWAY),
+    SERVICES: buildEndpoint(GATEWAY_SERVICES.GATEWAY, '/services'),
+    METRICS: buildEndpoint(GATEWAY_SERVICES.GATEWAY, '/metrics'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.GATEWAY, '/health'),
+  },
+  
+  // ==== 直接网关端点 (不经过服务路由) ====
+  HEALTH: `${GATEWAY_CONFIG.BASE_URL}/health`,
+  READY: `${GATEWAY_CONFIG.BASE_URL}/ready`,
+} as const;
+
+// ================================================================================
+// 旧配置到新配置的映射 - 用于渐进式迁移
+// ================================================================================
+
+export const LEGACY_TO_GATEWAY_MAP = {
+  // Agent服务映射 (原8080端口)
+  'http://localhost:8080/api/v1/agents/chat': GATEWAY_ENDPOINTS.AGENTS.CHAT,
+  'http://localhost:8080/api/execution/health': GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HEALTH,
+  'http://localhost:8080/api/execution/status': GATEWAY_ENDPOINTS.AGENTS.EXECUTION.STATUS,
+  'http://localhost:8080/api/execution/history': GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HISTORY,
+  'http://localhost:8080/api/execution/rollback': GATEWAY_ENDPOINTS.AGENTS.EXECUTION.ROLLBACK,
+  'http://localhost:8080/api/execution/resume': GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME,
+  'http://localhost:8080/api/execution/resume-stream': GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM,
+  
+  // 用户服务映射 (原9000端口 → 现在8201通过网关)
+  'http://localhost:9000/api/v1/users': GATEWAY_ENDPOINTS.ACCOUNTS.BASE,
+  'http://localhost:9000/api/v1/users/me': GATEWAY_ENDPOINTS.ACCOUNTS.ME,
+  'http://localhost:9000/api/v1/users/ensure': GATEWAY_ENDPOINTS.ACCOUNTS.ENSURE,
+  
+  // 会话服务映射 (原3000端口 → 现在8205通过网关)
+  'http://localhost:3000/api/sessions': GATEWAY_ENDPOINTS.SESSIONS.LIST,
+  'http://localhost:3000/api/sessions/health': GATEWAY_ENDPOINTS.SESSIONS.HEALTH,
+  'http://localhost:3000/api/sessions/user': GATEWAY_ENDPOINTS.SESSIONS.USER,
+  'http://localhost:3000/api/sessions/active': GATEWAY_ENDPOINTS.SESSIONS.ACTIVE,
+  'http://localhost:3000/api/sessions/search': GATEWAY_ENDPOINTS.SESSIONS.SEARCH,
+} as const;
+
+// ================================================================================
+// 工具函数
+// ================================================================================
+
+/**
+ * 获取认证头
+ */
+export const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  
+  // 优先使用JWT Token
+  const token = typeof window !== 'undefined' 
+    ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) 
+    : null;
+    
+  if (token) {
+    headers[GATEWAY_CONFIG.AUTH.AUTH_HEADER] = `Bearer ${token}`;
+    return headers;
+  }
+  
+  // 备用：使用API Key
+  const apiKey = typeof window !== 'undefined' 
+    ? localStorage.getItem(GATEWAY_CONFIG.AUTH.API_KEY) 
+    : null;
+    
+  if (apiKey) {
+    headers[GATEWAY_CONFIG.AUTH.API_KEY_HEADER] = apiKey;
+  }
+  
+  return headers;
+};
+
+/**
+ * 保存认证Token
+ */
+export const saveAuthToken = (token: string): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY, token);
+  }
+};
+
+/**
+ * 清除认证信息
+ */
+export const clearAuth = (): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+    localStorage.removeItem(GATEWAY_CONFIG.AUTH.API_KEY);
+  }
+};
+
+/**
+ * 映射旧URL到新的网关URL
+ */
+export const mapLegacyUrl = (legacyUrl: string): string => {
+  // 先尝试精确匹配
+  const mapped = LEGACY_TO_GATEWAY_MAP[legacyUrl as keyof typeof LEGACY_TO_GATEWAY_MAP];
+  if (mapped) return mapped;
+  
+  // 尝试模糊匹配
+  if (legacyUrl.includes('localhost:8080')) {
+    return legacyUrl.replace('http://localhost:8080', GATEWAY_ENDPOINTS.AGENTS.BASE);
+  }
+  if (legacyUrl.includes('localhost:9000')) {
+    return legacyUrl.replace('http://localhost:9000', GATEWAY_ENDPOINTS.ACCOUNTS.BASE);
+  }
+  if (legacyUrl.includes('localhost:3000/api/sessions')) {
+    return legacyUrl.replace('http://localhost:3000/api/sessions', GATEWAY_ENDPOINTS.SESSIONS.BASE);
+  }
+  
+  return legacyUrl;
+};
+
+/**
+ * 构建带参数的URL
+ */
+export const buildUrlWithParams = (template: string, params: Record<string, string>): string => {
+  let url = template;
+  Object.entries(params).forEach(([key, value]) => {
+    url = url.replace(`{${key}}`, encodeURIComponent(value));
+  });
+  return url;
+};
+
+/**
+ * 检查是否需要认证的端点
+ */
+export const requiresAuth = (url: string): boolean => {
+  // 健康检查不需要认证
+  if (url.includes('/health') || url.includes('/ready')) {
+    return false;
+  }
+  // 其他都需要认证
+  return true;
+};
+
+// ================================================================================
+// SSE (Server-Sent Events) 配置
+// ================================================================================
+
+export const SSE_CONFIG = {
+  // SSE支持的服务
+  SSE_SERVICES: ['agents', 'mcp'],
+  
+  // SSE端点
+  SSE_ENDPOINTS: {
+    CHAT: GATEWAY_ENDPOINTS.AGENTS.CHAT,
+    EXECUTION_RESUME: GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM,
+    MCP_TOOLS: GATEWAY_ENDPOINTS.MCP.TOOLS_CALL,
+  },
+  
+  // 检查是否为SSE端点
+  isSSEEndpoint: (url: string): boolean => {
+    return Object.values(SSE_CONFIG.SSE_ENDPOINTS).some(endpoint => 
+      url.includes(endpoint)
+    );
+  }
+};
+
+// ================================================================================
+// 类型定义
+// ================================================================================
+
+export type GatewayService = keyof typeof GATEWAY_SERVICES;
+export type GatewayEndpoint = typeof GATEWAY_ENDPOINTS;
+
+// ================================================================================
+// 默认导出
+// ================================================================================
+
+export default {
+  config: GATEWAY_CONFIG,
+  services: GATEWAY_SERVICES,
+  endpoints: GATEWAY_ENDPOINTS,
+  legacy: LEGACY_TO_GATEWAY_MAP,
+  auth: {
+    getHeaders: getAuthHeaders,
+    saveToken: saveAuthToken,
+    clear: clearAuth,
+  },
+  utils: {
+    mapLegacyUrl,
+    buildUrlWithParams,
+    requiresAuth,
+  },
+  sse: SSE_CONFIG,
+};
