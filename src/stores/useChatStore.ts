@@ -697,12 +697,6 @@ export const useChatStore = create<ChatStore>()(
       try {
         logger.info(LogCategory.CHAT_FLOW, 'Checking execution status', { sessionId });
 
-        // 获取 ChatService 实例
-        let chatService = getChatServiceInstance();
-        if (!chatService) {
-          throw new Error('ChatService not available for status check');
-        }
-
         // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
         const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
         if (!authToken) {

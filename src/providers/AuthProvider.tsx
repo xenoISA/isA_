@@ -108,9 +108,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const data = await res.json();
       const tokenValue = data.token || data.access_token;
-      if (tokenValue) {
-        saveAuthToken(tokenValue);
+      if (!tokenValue) {
+        throw new Error('Server did not return an auth token');
       }
+      saveAuthToken(tokenValue);
       setAuthUser({
         sub: data.user_id || data.sub || '',
         email: data.email || email,

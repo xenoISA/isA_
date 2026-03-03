@@ -337,11 +337,13 @@ export const SSE_CONFIG = {
     MCP_TOOLS: GATEWAY_ENDPOINTS.MCP.TOOLS_CALL,
   },
   
-  // 检查是否为SSE端点
+  // 检查是否为SSE端点 (reference GATEWAY_ENDPOINTS directly to avoid self-reference)
   isSSEEndpoint: (url: string): boolean => {
-    return Object.values(SSE_CONFIG.SSE_ENDPOINTS).some(endpoint => 
-      url.includes(endpoint)
-    );
+    return [
+      GATEWAY_ENDPOINTS.AGENTS.CHAT,
+      GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM,
+      GATEWAY_ENDPOINTS.MCP.TOOLS_CALL,
+    ].some(endpoint => url.includes(endpoint));
   }
 };
 
