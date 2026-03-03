@@ -157,7 +157,7 @@ export const MainAppContainer: React.FC = () => {
           <AuthProvider>
             <UserModule>
               <SessionProvider>
-                <AIProvider apiEndpoint={process.env.REACT_APP_AGENT_SERVICE_URL || "http://localhost:8080"}>
+                <AIProvider>
                   <AppModule />
                 </AIProvider>
               </SessionProvider>

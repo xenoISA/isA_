@@ -12,8 +12,8 @@
  * ✅ Error handling: Built-in SDK error management
  */
 
-import { SessionService as CoreSessionService } from '@isa/core';
-import { getAuthHeaders, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
+import { SessionService as CoreSessionService, BaseApiService as CoreBaseApiService } from '@isa/core';
+import { GATEWAY_CONFIG, getAuthHeaders, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { logger, LogCategory } from '../utils/logger';
 
 import type {
@@ -70,31 +70,51 @@ export class SessionService {
 
   private getAuthHeadersFn?: () => Promise<Record<string, string>>;
 
+  /** Resolves when initial auth setup is complete */
+  private authReady: Promise<void>;
+
   constructor(getAuthHeadersFn?: () => Promise<Record<string, string>>) {
-    this.coreSessionService = new CoreSessionService();
+    // Pass isA_'s gateway base URL to the SDK so both use the same host/port.
+    // The SDK's BaseApiService defaults to its own GATEWAY_CONFIG which reads
+    // a different env var (GATEWAY_URL vs NEXT_PUBLIC_GATEWAY_URL).
+    const apiService = new CoreBaseApiService(GATEWAY_CONFIG.BASE_URL);
+    this.coreSessionService = new CoreSessionService(apiService);
     this.getAuthHeadersFn = getAuthHeadersFn;
 
-    // Synchronous fallback: wire auth token from localStorage
+    // Initialize auth: prefer async fn, fallback to localStorage.
+    // Store the promise so callers can await it via ensureAuth().
+    this.authReady = this.initAuth();
+
+    logger.info(LogCategory.API_REQUEST, 'SessionService initialized with @isa/core SDK');
+  }
+
+  /** Run initial auth setup — called once from the constructor */
+  private async initAuth(): Promise<void> {
+    // If an async auth function is provided, use it as the primary source
+    if (this.getAuthHeadersFn) {
+      try {
+        const headers = await this.getAuthHeadersFn();
+        const authHeader = headers['Authorization'];
+        if (authHeader) {
+          this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+          return;
+        }
+      } catch (err) {
+        logger.warn(LogCategory.API_REQUEST, 'Async auth init failed, falling back to localStorage', { error: err });
+      }
+    }
+
+    // Synchronous fallback: read token from localStorage
     const headers = getAuthHeaders();
     const authHeader = headers['Authorization'];
     if (authHeader) {
       this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
     }
+  }
 
-    // If an async auth function is provided, eagerly resolve it to override
-    // the synchronous fallback (e.g. when a fresh token differs from localStorage).
-    if (getAuthHeadersFn) {
-      getAuthHeadersFn().then((asyncHeaders) => {
-        const asyncAuth = asyncHeaders['Authorization'];
-        if (asyncAuth) {
-          this.coreSessionService.setAuthToken(asyncAuth.replace('Bearer ', ''));
-        }
-      }).catch((err) => {
-        logger.warn(LogCategory.API_REQUEST, 'Async auth init failed, using localStorage fallback', { error: err });
-      });
-    }
-
-    logger.info(LogCategory.API_REQUEST, 'SessionService initialized with @isa/core SDK');
+  /** Wait for initial auth to complete before making API calls */
+  private async ensureAuth(): Promise<void> {
+    await this.authReady;
   }
 
   /** Refresh the SDK auth token from current localStorage state (or custom fn) */
@@ -124,6 +144,7 @@ export class SessionService {
    * Create new session
    */
   async createSession(metadata: CreateSessionMetadata): Promise<SessionResponse> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Creating new session', { metadata });
 
@@ -156,6 +177,7 @@ export class SessionService {
    * Get session by ID
    */
   async getSession(sessionId: string, options?: { include_history?: boolean }): Promise<SessionResponse> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting session', { sessionId, options });
 
@@ -180,6 +202,7 @@ export class SessionService {
    * Get user sessions
    */
   async getUserSessions(userId: string, options?: GetSessionsOptions): Promise<SessionListResponse> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting user sessions', { userId, options });
 
@@ -207,6 +230,7 @@ export class SessionService {
    * Update session
    */
   async updateSession(sessionId: string, updates: UpdateSessionData): Promise<SessionResponse> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Updating session', { sessionId, updates });
 
@@ -232,6 +256,7 @@ export class SessionService {
    * Delete session
    */
   async deleteSession(sessionId: string): Promise<{ success: boolean; message: string }> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Deleting session', { sessionId });
 
@@ -256,6 +281,7 @@ export class SessionService {
    * Get session messages
    */
   async getSessionMessages(sessionId: string, options?: GetSessionMessagesOptions): Promise<SessionMessagesResponse> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Getting session messages', { sessionId, options });
 
@@ -282,6 +308,7 @@ export class SessionService {
    * Add message to session
    */
   async addSessionMessage(sessionId: string, message: { role?: string; content: string; message_type?: string; metadata?: Record<string, unknown>; tokens_used?: number; cost_usd?: number }): Promise<SessionMessage> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Adding session message', { sessionId, message });
 
@@ -317,6 +344,7 @@ export class SessionService {
    * Search sessions
    */
   async searchSessions(options: SearchSessionsOptions & { query?: string }): Promise<SessionSearchResponse> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Searching sessions', { options });
 
@@ -360,6 +388,7 @@ export class SessionService {
    * Export session
    */
   async exportSession(sessionId: string, format: SessionExportFormat = 'json'): Promise<{ format: string; data: string | object; filename: string }> {
+    await this.ensureAuth();
     try {
       logger.info(LogCategory.API_REQUEST, 'Exporting session', { sessionId, format });
 
