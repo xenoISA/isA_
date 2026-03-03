@@ -50,7 +50,7 @@ import { getChatServiceInstance } from '../hooks/useChatService';
 import { ChatMetadata, ChatMessage, StreamingStatus } from '../types/chatTypes';
 import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
-import { GATEWAY_CONFIG } from '../config/gatewayConfig';
+import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
 import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
@@ -709,8 +709,7 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('No auth token available for execution status check');
         }
 
-        // 调用execution status API via gateway
-        const { GATEWAY_ENDPOINTS } = await import('../config/gatewayConfig');
+        // 调用execution status API via gateway (static import at top)
         const res = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.STATUS}/${sessionId}`, {
           headers: {
             'Authorization': `Bearer ${authToken}`,

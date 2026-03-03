@@ -22,8 +22,6 @@
  *   - Widget types (handled by widgetTypes.ts)
  */
 
-import { User } from '@auth0/auth0-react';
-
 // ================================================================================
 // Basic User Data Types
 // ================================================================================
@@ -121,11 +119,11 @@ export type PlanType = 'free' | 'pro' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'canceled' | 'incomplete' | 'past_due';
 
-// Auth state that combines Auth0 and external user data
+// Auth state that combines gateway auth and external user data
 export interface UserAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: User | undefined;
+  user: { sub: string; email: string; name: string; [key: string]: any } | undefined;
   externalUser: ExternalUser | null;
   subscription: ExternalSubscription | null;
   error: string | null;

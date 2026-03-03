@@ -32,17 +32,12 @@
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuthContext } from '../providers/AuthProvider';
 import { useUserStore } from '../stores/useUserStore';
 import { UserService } from '../api/userService';
 import { logger, LogCategory } from '../utils/logger';
 import { PlanType, CreateExternalUserData, CreditConsumption } from '../types/userTypes';
 import { useUser } from '../hooks/useUser';
-import {
-  getCurrentRelativeUrl,
-  getLogoutReturnToUrl,
-  setStoredOrgContextId,
-} from '../config/authSessionConfig';
 import '../utils/creditMonitor'; // 🎯 初始化信用监控系统
 
 // ================================================================================
@@ -122,16 +117,17 @@ const UserModuleContext = React.createContext<UserModuleInterface | null>(null);
 // ================================================================================
 
 export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auth0 Integration
+  // Gateway Auth Integration (migrated from Auth0)
   const {
-    user: auth0User,
+    authUser: auth0User,
     isLoading: auth0Loading,
     error: auth0Error,
     isAuthenticated,
-    loginWithRedirect,
-    logout: auth0Logout,
-    getAccessTokenSilently
-  } = useAuth0();
+    login: gatewayLogin,
+    logout: gatewayLogout,
+    getAccessToken: getStoredToken,
+    getAuthHeadersAsync,
+  } = useAuthContext();
 
   // User Hook Integration (正确的架构：通过useUser访问store)
   const userHook = useUser();
@@ -146,26 +142,15 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Create authenticated userService instance
   const userService = useMemo(() => {
-    
     const getAuthHeaders = async () => {
       if (!isAuthenticated) {
         throw new Error('Not authenticated');
       }
-      const token = await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
-      logger.debug(LogCategory.USER_AUTH, 'Auth0 access token retrieved', { tokenLength: token?.length });
-      return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
+      return getAuthHeadersAsync();
     };
-    
+
     return new UserService(undefined, getAuthHeaders);
-  }, [isAuthenticated, getAccessTokenSilently]);
+  }, [isAuthenticated, getAuthHeadersAsync]);
 
   // ================================================================================
   // Authentication Methods
@@ -173,47 +158,25 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const getAccessToken = useCallback(async (): Promise<string> => {
     try {
-      return await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
+      const token = getStoredToken();
+      if (!token) {
+        throw new Error('No access token available');
+      }
+      return token;
     } catch (error) {
       logger.error(LogCategory.USER_AUTH, 'Failed to get access token', { error });
-      
-      // If token refresh fails, user needs to re-authenticate
-      if (error instanceof Error && error.message.includes('Missing Refresh Token')) {
-        logger.info(LogCategory.USER_AUTH, 'Refresh token missing, redirecting to login');
-        loginWithRedirect();
-        throw new Error('Authentication required');
-      }
-      
       throw error;
     }
-  }, [getAccessTokenSilently, loginWithRedirect]);
+  }, [getStoredToken]);
 
+  // Login/signup are now form-based via LoginScreen; these are no-ops
   const login = useCallback(() => {
-    loginWithRedirect({
-      appState: {
-        returnTo: getCurrentRelativeUrl()
-      },
-      authorizationParams: {
-        screen_hint: 'login'
-      }
-    });
-  }, [loginWithRedirect]);
+    logger.info(LogCategory.USER_AUTH, 'Login requested — handled by LoginScreen');
+  }, []);
 
   const signup = useCallback(() => {
-    loginWithRedirect({
-      appState: {
-        returnTo: getCurrentRelativeUrl()
-      },
-      authorizationParams: {
-        screen_hint: 'signup'
-      }
-    });
-  }, [loginWithRedirect]);
+    logger.info(LogCategory.USER_AUTH, 'Signup requested — handled by LoginScreen');
+  }, []);
 
   // ================================================================================
   // User Synchronization Logic
@@ -292,6 +255,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [auth0User?.sub, auth0User?.email, auth0User?.name, isAuthenticated, userService]);
 
+  // Note: loginWithRedirect is not used with gateway auth; kept for error recovery
   const refreshUser = useCallback(async () => {
     if (!isAuthenticated) {
       console.log('👤 UserModule: Skipping user refresh - not authenticated');
@@ -332,7 +296,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
             await userHook.fetchCurrentUser(token);
             console.log('👤 UserModule: User data refreshed successfully after initialization');
           } else {
-            throw new Error('Cannot initialize user: missing Auth0 user data');
+            throw new Error('Cannot initialize user: missing auth user data');
           }
         } else {
           throw error;
@@ -366,15 +330,9 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, auth0User, initializeUser]);
 
   const logout = useCallback(() => {
-    // Use userHook's clearUser method instead of direct store access
     userHook.clearUser();
-    setStoredOrgContextId(null);
-    auth0Logout({
-      logoutParams: {
-        returnTo: getLogoutReturnToUrl()
-      }
-    });
-  }, [userHook.clearUser, auth0Logout]);
+    gatewayLogout();
+  }, [userHook.clearUser, gatewayLogout]);
 
   // ================================================================================
   // Business Logic Methods
