@@ -17,6 +17,7 @@
 
 import { createSSETransport } from './transport/SSETransport';
 import { createAGUIEventParser } from './parsing/AGUIEventParser';
+import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 
 // 定义标准的回调接口 - 扩展支持所有事件类型
 export interface ChatServiceCallbacks {
@@ -105,8 +106,8 @@ export class ChatService {
         proactive_predictions: metadata.proactive_predictions || null
       };
 
-      // 使用固定的Chat API endpoint
-      const endpoint = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/chat`;
+      // Use centralized gateway Chat API endpoint
+      const endpoint = GATEWAY_ENDPOINTS.AGENTS.CHAT;
       
       // 1. 创建 SSE 传输层
       const transport = createSSETransport({

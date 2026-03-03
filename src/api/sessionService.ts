@@ -13,7 +13,7 @@
  */
 
 import { SessionService as CoreSessionService } from '@isa/core';
-import { getAuthHeaders } from '../config/gatewayConfig';
+import { getAuthHeaders, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { logger, LogCategory } from '../utils/logger';
 
 import type {
@@ -74,11 +74,24 @@ export class SessionService {
     this.coreSessionService = new CoreSessionService();
     this.getAuthHeadersFn = getAuthHeadersFn;
 
-    // Wire auth token from localStorage into the SDK instance
+    // Synchronous fallback: wire auth token from localStorage
     const headers = getAuthHeaders();
     const authHeader = headers['Authorization'];
     if (authHeader) {
       this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+    }
+
+    // If an async auth function is provided, eagerly resolve it to override
+    // the synchronous fallback (e.g. when a fresh token differs from localStorage).
+    if (getAuthHeadersFn) {
+      getAuthHeadersFn().then((asyncHeaders) => {
+        const asyncAuth = asyncHeaders['Authorization'];
+        if (asyncAuth) {
+          this.coreSessionService.setAuthToken(asyncAuth.replace('Bearer ', ''));
+        }
+      }).catch((err) => {
+        logger.warn(LogCategory.API_REQUEST, 'Async auth init failed, using localStorage fallback', { error: err });
+      });
     }
 
     logger.info(LogCategory.API_REQUEST, 'SessionService initialized with @isa/core SDK');
@@ -386,9 +399,17 @@ export class SessionService {
     try {
       logger.info(LogCategory.API_REQUEST, 'Performing session service health check');
 
-      // Use a lightweight SDK call as a health probe (getSessionStats endpoint
-      // may not be defined in the frontend gateway config).
-      await this.coreSessionService.getUserSessions('_health_check', { page: 1, pageSize: 1 });
+      // Call the dedicated health endpoint instead of abusing a business endpoint
+      const headers = getAuthHeaders();
+      const response = await fetch(GATEWAY_ENDPOINTS.SESSIONS.HEALTH, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', ...headers },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Health check returned ${response.status}`);
+      }
+
       return {
         status: 'healthy',
         timestamp: new Date().toISOString(),
