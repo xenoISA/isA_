@@ -10,7 +10,8 @@
     "export": "next export"
   },
   "dependencies": {
-    "@auth0/auth0-react": "^2.3.0",
+    "@isa/core": "file:../isA_App_SDK/packages/core",
+    "@isa/transport": "file:../isA_App_SDK/packages/transport",
     "@rudderstack/analytics-js": "^3.23.2",
     "@supabase/supabase-js": "^2.57.2",
     "@types/node": "^20.0.0",
