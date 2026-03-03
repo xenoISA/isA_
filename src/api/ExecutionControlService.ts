@@ -27,6 +27,7 @@
 import { BaseApiService } from './BaseApiService';
 import { config } from '../config';
 import { logger, LogCategory } from '../utils/logger';
+import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { 
   HILInterruptDetectedEvent, 
   HILCheckpointCreatedEvent,
@@ -142,7 +143,6 @@ export interface ResumeStreamCallbacks {
 
 export class ExecutionControlService {
   private apiService: BaseApiService;
-  private hilBaseUrl: string;
   private activePollingTimers: Map<string, NodeJS.Timeout> = new Map();
   private statusCache: Map<string, { status: ExecutionStatus; timestamp: number }> = new Map();
   private isPageVisible: boolean = true;
@@ -153,10 +153,7 @@ export class ExecutionControlService {
   private readonly RETRY_DELAY = 1000; // Base delay for retries (1s)
 
   constructor(apiService?: BaseApiService) {
-    // 使用专用的HIL服务URL或复用现有的BaseApiService
     this.apiService = apiService || new BaseApiService(config.api.baseUrl);
-    // HIL服务运行在8080端口
-    this.hilBaseUrl = 'http://localhost:8080';
     
     // 定期清理缓存 (每分钟)
     setInterval(() => {
@@ -176,6 +173,16 @@ export class ExecutionControlService {
     }
   }
 
+  /**
+   * Get current auth token from centralized storage
+   */
+  private getAuthToken(): string {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+    }
+    return '';
+  }
+
   // ================================================================================
   // 服务状态查询
   // ================================================================================
@@ -185,10 +192,10 @@ export class ExecutionControlService {
    */
   async getHealth(): Promise<ExecutionHealth> {
     try {
-      const response = await fetch(`${this.hilBaseUrl}/api/execution/health`, {
+      const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HEALTH, {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer dev_key_test',
+          'Authorization': `Bearer ${this.getAuthToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -224,10 +231,10 @@ export class ExecutionControlService {
         return cached.status;
       }
 
-      const response = await fetch(`${this.hilBaseUrl}/api/execution/status/${threadId}`, {
+      const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.STATUS}/${threadId}`, {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer dev_key_test',
+          'Authorization': `Bearer ${this.getAuthToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -309,10 +316,10 @@ export class ExecutionControlService {
    */
   async getExecutionHistory(threadId: string, limit: number = 50): Promise<ExecutionHistory> {
     try {
-      const response = await fetch(`${this.hilBaseUrl}/api/execution/history/${threadId}?limit=${limit}`, {
+      const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HISTORY}/${threadId}?limit=${limit}`, {
         method: 'GET',
         headers: {
-          'Authorization': 'Bearer dev_key_test',
+          'Authorization': `Bearer ${this.getAuthToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -338,10 +345,10 @@ export class ExecutionControlService {
    */
   async rollbackToCheckpoint(threadId: string, checkpointId: string): Promise<RollbackResult> {
     try {
-      const response = await fetch(`${this.hilBaseUrl}/api/execution/rollback/${threadId}?checkpoint_id=${checkpointId}`, {
+      const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.ROLLBACK}/${threadId}?checkpoint_id=${checkpointId}`, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer dev_key_test',
+          'Authorization': `Bearer ${this.getAuthToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -377,10 +384,10 @@ export class ExecutionControlService {
         action: request.action
       });
 
-      const response = await fetch(`${this.hilBaseUrl}/api/execution/resume`, {
+      const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer dev_key_test',
+          'Authorization': `Bearer ${this.getAuthToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(request)
@@ -419,10 +426,10 @@ export class ExecutionControlService {
         action: request.action
       });
 
-      const response = await fetch(`${this.hilBaseUrl}/api/execution/resume-stream`, {
+      const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer dev_key_test',
+          'Authorization': `Bearer ${this.getAuthToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(request)
