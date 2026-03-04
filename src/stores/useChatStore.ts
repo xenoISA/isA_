@@ -52,6 +52,10 @@ import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
+
+// Module-level timer map for streaming buffer auto-flush.
+// Ensures buffered chunks are flushed even when no new chunks arrive.
+const _streamingFlushTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
 import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
 
@@ -348,9 +352,11 @@ export const useChatStore = create<ChatStore>()(
     },
 
     appendToStreamingMessage: (content) => {
+      let flushedMessageId: string | null = null;
+
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
-        
+
         if (!lastMessage) {
           return state;
         }
@@ -369,16 +375,23 @@ export const useChatStore = create<ChatStore>()(
         const flushContent = shouldFlush ? updatedBuffer.join('') : '';
         const nextBuffer = shouldFlush ? [] : updatedBuffer;
 
+        // Track whether we flushed so the auto-flush timer can be managed
+        if (shouldFlush) {
+          flushedMessageId = messageId;
+        } else {
+          flushedMessageId = null;
+        }
+
         // Handle both RegularMessage and ArtifactMessage types
         if (lastMessage.type === 'regular') {
           const newContent = shouldFlush ? lastMessage.content + flushContent : lastMessage.content;
-          
+
           const updatedMessages = [...state.messages];
           updatedMessages[updatedMessages.length - 1] = {
             ...lastMessage,
             content: newContent
           };
-          
+
           return {
             messages: updatedMessages,
             streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
@@ -390,7 +403,7 @@ export const useChatStore = create<ChatStore>()(
           // For artifact messages, append to the artifact content
           const currentArtifactContent = typeof lastMessage.artifact.content === 'string' ? lastMessage.artifact.content : '';
           const newArtifactContent = shouldFlush ? currentArtifactContent + flushContent : currentArtifactContent;
-          
+
           const updatedMessages = [...state.messages];
           updatedMessages[updatedMessages.length - 1] = {
             ...lastMessage,
@@ -399,7 +412,7 @@ export const useChatStore = create<ChatStore>()(
               content: newArtifactContent
             }
           };
-          
+
           return {
             messages: updatedMessages,
             streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
@@ -411,6 +424,34 @@ export const useChatStore = create<ChatStore>()(
 
         return state;
       });
+
+      // Schedule a fallback flush timer when chunks are buffered but not yet flushed.
+      // This ensures the UI updates even when chunks stop arriving mid-buffer.
+      const state = get();
+      const lastMsg = state.messages[state.messages.length - 1];
+      if (lastMsg?.isStreaming) {
+        const mid = lastMsg.id;
+        // Clear any existing timer for this message
+        const existing = _streamingFlushTimers.get(mid);
+        if (existing) clearTimeout(existing);
+
+        if (!flushedMessageId) {
+          // Buffer has unflushed content — schedule auto-flush in 100ms
+          const timer = setTimeout(() => {
+            _streamingFlushTimers.delete(mid);
+            const s = get();
+            const buf = s.streamingBuffers[mid];
+            if (buf && buf.length > 0) {
+              // Force-flush by calling appendToStreamingMessage with empty string
+              // which will trigger the time-based flush (50ms will have passed)
+              get().appendToStreamingMessage('');
+            }
+          }, 100);
+          _streamingFlushTimers.set(mid, timer);
+        } else {
+          _streamingFlushTimers.delete(mid);
+        }
+      }
     },
 
     finishStreamingMessage: () => {
@@ -419,6 +460,13 @@ export const useChatStore = create<ChatStore>()(
         if (!lastMessage || !lastMessage.isStreaming) return state;
 
         const messageId = lastMessage.id;
+
+        // Clear any pending auto-flush timer for this message
+        const pendingTimer = _streamingFlushTimers.get(messageId);
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          _streamingFlushTimers.delete(messageId);
+        }
         const buffer = state.streamingBuffers[messageId] || [];
         const flushContent = buffer.length > 0 ? buffer.join('') : '';
 

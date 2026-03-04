@@ -203,12 +203,15 @@ export class ExecutionControlService {
 
   /**
    * Build auth headers, omitting Authorization when no token is available.
+   * Logs a warning for mutating operations that will likely fail without auth.
    */
-  private getRequestHeaders(): Record<string, string> {
+  private getRequestHeaders(operation?: string): Record<string, string> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const token = this.getAuthToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    } else if (operation) {
+      logger.warn(LogCategory.CHAT_FLOW, `No auth token for ${operation} — request will likely fail with 401`);
     }
     return headers;
   }
@@ -368,7 +371,7 @@ export class ExecutionControlService {
     try {
       const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.ROLLBACK}/${threadId}?checkpoint_id=${checkpointId}`, {
         method: 'POST',
-        headers: this.getRequestHeaders()
+        headers: this.getRequestHeaders('rollback')
       });
 
       if (!response.ok) {
@@ -404,7 +407,7 @@ export class ExecutionControlService {
 
       const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME, {
         method: 'POST',
-        headers: this.getRequestHeaders(),
+        headers: this.getRequestHeaders('resumeExecution'),
         body: JSON.stringify(request)
       });
 
@@ -443,7 +446,7 @@ export class ExecutionControlService {
 
       const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM, {
         method: 'POST',
-        headers: this.getRequestHeaders(),
+        headers: this.getRequestHeaders('resumeExecutionStream'),
         body: JSON.stringify(request)
       });
 

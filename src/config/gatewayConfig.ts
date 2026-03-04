@@ -125,6 +125,8 @@ export const GATEWAY_ENDPOINTS = {
   },
   
   // ==== 账户服务端点 (原User服务) ====
+  // Note: ACCOUNTS paths include /api/v1/users/... because the user-service
+  // backend exposes routes under that prefix, unlike AGENTS which uses short paths.
   ACCOUNTS: {
     BASE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS),
     ME: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/me'),

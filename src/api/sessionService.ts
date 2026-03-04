@@ -153,17 +153,19 @@ export class SessionService {
   async createSession(metadata: CreateSessionMetadata): Promise<SessionResponse> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Creating new session', { metadata });
+      logger.debug(LogCategory.API_REQUEST, 'Creating new session', { user_id: metadata.user_id });
 
       if (!metadata.user_id) {
         throw new Error('user_id is required to create a session');
       }
 
+      // Destructure known structural fields so they don't leak into metadata blob
+      const { user_id, name, context, ...restMetadata } = metadata;
       const session = await this.coreSessionService.createSession({
-        user_id: metadata.user_id,
-        title: metadata?.name || `Session ${Date.now()}`,
-        conversation_data: metadata?.context || {},
-        metadata: metadata || {}
+        user_id,
+        title: name || `Session ${Date.now()}`,
+        conversation_data: context || {},
+        metadata: restMetadata
       });
 
       return {
@@ -382,6 +384,7 @@ export class SessionService {
         const q = options.query.toLowerCase();
         sessions = sessions.filter((s: any) =>
           (s.title || '').toLowerCase().includes(q) ||
+          (s.metadata?.name || '').toLowerCase().includes(q) ||
           (s.metadata?.topic || '').toLowerCase().includes(q)
         );
       }

@@ -116,11 +116,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Server did not return an auth token');
       }
       saveAuthToken(tokenValue);
+      const user = data.user || {};
       setAuthUser({
-        ...data.user,
-        sub: data.user_id || data.sub || '',
-        email: data.email || email,
-        name: data.name || email,
+        ...user,
+        sub: data.user_id || user.sub || data.sub || '',
+        email: user.email || data.email || email,
+        name: user.name || data.name || email,
       });
       logger.info(LogCategory.USER_AUTH, 'Login successful');
     } catch (err: any) {
@@ -152,11 +153,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Some flows require email verification before issuing a token
       if (data.token || data.access_token) {
         saveAuthToken(data.token || data.access_token);
+        const user = data.user || {};
         setAuthUser({
-          ...data.user,
-          sub: data.user_id || data.sub || '',
-          email: data.email || email,
-          name: data.name || name || email,
+          ...user,
+          sub: data.user_id || user.sub || data.sub || '',
+          email: user.email || data.email || email,
+          name: user.name || data.name || name || email,
         });
       }
       logger.info(LogCategory.USER_AUTH, 'Signup successful');
@@ -188,11 +190,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
       if (data.token || data.access_token) {
         saveAuthToken(data.token || data.access_token);
+        const user = data.user || {};
         setAuthUser({
-          ...data.user,
-          sub: data.user_id || data.sub || '',
-          email: data.email || '',
-          name: data.name || data.email || '',
+          ...user,
+          sub: data.user_id || user.sub || data.sub || '',
+          email: user.email || data.email || '',
+          name: user.name || data.name || data.email || '',
         });
       }
       logger.info(LogCategory.USER_AUTH, 'Verification successful');
