@@ -480,7 +480,9 @@ export const createAuthenticatedSessionService = (getAuthHeadersFn?: () => Promi
   return new SessionService(getAuthHeadersFn);
 };
 
-// Create default instance
+// Default instance — uses localStorage token fallback (no async auth fn).
+// For authenticated requests within React components, prefer
+// createAuthenticatedSessionService(getAuthHeadersFn) instead.
 export const sessionService = createAuthenticatedSessionService();
 
 // For backwards compatibility, also export as default

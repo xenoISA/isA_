@@ -25,7 +25,6 @@
  */
 
 import { BaseApiService } from './BaseApiService';
-import { config } from '../config';
 import { logger, LogCategory } from '../utils/logger';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { 
@@ -146,6 +145,8 @@ export class ExecutionControlService {
   private activePollingTimers: Map<string, NodeJS.Timeout> = new Map();
   private statusCache: Map<string, { status: ExecutionStatus; timestamp: number }> = new Map();
   private isPageVisible: boolean = true;
+  private cacheCleanupTimer: ReturnType<typeof setInterval> | null = null;
+  private visibilityHandler: (() => void) | null = null;
   private readonly CACHE_DURATION = 2000; // 2 seconds cache
   private readonly DEFAULT_POLL_INTERVAL = 3000; // Increased from 2s to 3s
   private readonly IDLE_POLL_INTERVAL = 10000; // 10s for idle sessions
@@ -153,24 +154,40 @@ export class ExecutionControlService {
   private readonly RETRY_DELAY = 1000; // Base delay for retries (1s)
 
   constructor(apiService?: BaseApiService) {
-    this.apiService = apiService || new BaseApiService(config.api.baseUrl);
-    
-    // 定期清理缓存 (每分钟)
-    setInterval(() => {
+    this.apiService = apiService || new BaseApiService(GATEWAY_CONFIG.BASE_URL);
+
+    // 定期清理缓存 (每分钟) — store handle for cleanup
+    this.cacheCleanupTimer = setInterval(() => {
       this.cleanupCache();
     }, 60000);
 
     // 监听页面可见性变化
     if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', () => {
+      this.visibilityHandler = () => {
         this.isPageVisible = !document.hidden;
         if (this.isPageVisible) {
           logger.debug(LogCategory.CHAT_FLOW, 'Page became visible, resuming monitoring');
         } else {
           logger.debug(LogCategory.CHAT_FLOW, 'Page became hidden, monitoring continues with reduced frequency');
         }
-      });
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
     }
+  }
+
+  /**
+   * Dispose of resources (timers, event listeners)
+   */
+  dispose(): void {
+    if (this.cacheCleanupTimer) {
+      clearInterval(this.cacheCleanupTimer);
+      this.cacheCleanupTimer = null;
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
+    this.stopAllMonitoring();
   }
 
   /**

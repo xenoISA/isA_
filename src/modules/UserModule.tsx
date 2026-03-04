@@ -255,7 +255,6 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [auth0User?.sub, auth0User?.email, auth0User?.name, isAuthenticated, userService]);
 
-  // Note: loginWithRedirect is not used with gateway auth; kept for error recovery
   const refreshUser = useCallback(async () => {
     if (!isAuthenticated) {
       console.log('👤 UserModule: Skipping user refresh - not authenticated');

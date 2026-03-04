@@ -16,6 +16,8 @@
  * ✅ Feature配置 - 功能开关
  */
 
+import { GATEWAY_CONFIG } from './gatewayConfig';
+
 // ================================================================================
 // 环境变量接口定义
 // ================================================================================
@@ -97,7 +99,7 @@ const getNumberEnvVar = (key: string, defaultValue: number): number => {
 export const config: AppConfiguration = {
   // API基础配置
   api: {
-    baseUrl: process.env.REACT_APP_AGENT_SERVICE_URL || 'http://localhost:8080',
+    baseUrl: process.env.REACT_APP_AGENT_SERVICE_URL || GATEWAY_CONFIG.BASE_URL,
     timeout: getNumberEnvVar('REACT_APP_API_TIMEOUT', 30000),
     retries: getNumberEnvVar('REACT_APP_API_RETRIES', 3),
     maxFileSize: getNumberEnvVar('REACT_APP_MAX_FILE_SIZE', 10 * 1024 * 1024), // 10MB
@@ -107,13 +109,13 @@ export const config: AppConfiguration = {
   // Gateway auth configuration
   auth: {
     gatewayUrl: getEnvVar('REACT_APP_GATEWAY_URL', 'http://localhost:9080'),
-    tokenStorageKey: 'isa_auth_token',
+    tokenStorageKey: GATEWAY_CONFIG.AUTH.TOKEN_KEY,
   },
 
   // 外部API配置 (使用现有的环境变量结构)
   externalApis: {
-    userServiceUrl: process.env.REACT_APP_USER_SERVICE_URL || 'http://localhost:8100',
-    aiServiceUrl: process.env.REACT_APP_MODEL_SERVICE_URL || 'http://localhost:8082',
+    userServiceUrl: process.env.REACT_APP_USER_SERVICE_URL || `${GATEWAY_CONFIG.BASE_URL}/users`,
+    aiServiceUrl: process.env.REACT_APP_MODEL_SERVICE_URL || `${GATEWAY_CONFIG.BASE_URL}/models`,
     imageServiceUrl: getEnvVar('REACT_APP_IMAGE_SERVICE_URL', 'https://api.replicate.com'),
     contentServiceUrl: getEnvVar('REACT_APP_CONTENT_SERVICE_URL', 'https://api.openai.com')
   },

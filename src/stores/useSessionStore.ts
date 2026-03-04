@@ -43,7 +43,6 @@ import { logger, LogCategory } from '../utils/logger';
 import { createAuthenticatedSessionService } from '../api/sessionService';
 
 const STORAGE_SAVE_DEBOUNCE_MS = 500;
-let saveToStorageTimer: ReturnType<typeof setTimeout> | null = null;
 
 // 基础消息接口
 export interface BaseMessage {
@@ -108,10 +107,13 @@ interface SessionState {
   // Session data
   sessions: ChatSession[];
   currentSessionId: string;
-  
+
   // Loading state
   isLoading: boolean;
   error: string | null;
+
+  // Internal debounce timer (not exposed to consumers)
+  _saveTimer: ReturnType<typeof setTimeout> | null;
 }
 
 interface SessionActions {
@@ -156,6 +158,7 @@ export const useSessionStore = create<SessionStore>()(
     currentSessionId: 'default',
     isLoading: false,
     error: null,
+    _saveTimer: null,
     
     // Session CRUD operations
     createSession: (title = 'New Chat') => {
@@ -498,14 +501,16 @@ export const useSessionStore = create<SessionStore>()(
     },
 
     saveToStorageDebounced: () => {
-      if (saveToStorageTimer) {
-        clearTimeout(saveToStorageTimer);
+      const current = get()._saveTimer;
+      if (current) {
+        clearTimeout(current);
       }
 
-      saveToStorageTimer = setTimeout(() => {
-        saveToStorageTimer = null;
+      const timer = setTimeout(() => {
+        set({ _saveTimer: null });
         get().saveToStorage();
       }, STORAGE_SAVE_DEBOUNCE_MS);
+      set({ _saveTimer: timer });
     },
     
     // Computed getters
