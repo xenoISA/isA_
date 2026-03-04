@@ -84,7 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           clearAuth();
           logger.info(LogCategory.USER_AUTH, 'Stored token invalid, cleared');
         }
-      } catch {
+      } catch (err) {
+        logger.warn(LogCategory.USER_AUTH, 'Token verification failed', { error: err });
         if (!cancelled) clearAuth();
       } finally {
         if (!cancelled) setIsLoading(false);

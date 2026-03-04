@@ -616,7 +616,7 @@ export const useChatStore = create<ChatStore>()(
         // auth0_id is the legacy field name; fall back to user_id/id in case
         // the gateway auth response uses a different field post-Auth0 migration.
         const eu = userStore.externalUser as Record<string, any> | null;
-        const userId = eu?.auth0_id || eu?.user_id || eu?.id || '';
+        const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id || '';
         if (!userId) {
           throw new Error('No user ID available for HIL resume');
         }
