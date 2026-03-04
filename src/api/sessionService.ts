@@ -480,10 +480,17 @@ export const createAuthenticatedSessionService = (getAuthHeadersFn?: () => Promi
   return new SessionService(getAuthHeadersFn);
 };
 
-// Default instance — uses localStorage token fallback (no async auth fn).
+// Lazy-initialized default instance — uses localStorage token fallback.
+// Created on first access to avoid firing network requests at module load time.
 // For authenticated requests within React components, prefer
 // createAuthenticatedSessionService(getAuthHeadersFn) instead.
-export const sessionService = createAuthenticatedSessionService();
+let _defaultInstance: SessionService | null = null;
+export const getSessionService = (): SessionService => {
+  if (!_defaultInstance) {
+    _defaultInstance = createAuthenticatedSessionService();
+  }
+  return _defaultInstance;
+};
 
 // For backwards compatibility, also export as default
 export default SessionService;

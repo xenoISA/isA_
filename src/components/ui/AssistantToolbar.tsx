@@ -16,8 +16,7 @@
  * - Simple, focused interface for productivity
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { getGatewayUrl } from '../../config/runtimeEnv';
-import { GATEWAY_CONFIG } from '../../config/gatewayConfig';
+import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../../config/gatewayConfig';
 
 // Glass Button Style Creator
 const createGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'md', isDisabled: boolean = false) => ({
@@ -163,8 +162,7 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
 
     try {
       // Call Chat API
-      const gatewayUrl = getGatewayUrl();
-      const response = await fetch(`${gatewayUrl}/api/v1/agents/chat`, {
+      const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.CHAT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

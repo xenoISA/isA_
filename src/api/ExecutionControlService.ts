@@ -191,13 +191,26 @@ export class ExecutionControlService {
   }
 
   /**
-   * Get current auth token from centralized storage
+   * Get current auth token from centralized storage.
+   * Returns null when no token is available so callers can decide how to handle.
    */
-  private getAuthToken(): string {
+  private getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+      return localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
     }
-    return '';
+    return null;
+  }
+
+  /**
+   * Build auth headers, omitting Authorization when no token is available.
+   */
+  private getRequestHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
   }
 
   // ================================================================================
@@ -211,10 +224,7 @@ export class ExecutionControlService {
     try {
       const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HEALTH, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-          'Content-Type': 'application/json'
-        }
+        headers: this.getRequestHeaders()
       });
 
       if (!response.ok) {
@@ -250,10 +260,7 @@ export class ExecutionControlService {
 
       const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.STATUS}/${threadId}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-          'Content-Type': 'application/json'
-        }
+        headers: this.getRequestHeaders()
       });
 
       if (!response.ok) {
@@ -335,10 +342,7 @@ export class ExecutionControlService {
     try {
       const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HISTORY}/${threadId}?limit=${limit}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-          'Content-Type': 'application/json'
-        }
+        headers: this.getRequestHeaders()
       });
 
       if (!response.ok) {
@@ -364,10 +368,7 @@ export class ExecutionControlService {
     try {
       const response = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.ROLLBACK}/${threadId}?checkpoint_id=${checkpointId}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-          'Content-Type': 'application/json'
-        }
+        headers: this.getRequestHeaders()
       });
 
       if (!response.ok) {
@@ -403,10 +404,7 @@ export class ExecutionControlService {
 
       const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-          'Content-Type': 'application/json'
-        },
+        headers: this.getRequestHeaders(),
         body: JSON.stringify(request)
       });
 
@@ -445,10 +443,7 @@ export class ExecutionControlService {
 
       const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-          'Content-Type': 'application/json'
-        },
+        headers: this.getRequestHeaders(),
         body: JSON.stringify(request)
       });
 
