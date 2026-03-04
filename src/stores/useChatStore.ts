@@ -52,12 +52,12 @@ import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
+import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
+import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
 
 // Module-level timer map for streaming buffer auto-flush.
 // Ensures buffered chunks are flushed even when no new chunks arrive.
 const _streamingFlushTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
-import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
 
 interface ChatStoreState {
   // 聊天消息
@@ -436,16 +436,29 @@ export const useChatStore = create<ChatStore>()(
         if (existing) clearTimeout(existing);
 
         if (!flushedMessageId) {
-          // Buffer has unflushed content — schedule auto-flush in 100ms
+          // Buffer has unflushed content — schedule direct flush in 100ms.
+          // We flush inline instead of re-entering appendToStreamingMessage
+          // to avoid potential infinite timer rescheduling.
           const timer = setTimeout(() => {
             _streamingFlushTimers.delete(mid);
-            const s = get();
-            const buf = s.streamingBuffers[mid];
-            if (buf && buf.length > 0) {
-              // Force-flush by calling appendToStreamingMessage with empty string
-              // which will trigger the time-based flush (50ms will have passed)
-              get().appendToStreamingMessage('');
-            }
+            set((s) => {
+              const msg = s.messages[s.messages.length - 1];
+              if (!msg || msg.id !== mid || !msg.isStreaming) return s;
+              const buf = s.streamingBuffers[mid];
+              if (!buf || buf.length === 0) return s;
+              const flushContent = buf.join('');
+              const updatedMessages = [...s.messages];
+              if (msg.type === 'regular') {
+                updatedMessages[updatedMessages.length - 1] = { ...msg, content: msg.content + flushContent };
+              } else if (msg.type === 'artifact' && typeof msg.artifact.content === 'string') {
+                updatedMessages[updatedMessages.length - 1] = { ...msg, artifact: { ...msg.artifact, content: msg.artifact.content + flushContent } };
+              }
+              return {
+                messages: updatedMessages,
+                streamingBuffers: { ...s.streamingBuffers, [mid]: [] },
+                streamingLastFlush: { ...s.streamingLastFlush, [mid]: Date.now() },
+              };
+            });
           }, 100);
           _streamingFlushTimers.set(mid, timer);
         } else {

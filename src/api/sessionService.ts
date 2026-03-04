@@ -188,7 +188,7 @@ export class SessionService {
   async getSession(sessionId: string, options?: { include_history?: boolean }): Promise<SessionResponse> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Getting session', { sessionId, options });
+      logger.debug(LogCategory.API_REQUEST, 'Getting session', { sessionId, options });
 
       const session = await this.coreSessionService.getSession(sessionId);
 
@@ -213,7 +213,7 @@ export class SessionService {
   async getUserSessions(userId: string, options?: GetSessionsOptions): Promise<SessionListResponse> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Getting user sessions', { userId, options });
+      logger.debug(LogCategory.API_REQUEST, 'Getting user sessions', { userId, options });
 
       const pageSize = options?.limit || 20;
       const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
@@ -299,7 +299,7 @@ export class SessionService {
   async getSessionMessages(sessionId: string, options?: GetSessionMessagesOptions): Promise<SessionMessagesResponse> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Getting session messages', { sessionId, options });
+      logger.debug(LogCategory.API_REQUEST, 'Getting session messages', { sessionId, options });
 
       const pageSize = options?.limit || 20;
       const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
@@ -362,7 +362,7 @@ export class SessionService {
   async searchSessions(options: SearchSessionsOptions & { query?: string }): Promise<SessionSearchResponse> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Searching sessions', { options });
+      logger.debug(LogCategory.API_REQUEST, 'Searching sessions', { options });
 
       // Core SDK lacks search — fetch user sessions and filter client-side
       const userId = options?.user_id;
@@ -407,7 +407,7 @@ export class SessionService {
   async exportSession(sessionId: string, format: SessionExportFormat = 'json'): Promise<{ format: string; data: string | object; filename: string }> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Exporting session', { sessionId, format });
+      logger.debug(LogCategory.API_REQUEST, 'Exporting session', { sessionId, format });
 
       const session = await this.coreSessionService.getSession(sessionId);
       const messages = await this.coreSessionService.getSessionMessages(sessionId);
@@ -443,7 +443,7 @@ export class SessionService {
    */
   async healthCheck(): Promise<{ status: string; timestamp: string; service: string }> {
     try {
-      logger.info(LogCategory.API_REQUEST, 'Performing session service health check');
+      logger.debug(LogCategory.API_REQUEST, 'Performing session service health check');
 
       // Call the dedicated health endpoint instead of abusing a business endpoint
       const headers = getAuthHeaders();
@@ -495,5 +495,6 @@ export const getSessionService = (): SessionService => {
   return _defaultInstance;
 };
 
-// For backwards compatibility, also export as default
+// Default export is the class (for typing/construction).
+// Use getSessionService() for a lazy-initialized singleton instance.
 export default SessionService;
