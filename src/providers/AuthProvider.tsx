@@ -73,11 +73,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (res.ok) {
           const data = await res.json();
+          const { user_id, sub: dataSub, email: dataEmail, name: dataName, ...extra } = data;
           setAuthUser({
-            sub: data.user_id || data.sub || '',
-            email: data.email || '',
-            name: data.name || data.email || '',
-            ...data,
+            sub: user_id || dataSub || '',
+            email: dataEmail || '',
+            name: dataName || dataEmail || '',
+            ...(data.user || {}),
           });
           logger.info(LogCategory.USER_AUTH, 'Restored session from stored token');
         } else {

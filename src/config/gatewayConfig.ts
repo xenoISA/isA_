@@ -345,7 +345,7 @@ export const SSE_CONFIG = {
       GATEWAY_ENDPOINTS.AGENTS.CHAT,
       GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM,
       GATEWAY_ENDPOINTS.MCP.TOOLS_CALL,
-    ].some(endpoint => url.includes(endpoint));
+    ].some(endpoint => url.startsWith(endpoint));
   }
 };
 

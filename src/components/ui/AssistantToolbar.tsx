@@ -162,12 +162,14 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
 
     try {
       // Call Chat API
+      const token = localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.CHAT, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || ''}`,
-        },
+        headers,
         body: JSON.stringify({ 
           message, 
           user_id: userId,

@@ -4,17 +4,17 @@
  * ============================================================================
  * 
  * Core Responsibilities:
- * - Orchestrate Auth0 authentication with external user management
- * - Bridge useAuth hook with useUserStore state management
+ * - Orchestrate gateway authentication with external user management
+ * - Bridge AuthProvider with useUserStore state management
  * - Handle user initialization and synchronization flows
  * - Provide clean business logic interfaces for UI components
  * - Manage user subscription and billing workflows
  * 
  * Architecture Integration:
- *  Auth Layer: useAuth (Auth0) � UserModule � useUserStore (External)
+ *  Auth Layer: AuthProvider (gateway JWT) � UserModule � useUserStore (External)
  *  Business Logic: Complex user flows handled here, not in UI
  *  Service Integration: Uses new userService class instead of deprecated functions
- *  State Coordination: Synchronizes Auth0 state with external user state
+ *  State Coordination: Synchronizes auth state with external user state
  * 
  * Separation of Concerns:
  *  Responsible for:
@@ -28,7 +28,7 @@
  *   - UI rendering (handled by UI components)
  *   - Direct API calls (handled by userService)
  *   - Raw state management (handled by useUserStore)
- *   - Auth0 token management (handled by useAuth)
+ *   - Token management (handled by AuthProvider)
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';
@@ -338,23 +338,26 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   // ================================================================================
 
   const consumeUserCredits = useCallback(async (consumption: CreditConsumption) => {
-    if (!externalUser?.auth0_id || !isAuthenticated) {
-      throw new Error('User not authenticated or auth0_id missing');
+    const eu = externalUser as Record<string, any> | null;
+    const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id;
+    if (!userId || !isAuthenticated) {
+      throw new Error('User not authenticated or user ID missing');
     }
 
     try {
-      // Use userHook's consumeCredits method instead of direct service call
       const token = await getAccessToken();
-      await userHook.consumeCredits(externalUser.auth0_id, consumption, token);
+      await userHook.consumeCredits(userId, consumption, token);
     } catch (error) {
       logger.error(LogCategory.USER_AUTH, 'Failed to consume credits', { error, consumption });
       throw error;
     }
-  }, [externalUser?.auth0_id, isAuthenticated, userHook.consumeCredits, getAccessToken]);
+  }, [externalUser, isAuthenticated, userHook.consumeCredits, getAccessToken]);
 
   const createCheckout = useCallback(async (planType: PlanType): Promise<string> => {
-    if (!isAuthenticated || !externalUser?.auth0_id) {
-      throw new Error('User not authenticated or auth0_id missing');
+    const eu = externalUser as Record<string, any> | null;
+    const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id;
+    if (!isAuthenticated || !userId) {
+      throw new Error('User not authenticated or user ID missing');
     }
 
     try {
@@ -471,7 +474,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     // Auth State
     isAuthenticated,
     isLoading: auth0Loading || userHook.isLoading,
-    error: auth0Error?.message || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
+    error: auth0Error || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
     
     // User Data
     auth0User,
