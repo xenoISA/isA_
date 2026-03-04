@@ -74,10 +74,11 @@ export class SessionService {
   private authReady: Promise<void>;
 
   constructor(getAuthHeadersFn?: () => Promise<Record<string, string>>) {
-    // Pass isA_'s gateway base URL to the SDK so both use the same host/port.
-    // The SDK's BaseApiService defaults to its own GATEWAY_CONFIG which reads
-    // a different env var (GATEWAY_URL vs NEXT_PUBLIC_GATEWAY_URL).
-    const apiService = new CoreBaseApiService(GATEWAY_CONFIG.BASE_URL);
+    // Pass the session-service-scoped gateway URL to the SDK.
+    // The gateway routes /{service}/... to each backend, so the SDK's base URL
+    // must include the service prefix (e.g. http://localhost:9080/sessions).
+    // The SDK then appends its relative paths (e.g. /api/v1/sessions/...).
+    const apiService = new CoreBaseApiService(GATEWAY_ENDPOINTS.SESSIONS.BASE);
     this.coreSessionService = new CoreSessionService(apiService);
     this.getAuthHeadersFn = getAuthHeadersFn;
 
@@ -88,27 +89,33 @@ export class SessionService {
     logger.info(LogCategory.API_REQUEST, 'SessionService initialized with @isa/core SDK');
   }
 
-  /** Run initial auth setup — called once from the constructor */
+  /** Run initial auth setup — called once from the constructor.
+   *  Never rejects — errors are caught and logged so the constructor
+   *  promise stored in `authReady` does not produce unhandled rejections. */
   private async initAuth(): Promise<void> {
-    // If an async auth function is provided, use it as the primary source
-    if (this.getAuthHeadersFn) {
-      try {
-        const headers = await this.getAuthHeadersFn();
-        const authHeader = headers['Authorization'];
-        if (authHeader) {
-          this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
-          return;
+    try {
+      // If an async auth function is provided, use it as the primary source
+      if (this.getAuthHeadersFn) {
+        try {
+          const headers = await this.getAuthHeadersFn();
+          const authHeader = headers['Authorization'];
+          if (authHeader) {
+            this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+            return;
+          }
+        } catch (err) {
+          logger.warn(LogCategory.API_REQUEST, 'Async auth init failed, falling back to localStorage', { error: err });
         }
-      } catch (err) {
-        logger.warn(LogCategory.API_REQUEST, 'Async auth init failed, falling back to localStorage', { error: err });
       }
-    }
 
-    // Synchronous fallback: read token from localStorage
-    const headers = getAuthHeaders();
-    const authHeader = headers['Authorization'];
-    if (authHeader) {
-      this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+      // Synchronous fallback: read token from localStorage
+      const headers = getAuthHeaders();
+      const authHeader = headers['Authorization'];
+      if (authHeader) {
+        this.coreSessionService.setAuthToken(authHeader.replace('Bearer ', ''));
+      }
+    } catch (err) {
+      logger.error(LogCategory.API_REQUEST, 'initAuth failed entirely', { error: err });
     }
   }
 
@@ -234,8 +241,15 @@ export class SessionService {
     try {
       logger.info(LogCategory.API_REQUEST, 'Updating session', { sessionId, updates });
 
+      // The SDK's SessionUpdateRequest supports metadata and conversation_data.
+      // Forward title/tags via metadata so they are not silently dropped.
+      const mergedMetadata = {
+        ...updates.metadata,
+        ...(updates.title != null && { title: updates.title }),
+        ...(updates.tags != null && { tags: updates.tags }),
+      };
       const session = await this.coreSessionService.updateSession(sessionId, {
-        metadata: updates.metadata,
+        metadata: mergedMetadata,
         conversation_data: updates.context
       });
 
@@ -264,7 +278,7 @@ export class SessionService {
 
       return {
         success: true,
-        message: 'Session deleted successfully'
+        message: 'Session ended successfully'
       };
 
     } catch (error) {
