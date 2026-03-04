@@ -73,11 +73,11 @@ export const useAuth = (): UseAuthReturn => {
   // ================================================================================
 
   const login = useCallback(() => {
-    logger.info(LogCategory.USER_AUTH, 'Login requested — handled by LoginScreen form');
+    logger.warn(LogCategory.USER_AUTH, 'login() is a no-op — use LoginScreen form for authentication');
   }, []);
 
   const signup = useCallback(() => {
-    logger.info(LogCategory.USER_AUTH, 'Signup requested — handled by LoginScreen form');
+    logger.warn(LogCategory.USER_AUTH, 'signup() is a no-op — use LoginScreen form for registration');
   }, []);
 
   const logout = useCallback(() => {

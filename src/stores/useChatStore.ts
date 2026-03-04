@@ -621,13 +621,15 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('No user ID available for HIL resume');
         }
 
-        // 调用resumeHIL API — serialize objects, pass strings through
-        const message = typeof resumeValue === 'string'
-          ? resumeValue
-          : JSON.stringify(resumeValue);
+        // For string values, pass directly as the message field.
+        // For structured values (objects), pass a summary as message and
+        // the full object in prompt_args to avoid double-encoding.
+        const isStructured = typeof resumeValue !== 'string';
+        const message = isStructured ? 'HIL resume' : resumeValue;
         await chatService.resumeHIL(message, {
           user_id: userId,
           session_id: sessionId,
+          prompt_args: isStructured ? resumeValue : undefined,
         }, authToken, {
           onStreamStart: (messageId: string, status?: string) => {
             startStreamingMessage(messageId, status || '🔄 Resuming HIL execution...');
@@ -676,10 +678,12 @@ export const useChatStore = create<ChatStore>()(
             });
           },
           onError: (error: Error) => {
-            logger.error(LogCategory.CHAT_FLOW, 'HIL resume execution failed', { 
+            logger.error(LogCategory.CHAT_FLOW, 'HIL resume execution failed', {
               error: error.message,
               sessionId
             });
+            // Flush any buffered streaming content before abandoning
+            finishStreamingMessage();
             setHILStatus('error');
             setExecutingPlan(false);
           }
@@ -730,6 +734,18 @@ export const useChatStore = create<ChatStore>()(
           sessionId,
           status: statusData.status,
         });
+
+        // Update HIL state based on status response
+        const { setHILStatus, setCurrentHILInterrupt } = get();
+        if (statusData.status === 'interrupted' || statusData.status === 'waiting_for_human') {
+          setHILStatus('waiting_for_human');
+          if (statusData.interrupt || statusData.interrupts?.[0]) {
+            setCurrentHILInterrupt(statusData.interrupt || statusData.interrupts[0]);
+          }
+        } else if (statusData.status === 'completed' || statusData.status === 'idle') {
+          setHILStatus('idle');
+          setCurrentHILInterrupt(null);
+        }
 
         return statusData;
         

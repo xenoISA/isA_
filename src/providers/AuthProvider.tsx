@@ -49,47 +49,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = authUser !== null;
 
-  // Check for existing token on mount
+  // Check for existing token on mount (verifyExistingToken inlined to
+  // satisfy React exhaustive-deps and avoid stale closure references).
   useEffect(() => {
     const token = typeof window !== 'undefined'
       ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY)
       : null;
 
-    if (token) {
-      verifyExistingToken(token);
-    } else {
+    if (!token) {
       setIsLoading(false);
+      return;
     }
-  }, []);
 
-  const verifyExistingToken = async (token: string) => {
-    try {
-      const res = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAuthUser({
-          sub: data.user_id || data.sub || '',
-          email: data.email || '',
-          name: data.name || data.email || '',
-          ...data,
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         });
-        logger.info(LogCategory.USER_AUTH, 'Restored session from stored token');
-      } else {
-        // Token expired or invalid — clear it silently
-        clearAuth();
-        logger.info(LogCategory.USER_AUTH, 'Stored token invalid, cleared');
+
+        if (cancelled) return;
+
+        if (res.ok) {
+          const data = await res.json();
+          setAuthUser({
+            sub: data.user_id || data.sub || '',
+            email: data.email || '',
+            name: data.name || data.email || '',
+            ...data,
+          });
+          logger.info(LogCategory.USER_AUTH, 'Restored session from stored token');
+        } else {
+          clearAuth();
+          logger.info(LogCategory.USER_AUTH, 'Stored token invalid, cleared');
+        }
+      } catch {
+        if (!cancelled) clearAuth();
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    } catch {
-      // Network error verifying token — keep user logged out
-      clearAuth();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
