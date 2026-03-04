@@ -117,10 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       saveAuthToken(tokenValue);
       setAuthUser({
+        ...data.user,
         sub: data.user_id || data.sub || '',
         email: data.email || email,
         name: data.name || email,
-        ...data.user,
       });
       logger.info(LogCategory.USER_AUTH, 'Login successful');
     } catch (err: any) {
@@ -153,10 +153,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.token || data.access_token) {
         saveAuthToken(data.token || data.access_token);
         setAuthUser({
+          ...data.user,
           sub: data.user_id || data.sub || '',
           email: data.email || email,
           name: data.name || name || email,
-          ...data.user,
         });
       }
       logger.info(LogCategory.USER_AUTH, 'Signup successful');
@@ -189,10 +189,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.token || data.access_token) {
         saveAuthToken(data.token || data.access_token);
         setAuthUser({
+          ...data.user,
           sub: data.user_id || data.sub || '',
           email: data.email || '',
           name: data.name || data.email || '',
-          ...data.user,
         });
       }
       logger.info(LogCategory.USER_AUTH, 'Verification successful');

@@ -606,7 +606,7 @@ export const useChatStore = create<ChatStore>()(
         }
 
         // 获取认证信息 (centralized token key)
-        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || null;
         if (!authToken) {
           throw new Error('No auth token available for HIL resume');
         }
@@ -705,7 +705,7 @@ export const useChatStore = create<ChatStore>()(
         logger.info(LogCategory.CHAT_FLOW, 'Checking execution status', { sessionId });
 
         // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
-        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || '';
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || null;
         if (!authToken) {
           throw new Error('No auth token available for execution status check');
         }
