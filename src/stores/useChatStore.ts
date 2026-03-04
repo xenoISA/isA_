@@ -185,6 +185,9 @@ export const useChatStore = create<ChatStore>()(
     },
 
     clearMessages: () => {
+      // Clear any pending auto-flush timers
+      _streamingFlushTimers.forEach(t => clearTimeout(t));
+      _streamingFlushTimers.clear();
       set({ messages: [], streamingBuffers: {}, streamingLastFlush: {} });
       
       // 同时清空当前session的消息

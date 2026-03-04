@@ -374,7 +374,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to create checkout', { error, planType });
       throw error;
     }
-  }, [isAuthenticated, externalUser?.auth0_id, userHook.createCheckout, getAccessToken]);
+  }, [isAuthenticated, externalUser, userHook.createCheckout, getAccessToken]);
 
   const checkHealth = useCallback(async () => {
     try {
