@@ -241,7 +241,7 @@ export class SessionService {
   async updateSession(sessionId: string, updates: UpdateSessionData): Promise<SessionResponse> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Updating session', { sessionId, updates });
+      logger.debug(LogCategory.API_REQUEST, 'Updating session', { sessionId });
 
       // The SDK's SessionUpdateRequest supports metadata and conversation_data.
       // Forward title/tags via metadata so they are not silently dropped.
@@ -326,7 +326,7 @@ export class SessionService {
   async addSessionMessage(sessionId: string, message: { role?: string; content: string; message_type?: string; metadata?: Record<string, unknown>; tokens_used?: number; cost_usd?: number }): Promise<SessionMessage> {
     await this.ensureAuth();
     try {
-      logger.info(LogCategory.API_REQUEST, 'Adding session message', { sessionId, message });
+      logger.debug(LogCategory.API_REQUEST, 'Adding session message', { sessionId, role: message.role });
 
       const newMessage = await this.coreSessionService.addMessage(sessionId, {
         role: message.role || 'user',
@@ -382,7 +382,7 @@ export class SessionService {
       // Client-side query filter
       if (options?.query) {
         const q = options.query.toLowerCase();
-        sessions = sessions.filter((s: any) =>
+        sessions = sessions.filter((s: { title?: string; metadata?: Record<string, any> }) =>
           (s.title || '').toLowerCase().includes(q) ||
           (s.metadata?.name || '').toLowerCase().includes(q) ||
           (s.metadata?.topic || '').toLowerCase().includes(q)
