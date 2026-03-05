@@ -5,7 +5,7 @@
  * 
  * Core Responsibilities:
  * - Voice-first Chat UI with SSE support
- * - Direct Chat API integration (http://localhost:8080/api/chat)
+ * - Chat API integration through gateway (/api/v1/agents/chat)
  * - macOS-style toolbar dropdown experience
  * - Agent handles Event Service through tool calls
  * 
@@ -16,6 +16,7 @@
  * - Simple, focused interface for productivity
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../../config/gatewayConfig';
 
 // Glass Button Style Creator
 const createGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'md', isDisabled: boolean = false) => ({
@@ -161,12 +162,14 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
 
     try {
       // Call Chat API
-      const response = await fetch('http://localhost:8080/api/chat', {
+      const token = localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.CHAT, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer dev_key_test',
-        },
+        headers,
         body: JSON.stringify({ 
           message, 
           user_id: userId,

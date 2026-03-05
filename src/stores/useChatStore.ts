@@ -50,13 +50,22 @@ import { getChatServiceInstance } from '../hooks/useChatService';
 import { ChatMetadata, ChatMessage, StreamingStatus } from '../types/chatTypes';
 import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
+import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
 import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
 
+// Module-level timer map for streaming buffer auto-flush.
+// Ensures buffered chunks are flushed even when no new chunks arrive.
+const _streamingFlushTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
 interface ChatStoreState {
   // 聊天消息
   messages: ChatMessage[];
+  
+  // Streaming buffers to reduce per-chunk string concatenation cost
+  streamingBuffers: Record<string, string[]>;
+  streamingLastFlush: Record<string, number>;
   
   // 聊天状态
   isTyping: boolean;
@@ -123,6 +132,8 @@ export const useChatStore = create<ChatStore>()(
   subscribeWithSelector((set, get) => ({
     // 初始状态
     messages: [],
+    streamingBuffers: {},
+    streamingLastFlush: {},
     isTyping: false,
     chatLoading: false,
     
@@ -174,7 +185,10 @@ export const useChatStore = create<ChatStore>()(
     },
 
     clearMessages: () => {
-      set({ messages: [] });
+      // Clear any pending auto-flush timers
+      _streamingFlushTimers.forEach(t => clearTimeout(t));
+      _streamingFlushTimers.clear();
+      set({ messages: [], streamingBuffers: {}, streamingLastFlush: {} });
       
       // 同时清空当前session的消息
       const sessionStore = useSessionStore.getState();
@@ -236,11 +250,11 @@ export const useChatStore = create<ChatStore>()(
     updateTaskProgress: (progress) => {
       set({ taskProgress: progress });
       if (progress) {
-        logger.info(LogCategory.CHAT_FLOW, 'Task progress updated', { 
-          toolName: progress.toolName, 
-          status: progress.status,
+        logger.info(LogCategory.CHAT_FLOW, 'Task progress updated', {
           step: progress.currentStep,
-          total: progress.totalSteps
+          stepName: progress.currentStepName,
+          total: progress.totalSteps,
+          percentage: progress.percentage
         });
       }
     },
@@ -332,44 +346,67 @@ export const useChatStore = create<ChatStore>()(
         // Messages array updated
         
         return {
-          messages: newMessages
+          messages: newMessages,
+          streamingBuffers: { ...state.streamingBuffers, [id]: [] },
+          streamingLastFlush: { ...state.streamingLastFlush, [id]: Date.now() }
         };
       });
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message started in chat store', { id, status });
     },
 
     appendToStreamingMessage: (content) => {
+      let flushedMessageId: string | null = null;
+
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
-        
+
         if (!lastMessage) {
           return state;
         }
-        
+
+        if (!lastMessage.isStreaming) {
+          return state;
+        }
+
+        const messageId = lastMessage.id;
+        const existingBuffer = state.streamingBuffers[messageId] || [];
+        const updatedBuffer = [...existingBuffer, content];
+
+        const now = Date.now();
+        const lastFlush = state.streamingLastFlush[messageId] || 0;
+        const shouldFlush = updatedBuffer.length >= 20 || now - lastFlush >= 50;
+        const flushContent = shouldFlush ? updatedBuffer.join('') : '';
+        const nextBuffer = shouldFlush ? [] : updatedBuffer;
+
+        // Track whether we flushed so the auto-flush timer can be managed
+        if (shouldFlush) {
+          flushedMessageId = messageId;
+        } else {
+          flushedMessageId = null;
+        }
+
         // Handle both RegularMessage and ArtifactMessage types
         if (lastMessage.type === 'regular') {
-          if (!lastMessage.isStreaming) {
-            return state;
-          }
-          
-          const newContent = lastMessage.content + content;
-          
+          const newContent = shouldFlush ? lastMessage.content + flushContent : lastMessage.content;
+
           const updatedMessages = [...state.messages];
           updatedMessages[updatedMessages.length - 1] = {
             ...lastMessage,
             content: newContent
           };
-          
-          return { messages: updatedMessages };
+
+          return {
+            messages: updatedMessages,
+            streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
+            streamingLastFlush: shouldFlush
+              ? { ...state.streamingLastFlush, [messageId]: now }
+              : state.streamingLastFlush
+          };
         } else if (lastMessage.type === 'artifact') {
-          if (!lastMessage.isStreaming) {
-            return state;
-          }
-          
           // For artifact messages, append to the artifact content
           const currentArtifactContent = typeof lastMessage.artifact.content === 'string' ? lastMessage.artifact.content : '';
-          const newArtifactContent = currentArtifactContent + content;
-          
+          const newArtifactContent = shouldFlush ? currentArtifactContent + flushContent : currentArtifactContent;
+
           const updatedMessages = [...state.messages];
           updatedMessages[updatedMessages.length - 1] = {
             ...lastMessage,
@@ -378,25 +415,99 @@ export const useChatStore = create<ChatStore>()(
               content: newArtifactContent
             }
           };
-          
-          return { messages: updatedMessages };
-        } else {
-          return state;
+
+          return {
+            messages: updatedMessages,
+            streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
+            streamingLastFlush: shouldFlush
+              ? { ...state.streamingLastFlush, [messageId]: now }
+              : state.streamingLastFlush
+          };
         }
+
+        return state;
       });
+
+      // Schedule a fallback flush timer when chunks are buffered but not yet flushed.
+      // This ensures the UI updates even when chunks stop arriving mid-buffer.
+      const state = get();
+      const lastMsg = state.messages[state.messages.length - 1];
+      if (lastMsg?.isStreaming) {
+        const mid = lastMsg.id;
+        // Clear any existing timer for this message
+        const existing = _streamingFlushTimers.get(mid);
+        if (existing) clearTimeout(existing);
+
+        if (!flushedMessageId) {
+          // Buffer has unflushed content — schedule direct flush in 100ms.
+          // We flush inline instead of re-entering appendToStreamingMessage
+          // to avoid potential infinite timer rescheduling.
+          const timer = setTimeout(() => {
+            _streamingFlushTimers.delete(mid);
+            set((s) => {
+              const msg = s.messages[s.messages.length - 1];
+              if (!msg || msg.id !== mid || !msg.isStreaming) return s;
+              const buf = s.streamingBuffers[mid];
+              if (!buf || buf.length === 0) return s;
+              const flushContent = buf.join('');
+              const updatedMessages = [...s.messages];
+              if (msg.type === 'regular') {
+                updatedMessages[updatedMessages.length - 1] = { ...msg, content: msg.content + flushContent };
+              } else if (msg.type === 'artifact' && typeof msg.artifact.content === 'string') {
+                updatedMessages[updatedMessages.length - 1] = { ...msg, artifact: { ...msg.artifact, content: msg.artifact.content + flushContent } };
+              }
+              return {
+                messages: updatedMessages,
+                streamingBuffers: { ...s.streamingBuffers, [mid]: [] },
+                streamingLastFlush: { ...s.streamingLastFlush, [mid]: Date.now() },
+              };
+            });
+          }, 100);
+          _streamingFlushTimers.set(mid, timer);
+        } else {
+          _streamingFlushTimers.delete(mid);
+        }
+      }
     },
 
     finishStreamingMessage: () => {
       set((state) => {
         const lastMessage = state.messages[state.messages.length - 1];
         if (!lastMessage || !lastMessage.isStreaming) return state;
+
+        const messageId = lastMessage.id;
+
+        // Clear any pending auto-flush timer for this message
+        const pendingTimer = _streamingFlushTimers.get(messageId);
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          _streamingFlushTimers.delete(messageId);
+        }
+        const buffer = state.streamingBuffers[messageId] || [];
+        const flushContent = buffer.length > 0 ? buffer.join('') : '';
+
+        const finalizedMessage =
+          lastMessage.type === 'regular'
+            ? { ...lastMessage, content: lastMessage.content + flushContent }
+            : lastMessage.type === 'artifact'
+              ? {
+                  ...lastMessage,
+                  artifact: {
+                    ...lastMessage.artifact,
+                    content:
+                      (typeof lastMessage.artifact.content === 'string'
+                        ? lastMessage.artifact.content
+                        : '') + flushContent
+                  }
+                }
+              : lastMessage;
         
         // 解析消息内容（仅对常规消息进行解析）
         let parsedContent: ParsedContent | undefined;
-        if (lastMessage.type === 'regular' && lastMessage.content) {
+        if (finalizedMessage.type === 'regular' && finalizedMessage.content) {
           try {
             const contentParser = createContentParser();
-            parsedContent = contentParser.parse(lastMessage.content) || undefined;
+            parsedContent = contentParser.parse(finalizedMessage.content) || undefined;
             // Content parsed successfully
           } catch (error) {
             console.warn('🔍 CONTENT_PARSER: Failed to parse content:', error);
@@ -404,10 +515,10 @@ export const useChatStore = create<ChatStore>()(
         }
         
         const finishedMessage = {
-          ...lastMessage,
+          ...finalizedMessage,
           isStreaming: false,
           streamingStatus: undefined,
-          ...(lastMessage.type === 'regular' && parsedContent && {
+          ...(finalizedMessage.type === 'regular' && parsedContent && {
             parsedContent
           })
         };
@@ -441,7 +552,16 @@ export const useChatStore = create<ChatStore>()(
           });
         }
         
-        return { messages: updatedMessages };
+        const nextBuffers = { ...state.streamingBuffers };
+        const nextLastFlush = { ...state.streamingLastFlush };
+        delete nextBuffers[messageId];
+        delete nextLastFlush[messageId];
+
+        return {
+          messages: updatedMessages,
+          streamingBuffers: nextBuffers,
+          streamingLastFlush: nextLastFlush
+        };
       });
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message finished in chat store');
     },
@@ -549,15 +669,32 @@ export const useChatStore = create<ChatStore>()(
           throw new Error('ChatService not available for HIL resume');
         }
 
-        // 使用token或默认值
-        const authToken = token || 'dev_key_test';
-        
+        // 获取认证信息 (centralized token key)
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || null;
+        if (!authToken) {
+          throw new Error('No auth token available for HIL resume');
+        }
+
         // 获取用户信息
         const userStore = useUserStore.getState();
-        const userId = 'test_user'; // TODO: Fix user store access
+        // auth0_id is the legacy field name; fall back to user_id/id in case
+        // the gateway auth response uses a different field post-Auth0 migration.
+        const eu = userStore.externalUser as Record<string, any> | null;
+        const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id || '';
+        if (!userId) {
+          throw new Error('No user ID available for HIL resume');
+        }
 
-        // 调用resumeChat API
-        await chatService.resumeChat(sessionId, userId, resumeValue, authToken, {
+        // For string values, pass directly as the message field.
+        // For structured values (objects), pass a summary as message and
+        // the full object in prompt_args to avoid double-encoding.
+        const isStructured = typeof resumeValue !== 'string';
+        const message = isStructured ? 'HIL resume' : resumeValue;
+        await chatService.resumeHIL(message, {
+          user_id: userId,
+          session_id: sessionId,
+          prompt_args: isStructured ? resumeValue : undefined,
+        }, authToken, {
           onStreamStart: (messageId: string, status?: string) => {
             startStreamingMessage(messageId, status || '🔄 Resuming HIL execution...');
             setExecutingPlan(true);
@@ -584,6 +721,17 @@ export const useChatStore = create<ChatStore>()(
           onTaskStatusUpdate: (taskId: string, status: string, result?: any) => {
             updateTaskStatus(taskId, status as any, result);
           },
+          onBillingUpdate: (billingData: any) => {
+            // Handle billing updates by delegating to UserStore (imported at top)
+            if (typeof billingData.creditsRemaining === 'number') {
+              useUserStore.getState().updateCredits(billingData.creditsRemaining, 'billing');
+              logger.info(LogCategory.CHAT_FLOW, 'User credits updated from billing event', { 
+                creditsRemaining: billingData.creditsRemaining,
+                modelCalls: billingData.modelCalls,
+                toolCalls: billingData.toolCalls 
+              });
+            }
+          },
           // HIL回调 - 处理可能的嵌套HIL中断
           onHILInterruptDetected: (hilEvent: any) => {
             setHILStatus('waiting_for_human');
@@ -594,10 +742,12 @@ export const useChatStore = create<ChatStore>()(
             });
           },
           onError: (error: Error) => {
-            logger.error(LogCategory.CHAT_FLOW, 'HIL resume execution failed', { 
+            logger.error(LogCategory.CHAT_FLOW, 'HIL resume execution failed', {
               error: error.message,
               sessionId
             });
+            // Flush any buffered streaming content before abandoning
+            finishStreamingMessage();
             setHILStatus('error');
             setExecutingPlan(false);
           }
@@ -618,32 +768,47 @@ export const useChatStore = create<ChatStore>()(
       try {
         logger.info(LogCategory.CHAT_FLOW, 'Checking execution status', { sessionId });
 
-        // 获取 ChatService 实例
-        let chatService = getChatServiceInstance();
-        if (!chatService) {
-          throw new Error('ChatService not available for status check');
+        // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
+        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || null;
+        if (!authToken) {
+          throw new Error('No auth token available for execution status check');
         }
 
-        // 使用token或默认值
-        const authToken = token || 'dev_key_test';
+        // 调用execution status API via gateway (static import at top)
+        const res = await fetch(`${GATEWAY_ENDPOINTS.AGENTS.EXECUTION.STATUS}/${sessionId}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-        // 调用getExecutionStatus API
-        const statusData = await chatService.getExecutionStatus(sessionId, authToken);
-        
-        // 根据status数据更新HIL状态
-        if (statusData.status === 'interrupted' && statusData.interrupts?.length > 0) {
-          const { setHILStatus, setCurrentThreadId } = get();
+        if (!res.ok) {
+          const errorMsg = `Execution status check failed with HTTP ${res.status}`;
+          if (res.status === 401) {
+            logger.error(LogCategory.CHAT_FLOW, 'Auth expired during execution status check', { sessionId, status: res.status });
+            throw new Error('Authentication expired — please log in again');
+          }
+          logger.error(LogCategory.CHAT_FLOW, errorMsg, { sessionId, status: res.status });
+          throw new Error(errorMsg);
+        }
+
+        const statusData = await res.json();
+
+        logger.info(LogCategory.CHAT_FLOW, 'Execution status retrieved', {
+          sessionId,
+          status: statusData.status,
+        });
+
+        // Update HIL state based on status response
+        const { setHILStatus, setCurrentHILInterrupt } = get();
+        if (statusData.status === 'interrupted' || statusData.status === 'waiting_for_human') {
           setHILStatus('waiting_for_human');
-          setCurrentThreadId(statusData.thread_id);
-          
-          logger.info(LogCategory.CHAT_FLOW, 'Execution interrupted detected via status check', {
-            sessionId,
-            status: statusData.status,
-            interruptCount: statusData.interrupts.length
-          });
-        } else if (statusData.status === 'running') {
-          const { setHILStatus } = get();
+          if (statusData.interrupt || statusData.interrupts?.[0]) {
+            setCurrentHILInterrupt(statusData.interrupt || statusData.interrupts[0]);
+          }
+        } else if (statusData.status === 'completed' || statusData.status === 'idle') {
           setHILStatus('idle');
+          setCurrentHILInterrupt(null);
         }
 
         return statusData;

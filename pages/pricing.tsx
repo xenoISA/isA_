@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import Head from 'next/head'
-import { useAuth } from '../src/hooks/useAuth'
 import MarketingHeader from '../src/components/marketing/MarketingHeader'
 import MarketingFooter from '../src/components/marketing/MarketingFooter'
+import { GATEWAY_CONFIG } from '../src/config/gatewayConfig'
 
 // Define pricing plans
 const pricingPlans = [
@@ -125,11 +125,18 @@ function PricingCard({ plan, isCurrentPlan, onSelectPlan, isLoading }: {
  * Integrates with existing auth system
  */
 export default function PricingPage() {
-  const { auth0User } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSelectPlan = async (stripePriceId: string) => {
-    if (!auth0User) {
+    // Pricing is a marketing page rendered outside AuthProvider.
+    // Use centralized token key for presence check.
+    let hasAuthToken = false
+    try {
+      hasAuthToken = typeof window !== 'undefined' && !!localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY)
+    } catch {
+      // localStorage unavailable (private browsing, etc.)
+    }
+    if (!hasAuthToken) {
       // Redirect to main app which will handle login
       window.location.href = '/'
       return

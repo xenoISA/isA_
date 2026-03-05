@@ -18,6 +18,7 @@
 import React, { useState, useCallback } from 'react';
 import { useHILActions, useCurrentHILInterrupt } from '../../../stores/useChatStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { useAuthToken } from '../../../hooks/useAuthToken';
 
 // ================================================================================
 // 类型定义
@@ -44,6 +45,7 @@ export const HILInputDialog: React.FC<HILInputDialogProps> = ({
   const { resumeHILExecution } = useHILActions();
   const currentInterrupt = useCurrentHILInterrupt();
   const sessionStore = useSessionStore.getState();
+  const { getToken } = useAuthToken();
 
   // 解析输入数据
   const question = interruptData?.data?.question || interruptData?.message || 'Please provide input';
@@ -62,15 +64,18 @@ export const HILInputDialog: React.FC<HILInputDialogProps> = ({
 
       const currentSession = sessionStore.getCurrentSession();
       const sessionId = currentSession?.id || 'default';
+      
+      // 获取真实的authToken
+      const authToken = await getToken();
 
-      await resumeHILExecution(sessionId, resumeValue);
+      await resumeHILExecution(sessionId, resumeValue, authToken);
       onClose();
     } catch (error) {
       console.error('❌ HIL input submission failed:', error);
     } finally {
       setIsProcessing(false);
     }
-  }, [currentInterrupt, userInput, resumeHILExecution, sessionStore, onClose]);
+  }, [currentInterrupt, userInput, resumeHILExecution, sessionStore, onClose, getToken]);
 
   // 处理键盘事件
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

@@ -21,7 +21,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
-import { Auth0Provider } from './providers/Auth0Provider';
+import { AuthProvider } from './providers/AuthProvider';
 import { SessionProvider } from './providers/SessionProvider';
 import { AIProvider } from './providers/AIProvider';
 import { AnalyticsProvider } from './providers/AnalyticsProvider';
@@ -154,15 +154,15 @@ export const MainAppContainer: React.FC = () => {
         )}
       >
         <AnalyticsProvider>
-          <Auth0Provider>
+          <AuthProvider>
             <UserModule>
               <SessionProvider>
-                <AIProvider apiEndpoint={process.env.REACT_APP_AGENT_SERVICE_URL || "http://localhost:8080"}>
+                <AIProvider>
                   <AppModule />
                 </AIProvider>
               </SessionProvider>
             </UserModule>
-          </Auth0Provider>
+          </AuthProvider>
         </AnalyticsProvider>
       </ErrorBoundary>
     </InitializationTracker>

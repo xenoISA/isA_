@@ -16,6 +16,8 @@
  * ✅ Feature配置 - 功能开关
  */
 
+import { GATEWAY_CONFIG } from './gatewayConfig';
+
 // ================================================================================
 // 环境变量接口定义
 // ================================================================================
@@ -28,12 +30,9 @@ export interface ApiConfig {
   supportedFileTypes: string[];
 }
 
-export interface Auth0Config {
-  domain: string;
-  clientId: string;
-  audience?: string;
-  redirectUri: string;
-  scope: string;
+export interface AuthConfig {
+  gatewayUrl: string;
+  tokenStorageKey: string;
 }
 
 export interface ExternalApiConfig {
@@ -61,7 +60,7 @@ export interface FeatureFlags {
 
 export interface AppConfiguration {
   api: ApiConfig;
-  auth0: Auth0Config;
+  auth: AuthConfig;
   externalApis: ExternalApiConfig;
   app: AppConfig;
   features: FeatureFlags;
@@ -100,26 +99,23 @@ const getNumberEnvVar = (key: string, defaultValue: number): number => {
 export const config: AppConfiguration = {
   // API基础配置
   api: {
-    baseUrl: process.env.REACT_APP_AGENT_SERVICE_URL || 'http://localhost:8080',
+    baseUrl: process.env.REACT_APP_AGENT_SERVICE_URL || GATEWAY_CONFIG.BASE_URL,
     timeout: getNumberEnvVar('REACT_APP_API_TIMEOUT', 30000),
     retries: getNumberEnvVar('REACT_APP_API_RETRIES', 3),
     maxFileSize: getNumberEnvVar('REACT_APP_MAX_FILE_SIZE', 10 * 1024 * 1024), // 10MB
     supportedFileTypes: (getEnvVar('REACT_APP_SUPPORTED_FILE_TYPES', 'jpg,jpeg,png,pdf,txt,md,json') || '').split(',')
   },
 
-  // Auth0配置 (使用现有的环境变量)
-  auth0: {
-    domain: getEnvVar('REACT_APP_AUTH0_DOMAIN', 'dev-47zcqarlxizdkads.us.auth0.com').trim(),
-    clientId: getEnvVar('REACT_APP_AUTH0_CLIENT_ID', 'Vsm0s23JTKzDrq9bq0foKyYieOCyeoQJ').trim(),
-    audience: getEnvVar('REACT_APP_AUTH0_AUDIENCE', 'https://dev-47zcqarlxizdkads.us.auth0.com/api/v2/').trim(),
-    redirectUri: getEnvVar('REACT_APP_AUTH0_REDIRECT_URI', `${getEnvVar('REACT_APP_BASE_URL', typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173')}/api/auth/callback`).trim(),
-    scope: getEnvVar('REACT_APP_AUTH0_SCOPE', 'openid profile email read:users update:users create:users offline_access').trim()
+  // Gateway auth configuration
+  auth: {
+    gatewayUrl: getEnvVar('REACT_APP_GATEWAY_URL', 'http://localhost:9080'),
+    tokenStorageKey: GATEWAY_CONFIG.AUTH.TOKEN_KEY,
   },
 
   // 外部API配置 (使用现有的环境变量结构)
   externalApis: {
-    userServiceUrl: process.env.REACT_APP_USER_SERVICE_URL || 'http://localhost:8100',
-    aiServiceUrl: process.env.REACT_APP_MODEL_SERVICE_URL || 'http://localhost:8082',
+    userServiceUrl: process.env.REACT_APP_USER_SERVICE_URL || `${GATEWAY_CONFIG.BASE_URL}/users`,
+    aiServiceUrl: process.env.REACT_APP_MODEL_SERVICE_URL || `${GATEWAY_CONFIG.BASE_URL}/models`,
     imageServiceUrl: getEnvVar('REACT_APP_IMAGE_SERVICE_URL', 'https://api.replicate.com'),
     contentServiceUrl: getEnvVar('REACT_APP_CONTENT_SERVICE_URL', 'https://api.openai.com')
   },
@@ -151,12 +147,8 @@ export const validateConfig = (): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
   // 验证必需的配置项
-  if (!config.auth0.domain || config.auth0.domain === 'your-domain.auth0.com') {
-    errors.push('Auth0 domain is not configured properly');
-  }
-
-  if (!config.auth0.clientId || config.auth0.clientId === 'your-client-id') {
-    errors.push('Auth0 client ID is not configured properly');
+  if (!config.auth.gatewayUrl) {
+    errors.push('Gateway URL is not configured');
   }
 
   if (config.api.timeout < 5000) {

@@ -42,6 +42,11 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { logger, LogCategory } from '../utils/logger';
 import { createAuthenticatedSessionService } from '../api/sessionService';
 
+const STORAGE_SAVE_DEBOUNCE_MS = 500;
+// Module-level timer handle — not in Zustand state to avoid triggering re-renders.
+// Safe because this store is client-only (guarded by typeof window checks).
+let _saveToStorageTimer: ReturnType<typeof setTimeout> | null = null;
+
 // 基础消息接口
 export interface BaseMessage {
   id: string;
@@ -105,7 +110,7 @@ interface SessionState {
   // Session data
   sessions: ChatSession[];
   currentSessionId: string;
-  
+
   // Loading state
   isLoading: boolean;
   error: string | null;
@@ -135,6 +140,7 @@ interface SessionActions {
   // Storage operations
   loadFromStorage: () => void;
   saveToStorage: () => void;
+  saveToStorageDebounced: () => void;
   loadFromAPI: (userId: string, authHeaders?: any) => Promise<void>;
   saveToAPI: (userId: string, authHeaders?: any) => Promise<void>;
   
@@ -176,8 +182,8 @@ export const useSessionStore = create<SessionStore>()(
         currentSessionId: sessionId
       }));
       
-      // Auto-save to storage
-      setTimeout(() => get().saveToStorage(), 0);
+      // Auto-save to storage (debounced)
+      get().saveToStorageDebounced();
       
       logger.info(LogCategory.CHAT_FLOW, 'Session created', {
         sessionId,
@@ -222,7 +228,7 @@ export const useSessionStore = create<SessionStore>()(
         }
       }
       
-      get().saveToStorage();
+      get().saveToStorageDebounced();
       
       logger.debug(LogCategory.CHAT_FLOW, 'Session deleted', { sessionId });
     },
@@ -234,7 +240,7 @@ export const useSessionStore = create<SessionStore>()(
         )
       }));
       
-      get().saveToStorage();
+      get().saveToStorageDebounced();
       
       logger.debug(LogCategory.CHAT_FLOW, 'Session updated', {
         sessionId: updatedSession.id
@@ -266,7 +272,7 @@ export const useSessionStore = create<SessionStore>()(
         })
       }));
       
-      get().saveToStorage();
+      get().saveToStorageDebounced();
     },
     
     clearMessages: (sessionId) => {
@@ -290,7 +296,7 @@ export const useSessionStore = create<SessionStore>()(
         })
       }));
       
-      get().saveToStorage();
+      get().saveToStorageDebounced();
     },
     
     // 🆕 Artifact message operations
@@ -492,6 +498,17 @@ export const useSessionStore = create<SessionStore>()(
         get().setError('Failed to save sessions to storage');
       }
     },
+
+    saveToStorageDebounced: () => {
+      if (_saveToStorageTimer) {
+        clearTimeout(_saveToStorageTimer);
+      }
+
+      _saveToStorageTimer = setTimeout(() => {
+        _saveToStorageTimer = null;
+        get().saveToStorage();
+      }, STORAGE_SAVE_DEBOUNCE_MS);
+    },
     
     // Computed getters
     getCurrentSession: () => {
@@ -515,31 +532,27 @@ export const useSessionStore = create<SessionStore>()(
         set({ isLoading: true, error: null });
         
         const sessionService = createAuthenticatedSessionService(async () => authHeaders);
-        const response = await sessionService.getUserSessions(userId, { limit: 100 });
-        
-        if (response.success && response.data?.sessions) {
-          const apiSessions = response.data.sessions.map(session => ({
-            id: session.id,
-            title: session.title,
-            lastMessage: session.summary || 'No messages',
-            timestamp: session.last_activity || session.created_at,
-            messageCount: session.message_count || 0,
-            artifacts: [],
-            messages: [],
-            metadata: {
-              ...session.metadata,
-              api_session_id: session.id,
-              user_id: session.user_id
-            }
-          }));
-          
-          set({ sessions: apiSessions, isLoading: false });
-          logger.info(LogCategory.CHAT_FLOW, 'Sessions loaded from API', {
-            sessionCount: apiSessions.length
-          });
-        } else {
-          throw new Error(response.error || 'Failed to load sessions');
-        }
+        const result = await sessionService.getUserSessions(userId, { limit: 100 });
+
+        const apiSessions = (result.sessions || []).map((session: any) => ({
+          id: session.session_id || session.id,
+          title: session.title || session.metadata?.name || 'Untitled',
+          lastMessage: session.summary || 'No messages',
+          timestamp: session.updated_at || session.created_at,
+          messageCount: session.message_count || 0,
+          artifacts: [],
+          messages: [],
+          metadata: {
+            ...session.metadata,
+            api_session_id: session.session_id || session.id,
+            user_id: session.user_id
+          }
+        }));
+
+        set({ sessions: apiSessions, isLoading: false });
+        logger.info(LogCategory.CHAT_FLOW, 'Sessions loaded from API', {
+          sessionCount: apiSessions.length
+        });
       } catch (error) {
         logger.error(LogCategory.CHAT_FLOW, 'Failed to load sessions from API', { error });
         set({ isLoading: false, error: 'Failed to load sessions from API' });
@@ -554,36 +567,34 @@ export const useSessionStore = create<SessionStore>()(
       
       try {
         const sessionService = createAuthenticatedSessionService(async () => authHeaders);
-        const { sessions, getCurrentSession } = get();
-        const currentSession = getCurrentSession();
-        
+        const currentSession = get().getCurrentSession();
+
         // Save current session if it exists and doesn't have API ID
         if (currentSession && !currentSession.metadata?.api_session_id) {
-          const response = await sessionService.createSession(
-            userId,
-            currentSession.title,
-            currentSession.metadata
-          );
-          
-          if (response.success && response.data?.session) {
-            // Update session with API ID
+          const result = await sessionService.createSession({
+            user_id: userId,
+            name: currentSession.title,
+            context: currentSession.metadata
+          });
+
+          if (result.session_id) {
             const updatedSession = {
               ...currentSession,
               metadata: {
                 ...currentSession.metadata,
-                api_session_id: response.data.session.id
+                api_session_id: result.session_id
               }
             };
-            
+
             set(state => ({
-              sessions: state.sessions.map(s => 
+              sessions: state.sessions.map(s =>
                 s.id === currentSession.id ? updatedSession : s
               )
             }));
-            
+
             logger.info(LogCategory.CHAT_FLOW, 'Session synced to API', {
               sessionId: currentSession.id,
-              apiSessionId: response.data.session.id
+              apiSessionId: result.session_id
             });
           }
         }

@@ -4,17 +4,17 @@
  * ============================================================================
  * 
  * Core Responsibilities:
- * - Orchestrate Auth0 authentication with external user management
- * - Bridge useAuth hook with useUserStore state management
+ * - Orchestrate gateway authentication with external user management
+ * - Bridge AuthProvider with useUserStore state management
  * - Handle user initialization and synchronization flows
  * - Provide clean business logic interfaces for UI components
  * - Manage user subscription and billing workflows
  * 
  * Architecture Integration:
- *  Auth Layer: useAuth (Auth0) � UserModule � useUserStore (External)
+ *  Auth Layer: AuthProvider (gateway JWT) � UserModule � useUserStore (External)
  *  Business Logic: Complex user flows handled here, not in UI
  *  Service Integration: Uses new userService class instead of deprecated functions
- *  State Coordination: Synchronizes Auth0 state with external user state
+ *  State Coordination: Synchronizes auth state with external user state
  * 
  * Separation of Concerns:
  *  Responsible for:
@@ -28,21 +28,16 @@
  *   - UI rendering (handled by UI components)
  *   - Direct API calls (handled by userService)
  *   - Raw state management (handled by useUserStore)
- *   - Auth0 token management (handled by useAuth)
+ *   - Token management (handled by AuthProvider)
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuthContext } from '../providers/AuthProvider';
 import { useUserStore } from '../stores/useUserStore';
 import { UserService } from '../api/userService';
 import { logger, LogCategory } from '../utils/logger';
 import { PlanType, CreateExternalUserData, CreditConsumption } from '../types/userTypes';
 import { useUser } from '../hooks/useUser';
-import {
-  getCurrentRelativeUrl,
-  getLogoutReturnToUrl,
-  setStoredOrgContextId,
-} from '../config/authSessionConfig';
 import '../utils/creditMonitor'; // 🎯 初始化信用监控系统
 
 // ================================================================================
@@ -122,16 +117,17 @@ const UserModuleContext = React.createContext<UserModuleInterface | null>(null);
 // ================================================================================
 
 export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auth0 Integration
+  // Gateway Auth Integration (migrated from Auth0)
   const {
-    user: auth0User,
+    authUser: auth0User,
     isLoading: auth0Loading,
     error: auth0Error,
     isAuthenticated,
-    loginWithRedirect,
-    logout: auth0Logout,
-    getAccessTokenSilently
-  } = useAuth0();
+    login: gatewayLogin,
+    logout: gatewayLogout,
+    getAccessToken: getStoredToken,
+    getAuthHeadersAsync,
+  } = useAuthContext();
 
   // User Hook Integration (正确的架构：通过useUser访问store)
   const userHook = useUser();
@@ -146,26 +142,15 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Create authenticated userService instance
   const userService = useMemo(() => {
-    
     const getAuthHeaders = async () => {
       if (!isAuthenticated) {
         throw new Error('Not authenticated');
       }
-      const token = await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
-      logger.debug(LogCategory.USER_AUTH, 'Auth0 access token retrieved', { tokenLength: token?.length });
-      return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
+      return getAuthHeadersAsync();
     };
-    
+
     return new UserService(undefined, getAuthHeaders);
-  }, [isAuthenticated, getAccessTokenSilently]);
+  }, [isAuthenticated, getAuthHeadersAsync]);
 
   // ================================================================================
   // Authentication Methods
@@ -173,47 +158,25 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const getAccessToken = useCallback(async (): Promise<string> => {
     try {
-      return await getAccessTokenSilently({
-        authorizationParams: {
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          scope: 'openid profile email read:users update:users create:users'
-        }
-      });
+      const token = getStoredToken();
+      if (!token) {
+        throw new Error('No access token available');
+      }
+      return token;
     } catch (error) {
       logger.error(LogCategory.USER_AUTH, 'Failed to get access token', { error });
-      
-      // If token refresh fails, user needs to re-authenticate
-      if (error instanceof Error && error.message.includes('Missing Refresh Token')) {
-        logger.info(LogCategory.USER_AUTH, 'Refresh token missing, redirecting to login');
-        loginWithRedirect();
-        throw new Error('Authentication required');
-      }
-      
       throw error;
     }
-  }, [getAccessTokenSilently, loginWithRedirect]);
+  }, [getStoredToken]);
 
+  // Login/signup are now form-based via LoginScreen; these are no-ops
   const login = useCallback(() => {
-    loginWithRedirect({
-      appState: {
-        returnTo: getCurrentRelativeUrl()
-      },
-      authorizationParams: {
-        screen_hint: 'login'
-      }
-    });
-  }, [loginWithRedirect]);
+    logger.info(LogCategory.USER_AUTH, 'Login requested — handled by LoginScreen');
+  }, []);
 
   const signup = useCallback(() => {
-    loginWithRedirect({
-      appState: {
-        returnTo: getCurrentRelativeUrl()
-      },
-      authorizationParams: {
-        screen_hint: 'signup'
-      }
-    });
-  }, [loginWithRedirect]);
+    logger.info(LogCategory.USER_AUTH, 'Signup requested — handled by LoginScreen');
+  }, []);
 
   // ================================================================================
   // User Synchronization Logic
@@ -332,7 +295,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
             await userHook.fetchCurrentUser(token);
             console.log('👤 UserModule: User data refreshed successfully after initialization');
           } else {
-            throw new Error('Cannot initialize user: missing Auth0 user data');
+            throw new Error('Cannot initialize user: missing auth user data');
           }
         } else {
           throw error;
@@ -366,38 +329,35 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, auth0User, initializeUser]);
 
   const logout = useCallback(() => {
-    // Use userHook's clearUser method instead of direct store access
     userHook.clearUser();
-    setStoredOrgContextId(null);
-    auth0Logout({
-      logoutParams: {
-        returnTo: getLogoutReturnToUrl()
-      }
-    });
-  }, [userHook.clearUser, auth0Logout]);
+    gatewayLogout();
+  }, [userHook.clearUser, gatewayLogout]);
 
   // ================================================================================
   // Business Logic Methods
   // ================================================================================
 
   const consumeUserCredits = useCallback(async (consumption: CreditConsumption) => {
-    if (!externalUser?.auth0_id || !isAuthenticated) {
-      throw new Error('User not authenticated or auth0_id missing');
+    const eu = externalUser as Record<string, any> | null;
+    const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id;
+    if (!userId || !isAuthenticated) {
+      throw new Error('User not authenticated or user ID missing');
     }
 
     try {
-      // Use userHook's consumeCredits method instead of direct service call
       const token = await getAccessToken();
-      await userHook.consumeCredits(externalUser.auth0_id, consumption, token);
+      await userHook.consumeCredits(userId, consumption, token);
     } catch (error) {
       logger.error(LogCategory.USER_AUTH, 'Failed to consume credits', { error, consumption });
       throw error;
     }
-  }, [externalUser?.auth0_id, isAuthenticated, userHook.consumeCredits, getAccessToken]);
+  }, [externalUser, isAuthenticated, userHook.consumeCredits, getAccessToken]);
 
   const createCheckout = useCallback(async (planType: PlanType): Promise<string> => {
-    if (!isAuthenticated || !externalUser?.auth0_id) {
-      throw new Error('User not authenticated or auth0_id missing');
+    const eu = externalUser as Record<string, any> | null;
+    const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id;
+    if (!isAuthenticated || !userId) {
+      throw new Error('User not authenticated or user ID missing');
     }
 
     try {
@@ -414,7 +374,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to create checkout', { error, planType });
       throw error;
     }
-  }, [isAuthenticated, externalUser?.auth0_id, userHook.createCheckout, getAccessToken]);
+  }, [isAuthenticated, externalUser, userHook.createCheckout, getAccessToken]);
 
   const checkHealth = useCallback(async () => {
     try {
@@ -514,7 +474,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     // Auth State
     isAuthenticated,
     isLoading: auth0Loading || userHook.isLoading,
-    error: auth0Error?.message || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
+    error: auth0Error || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
     
     // User Data
     auth0User,
