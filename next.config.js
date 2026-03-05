@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
+  reactStrictMode: true,
   env: {
     // REACT_APP_* vars are still referenced in src/config/index.ts and src/app.tsx.
     // Next.js only auto-inlines NEXT_PUBLIC_* vars, so these need explicit passthrough.

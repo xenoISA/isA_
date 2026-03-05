@@ -1,6 +1,5 @@
 
 import { RudderAnalytics } from '@rudderstack/analytics-js';
-import { isMarketingHostname } from '../config/surfaceConfig';
 
 interface AnalyticsConfig {
   writeKey: string;
@@ -15,8 +14,8 @@ class AnalyticsService {
 
   constructor() {
     this.config = {
-      writeKey: process.env.NEXT_PUBLIC_RUDDERSTACK_WRITE_KEY || 'your-dev-write-key',
-      dataPlaneUrl: process.env.NEXT_PUBLIC_RUDDERSTACK_DATA_PLANE_URL || 'http://localhost:8102',
+      writeKey: process.env.NEXT_PUBLIC_RUDDERSTACK_WRITE_KEY || '',
+      dataPlaneUrl: process.env.NEXT_PUBLIC_RUDDERSTACK_DATA_PLANE_URL || '',
       debugMode: process.env.NODE_ENV === 'development',
     };
   }
@@ -27,6 +26,11 @@ class AnalyticsService {
     }
 
     try {
+      if (!this.config.writeKey || !this.config.dataPlaneUrl) {
+        console.warn('RudderStack not configured: missing write key or data plane URL');
+        return;
+      }
+
       this.analytics = new RudderAnalytics();
       
       // 对于本地 RudderStack，使用本地控制平面URL
@@ -34,8 +38,8 @@ class AnalyticsService {
         // 基础配置
         logLevel: this.config.debugMode ? 'DEBUG' : 'ERROR',
         
-        // 通过相对路径避免硬编码端口/域名
-        configUrl: '/api/rudderstack',
+        // 本地控制平面配置 - 指向我们的 Next.js API
+        configUrl: `${window.location.origin}/api/rudderstack`,
         
         // 会话跟踪
         sessions: {
@@ -158,7 +162,8 @@ class AnalyticsService {
       return undefined;
     }
 
-    return this.analytics.getUserId();
+    const userId = this.analytics.getUserId();
+    return userId || undefined;
   }
 
   // =====================================================
@@ -389,7 +394,8 @@ class AnalyticsService {
     const currentPath = window.location.pathname;
     
     return marketingPages.includes(currentPath) || 
-           isMarketingHostname(window.location.hostname);
+           window.location.hostname.includes('www.') ||
+           window.location.hostname === 'www.iapro.ai';
   }
 }
 

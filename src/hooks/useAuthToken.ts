@@ -3,15 +3,16 @@
  * useAuthToken Hook - Auth Token Access
  * ============================================================================
  *
- * Provides access to the stored auth token for API calls.
+ * Provides access to the auth token from the in-memory store.
  * Used by components that need to make authenticated requests
  * (e.g., HIL dialogs resuming execution).
  *
- * Token is stored in localStorage by the AuthProvider after login.
+ * Token is stored in memory by the AuthProvider after login.
+ * On page reload, a silent refresh via HttpOnly cookie restores it.
  */
 
 import { useCallback } from 'react';
-import { GATEWAY_CONFIG } from '../config/gatewayConfig';
+import { authTokenStore } from '../stores/authTokenStore';
 
 export interface UseAuthTokenReturn {
   getToken: () => Promise<string>;
@@ -20,7 +21,7 @@ export interface UseAuthTokenReturn {
 
 export const useAuthToken = (): UseAuthTokenReturn => {
   const getToken = useCallback(async (): Promise<string> => {
-    const token = localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+    const token = authTokenStore.getToken();
     if (!token) {
       throw new Error('No auth token available. Please log in.');
     }
@@ -28,7 +29,7 @@ export const useAuthToken = (): UseAuthTokenReturn => {
   }, []);
 
   const hasToken = useCallback((): boolean => {
-    return !!localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+    return authTokenStore.hasToken();
   }, []);
 
   return { getToken, hasToken };

@@ -80,8 +80,13 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // 调用现有的知识分析逻辑
-      const analysisResult = await this.performKnowledgeAnalysis(input.prompt, input.options);
+      // 调用现有的知识分析逻辑 - 传递context信息
+      const analysisResult = await this.performKnowledgeAnalysis(input.prompt, {
+        ...input.options,
+        sessionId: input.context?.sessionId,
+        userId: input.context?.userId,
+        authToken: input.context?.authToken
+      });
 
       // 构造插件输出
       const output: PluginOutput = {
@@ -149,18 +154,17 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
       
       // 模拟现有的 Widget Store 调用流程
       const sessionId = options.sessionId || `knowledge_plugin_${Date.now()}`;
-      const userId = options.userId || 'plugin_user';
+      const userId = options.userId || (() => { throw new Error('User ID is required for knowledge analysis') })();
       
       // 构造与现有系统兼容的请求
       const chatOptions = {
         session_id: sessionId,
         user_id: userId,
-        prompt_name: 'intelligent_rag_search_prompt',
+        prompt_name: 'knowledge_analyze_prompt',
         prompt_args: {
-          search_query: query,
-          documents: options.documents || [],
-          search_depth: options.depth || 'comprehensive',
-          include_citations: options.includeCitations || true
+          prompt: query,
+          file_url: options.file_url || options.fileUrl || '',
+          depth: options.depth || 'comprehensive'
         }
       };
 
@@ -227,8 +231,9 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
           }
         };
 
-        // 调用现有的 chatService
-        chatService.sendMessage(query, chatOptions, 'dev_key_test', callbacks)
+        // 调用现有的 chatService - 修正参数顺序
+        // Note: ChatService.sendMessage expects (message, sessionId, callbacks, userId)
+        chatService.sendMessage(query, chatOptions.session_id, callbacks, chatOptions.user_id)
           .catch(error => {
             clearTimeout(timeout);
             reject(error);

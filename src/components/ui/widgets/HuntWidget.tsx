@@ -19,7 +19,6 @@
 import React, { useState } from 'react';
 import { HuntWidgetParams } from '../../../types/widgetTypes';
 import { BaseWidget, OutputHistoryItem, EditAction, ManagementAction, EmptyStateConfig } from './BaseWidget';
-import { processHuntWidget } from '../../core/WidgetHandler';
 
 // AI Search Intelligence Service modes (based on admin categories)
 interface SearchMode {
@@ -173,13 +172,13 @@ const HuntInputArea: React.FC<{
         result_format: resultFormat || 'summary'
       };
       
-      // Use Module's onSearch instead of direct processHuntWidget
+      // Use Module's onSearch - no fallback needed
       if (onSearch) {
         console.log('🔍 HUNT_WIDGET: Using module onSearch function');
         await onSearch(params);
       } else {
-        console.log('🔍 HUNT_WIDGET: Fallback to processHuntWidget (no onSearch prop)');
-        await processHuntWidget(params);
+        console.error('🔍 HUNT_WIDGET: No onSearch prop provided - widget not properly configured');
+        return;
       }
       
       console.log('🚀 Search processing request sent with mode:', selectedMode.name);

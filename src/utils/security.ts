@@ -238,10 +238,10 @@ class RateLimiter {
   }
 }
 
-// 全局请求限制器实例
-export const globalRateLimiter = new RateLimiter(30, 60000); // 每分钟最多30个请求
+// Client-side rate limiter — UX guard only.
+// Real rate limiting is enforced server-side by APISIX (see deployment/apisix/rate-limiting.yaml).
+export const globalRateLimiter = new RateLimiter(30, 60000);
 
-// 定期清理
 if (typeof window !== 'undefined') {
-  setInterval(() => globalRateLimiter.cleanup(), 300000); // 每5分钟清理一次
+  setInterval(() => globalRateLimiter.cleanup(), 300000);
 }

@@ -1,0 +1,58 @@
+# APISIX Rate Limiting Configuration for isA_ endpoints
+#
+# Apply via APISIX Admin API:
+#   curl -X PUT http://localhost:9180/apisix/admin/routes/chat \
+#     -H "X-API-KEY: $APISIX_ADMIN_KEY" \
+#     -d @deployment/apisix/rate-limiting.yaml
+#
+# These rules enforce server-side rate limiting. The client-side
+# RateLimiter in src/utils/security.ts is kept only as a UX guard.
+
+routes:
+  # Chat endpoint — generous limit for streaming conversations
+  - uri: /agents/chat
+    plugins:
+      limit-count:
+        count: 30
+        time_window: 60
+        rejected_code: 429
+        rejected_msg: "Rate limit exceeded. Please wait before sending more messages."
+        key_type: var
+        key: remote_addr
+        policy: local
+
+  # Auth endpoints — stricter to prevent brute force
+  - uri: /auth/*
+    plugins:
+      limit-count:
+        count: 10
+        time_window: 60
+        rejected_code: 429
+        rejected_msg: "Too many authentication attempts. Please try again later."
+        key_type: var
+        key: remote_addr
+        policy: local
+
+  # Session endpoints
+  - uri: /sessions/*
+    plugins:
+      limit-count:
+        count: 60
+        time_window: 60
+        rejected_code: 429
+        rejected_msg: "Rate limit exceeded."
+        key_type: var
+        key: remote_addr
+        policy: local
+
+  # General API — catch-all
+  - uri: /*
+    plugins:
+      limit-count:
+        count: 120
+        time_window: 60
+        rejected_code: 429
+        rejected_msg: "Rate limit exceeded."
+        key_type: var
+        key: remote_addr
+        policy: local

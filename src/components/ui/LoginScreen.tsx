@@ -1,12 +1,42 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
+import { GlassInput } from '../shared/ui/GlassInput';
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  mode: 'login' | 'signup' | 'verify';
+  isLoading?: boolean;
+  error?: string | null;
+  onLogin: (email: string, password: string) => void;
+  onSignup: (email: string, password: string, name?: string) => void;
+  onVerify: (code: string) => void;
+  onSwitchMode: (mode: 'login' | 'signup' | 'verify') => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  mode,
+  isLoading = false,
+  error = null,
+  onLogin,
+  onSignup,
+  onVerify,
+  onSwitchMode
+}) => {
   const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+
+  const primaryActionText = useMemo(() => {
+    if (mode === 'signup') return t('auth.signUp');
+    if (mode === 'verify') return t('auth.verify');
+    return t('auth.signInToContinue');
+  }, [mode, t]);
+
+  const secondaryActionText = useMemo(() => {
+    if (mode === 'signup') return t('auth.signIn');
+    return t('auth.createAccount');
+  }, [mode, t]);
   
   return (
     <div className="w-full h-screen relative overflow-hidden">
@@ -75,21 +105,87 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             ))}
           </div>
 
-          {/* Login Button */}
+          {/* Auth Form */}
+          <div className="space-y-4 mb-6">
+            {mode !== 'verify' && (
+              <>
+                {mode === 'signup' && (
+                  <GlassInput
+                    value={name}
+                    onChange={setName}
+                    placeholder={t('auth.name') || 'Name'}
+                    type="text"
+                    disabled={isLoading}
+                  />
+                )}
+                <GlassInput
+                  value={email}
+                  onChange={setEmail}
+                  placeholder={t('auth.email') || 'Email'}
+                  type="email"
+                  disabled={isLoading}
+                />
+                <GlassInput
+                  value={password}
+                  onChange={setPassword}
+                  placeholder={t('auth.password') || 'Password'}
+                  type="password"
+                  disabled={isLoading}
+                />
+              </>
+            )}
+
+            {mode === 'verify' && (
+              <GlassInput
+                value={code}
+                onChange={setCode}
+                placeholder={t('auth.verificationCode') || 'Verification code'}
+                type="text"
+                disabled={isLoading}
+              />
+            )}
+
+            {error && (
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Primary Action */}
           <button
-            onClick={onLogin}
-            className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 animate-fade-in-delay-4"
+            onClick={() => {
+              if (mode === 'signup') {
+                onSignup(email.trim(), password, name.trim() || undefined);
+              } else if (mode === 'verify') {
+                onVerify(code.trim());
+              } else {
+                onLogin(email.trim(), password);
+              }
+            }}
+            disabled={isLoading || (mode === 'verify' ? !code.trim() : !email.trim() || !password)}
+            className="group relative w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.01] hover:shadow-2xl hover:shadow-blue-500/25 animate-fade-in-delay-4 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span className="relative z-10 flex items-center justify-center space-x-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
-              <span>{t('auth.signInToContinue')}</span>
+              <span>{primaryActionText}</span>
             </span>
             
             {/* Button Glow Effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity blur-xl"></div>
           </button>
+
+          {/* Secondary Action */}
+          {mode !== 'verify' && (
+            <button
+              onClick={() => onSwitchMode(mode === 'signup' ? 'login' : 'signup')}
+              className="mt-4 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              {secondaryActionText}
+            </button>
+          )}
 
           {/* Security Notice */}
           <p className="text-xs text-gray-500 mt-6 animate-fade-in-delay-5">

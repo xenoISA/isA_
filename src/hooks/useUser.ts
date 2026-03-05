@@ -261,7 +261,7 @@ export const useUser = (): UseUserReturn => {
         })
       );
       
-      const consumptionResult = await authenticatedUserService.consumeCredits(auth0_id, consumption);
+      const consumptionResult = await authenticatedUserService.consumeCredits(auth0_id, consumption.amount, consumption.reason);
       
       // Update user with remaining credits from result
       if (externalUser) {

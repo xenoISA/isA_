@@ -19,6 +19,7 @@
 import React, { useState, useCallback } from 'react';
 import { useHILActions, useCurrentHILInterrupt } from '../../../stores/useChatStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { useAuthToken } from '../../../hooks/useAuthToken';
 
 // ================================================================================
 // 类型定义
@@ -55,6 +56,7 @@ export const HILAuthorizationDialog: React.FC<HILAuthorizationDialogProps> = ({
   const { resumeHILExecution } = useHILActions();
   const currentInterrupt = useCurrentHILInterrupt();
   const sessionStore = useSessionStore.getState();
+  const { getToken } = useAuthToken();
 
   // 解析授权数据
   const authData: AuthorizationData = interruptData?.data?.original_response?.data || interruptData?.data?.tool_args || {};
@@ -91,15 +93,18 @@ export const HILAuthorizationDialog: React.FC<HILAuthorizationDialogProps> = ({
 
       const currentSession = sessionStore.getCurrentSession();
       const sessionId = currentSession?.id || 'default';
+      
+      // 获取真实的authToken
+      const authToken = await getToken();
 
-      await resumeHILExecution(sessionId, resumeValue);
+      await resumeHILExecution(sessionId, resumeValue, authToken);
       onClose();
     } catch (error) {
       console.error('❌ Authorization approval failed:', error);
     } finally {
       setIsProcessing(false);
     }
-  }, [currentInterrupt, approvalReason, resumeHILExecution, sessionStore, onClose]);
+  }, [currentInterrupt, approvalReason, resumeHILExecution, sessionStore, onClose, getToken]);
 
   // 处理拒绝
   const handleReject = useCallback(async () => {
@@ -114,15 +119,18 @@ export const HILAuthorizationDialog: React.FC<HILAuthorizationDialogProps> = ({
 
       const currentSession = sessionStore.getCurrentSession();
       const sessionId = currentSession?.id || 'default';
+      
+      // 获取真实的authToken
+      const authToken = await getToken();
 
-      await resumeHILExecution(sessionId, resumeValue);
+      await resumeHILExecution(sessionId, resumeValue, authToken);
       onClose();
     } catch (error) {
       console.error('❌ Authorization rejection failed:', error);
     } finally {
       setIsProcessing(false);
     }
-  }, [currentInterrupt, rejectionReason, resumeHILExecution, sessionStore, onClose]);
+  }, [currentInterrupt, rejectionReason, resumeHILExecution, sessionStore, onClose, getToken]);
 
   if (!isOpen || !interruptData) return null;
 

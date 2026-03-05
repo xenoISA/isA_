@@ -47,8 +47,9 @@ export const useDeviceType = (): DeviceInfo => {
     const touchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     
     // Device type detection based on screen width and touch support
-    const isMobile = width <= 768 || (touchSupport && width <= 1024);
-    const isTablet = !isMobile && width <= 1024 && touchSupport;
+    // Treat classic phone widths as mobile; reserve 769–1024 touch devices for tablets
+    const isMobile = width <= 768;
+    const isTablet = width > 768 && width <= 1024 && touchSupport;
     const isDesktop = !isMobile && !isTablet;
     
     const deviceType = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';
@@ -88,8 +89,8 @@ export const useDeviceType = (): DeviceInfo => {
       const pixelRatio = window.devicePixelRatio || 1;
       const touchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       
-      const isMobile = width <= 768 || (touchSupport && width <= 1024);
-      const isTablet = !isMobile && width <= 1024 && touchSupport;
+      const isMobile = width <= 768;
+      const isTablet = width > 768 && width <= 1024 && touchSupport;
       const isDesktop = !isMobile && !isTablet;
       
       const deviceType = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';

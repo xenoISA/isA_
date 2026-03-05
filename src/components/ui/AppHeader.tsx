@@ -29,7 +29,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const currentAppData = availableApps.find(app => app.id === currentApp);
 
   return (
-    <header className="flex items-center justify-between w-full h-full px-4 py-2">
+    <header className="flex items-center justify-between w-full h-full px-4 py-2 header-actions">
       {/* Left Section - Brand & Active App */}
       <div className="flex items-center gap-6">
         {/* Brand Logo & Title */}
@@ -48,7 +48,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       </div>
       
       {/* Right Section - Status & Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 toolbar">
 
         {/* Theme Toggle */}
         <ThemeToggle size="sm" className="mx-2" />
@@ -62,7 +62,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         />
         
         {/* Toolbar Icons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 btn-group">
           <CalendarToolbar />
           <TaskToolbar />
           <NotificationToolbar />

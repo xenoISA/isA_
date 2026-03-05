@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Avatar } from './Avatar';
+import { UrlDisplayComponent } from '../../ui/chat/UrlDisplayComponent';
 
 export interface MessageBubbleProps {
   content: string;
@@ -207,6 +208,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </span>
             )}
           </div>
+          
+          {/* URL Display - only for assistant messages */}
+          {role === 'assistant' && !isStreaming && (
+            <div className="relative mt-3">
+              <UrlDisplayComponent content={content} className="text-sm" />
+            </div>
+          )}
           
           {/* Streaming status - 只显示LLM token状态 */}
           {shouldShowBubbleStreamingStatus() && (

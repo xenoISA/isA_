@@ -102,7 +102,7 @@ const ClassicAutomationDemo: React.FC = () => {
       case 'dropdown':
         return (
           <Dropdown
-            options={field.options || []}
+            options={(field.options || []).map(opt => ({ id: opt.value, label: opt.label, value: opt.value }))}
             value={value}
             onChange={(val) => setFormData(prev => ({ ...prev, [field.id]: val }))}
             placeholder={`选择${field.label}`}

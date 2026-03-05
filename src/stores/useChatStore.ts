@@ -51,6 +51,7 @@ import { ChatMetadata, ChatMessage, StreamingStatus } from '../types/chatTypes';
 import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
+import { authTokenStore } from './authTokenStore';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
 import { createContentParser, ParsedContent } from '../api/parsing/ContentParser';
@@ -670,7 +671,7 @@ export const useChatStore = create<ChatStore>()(
         }
 
         // 获取认证信息 (centralized token key)
-        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || null;
+        const authToken = token || authTokenStore.getToken() || null;
         if (!authToken) {
           throw new Error('No auth token available for HIL resume');
         }
@@ -769,7 +770,7 @@ export const useChatStore = create<ChatStore>()(
         logger.info(LogCategory.CHAT_FLOW, 'Checking execution status', { sessionId });
 
         // 获取认证信息 (centralized token key, GATEWAY_CONFIG imported at top)
-        const authToken = token || localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) || null;
+        const authToken = token || authTokenStore.getToken() || null;
         if (!authToken) {
           throw new Error('No auth token available for execution status check');
         }
