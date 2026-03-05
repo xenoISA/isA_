@@ -43,7 +43,8 @@ import {
   useKnowledgeActions 
 } from '../stores/useWidgetStores';
 import { useAuth } from '../hooks/useAuth';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+const log = createLogger('SessionModule');
 import { useSessionHandler } from '../components/core/SessionHandler';
 // 直接使用useSessionStore，不再依赖SessionProvider
 import { ChatSession } from '../hooks/useSession'; // 只导入类型
@@ -404,7 +405,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   
   // 仅在组件挂载时初始化一次，移除可能导致循环的依赖
   useEffect(() => {
-    console.log('🗂️ SessionModule: Initializing sessions (mount only)');
+    log.info('Initializing sessions (mount only)');
     
     // 从localStorage加载会话（内部已包含去重逻辑）
     sessionStorageActions.loadFromStorage();
@@ -431,7 +432,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   
   // 新增：当session加载完成后，自动加载当前session的消息到chat store
   useEffect(() => {
-    console.log('🔍 SessionModule: Auto-load effect triggered', {
+    log.debug('Auto-load effect triggered', {
       isLoading,
       sessionsLength: sessions.length,
       hasCurrentSession: !!currentSession,
@@ -440,7 +441,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
     
     // 当sessions加载完成且有当前session时，自动加载消息
     if (!isLoading && currentSession) {
-      console.log('📋 SessionModule: Auto-loading current session messages', {
+      log.debug('Auto-loading current session messages', {
         sessionId: currentSession.id,
         sessionMessageCount: currentSession.messages?.length || 0
       });
@@ -459,7 +460,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   useEffect(() => {
     // 如果sessions已加载但没有currentSession，强制选择第一个
     if (!isLoading && sessions.length > 0 && !currentSession) {
-      console.log('⚠️ SessionModule: Sessions loaded but no current session, selecting first', {
+      log.warn('Sessions loaded but no current session, selecting first', {
         sessionsLength: sessions.length,
         firstSessionId: sessions[0]?.id
       });

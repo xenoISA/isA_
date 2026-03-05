@@ -16,6 +16,9 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createLogger, LogCategory } from '../utils/logger';
+
+const log = createLogger('LanguageStore', LogCategory.SYSTEM);
 
 // ================================================================================
 // Types
@@ -79,7 +82,7 @@ export const useLanguageStore = create<LanguageState>()(
       
       // Actions
       setLanguage: (language: SupportedLanguage) => {
-        console.log('🌐 Language changed:', language);
+        log.info('Language changed', { language });
         
         set({ currentLanguage: language });
         

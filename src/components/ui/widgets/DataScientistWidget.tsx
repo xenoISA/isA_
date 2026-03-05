@@ -17,7 +17,9 @@
  * - Data-specific actions (export, visualize, share)
  */
 import React, { useState } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { BaseWidget, OutputHistoryItem, EditAction, ManagementAction, EmptyStateConfig } from './BaseWidget';
+const log = createLogger('DataScientistWidget');
 
 // Data analysis modes
 interface DataMode {
@@ -145,7 +147,7 @@ const DataScientistInputArea: React.FC<DataScientistWidgetProps> = ({
       const bestMode = detectBestMode(query);
       if (bestMode.id !== selectedMode.id) {
         setSelectedMode(bestMode);
-        console.log('🔬 Mode recommendation updated:', bestMode.id);
+        log.debug('Mode recommendation updated', bestMode.id);
       }
     }
   }, [query, selectedMode.id]);
@@ -154,7 +156,7 @@ const DataScientistInputArea: React.FC<DataScientistWidgetProps> = ({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('🔬 Data file uploaded:', file.name);
+      log.info('Data file uploaded', file.name);
       setUploadedFile(file);
     }
   };
@@ -163,7 +165,7 @@ const DataScientistInputArea: React.FC<DataScientistWidgetProps> = ({
   const handleDataAnalysis = async () => {
     if (!query.trim() || !onAnalyzeData || isAnalyzing) return;
     
-    console.log('🔬 Starting data analysis with mode:', selectedMode.name);
+    log.info('Starting data analysis with mode', selectedMode.name);
     
     try {
       const params: DataScientistWidgetParams = {
@@ -175,9 +177,9 @@ const DataScientistInputArea: React.FC<DataScientistWidgetProps> = ({
       
       await onAnalyzeData(params);
       
-      console.log('🚀 Data analysis request sent with mode:', selectedMode.name);
+      log.info('Data analysis request sent with mode', selectedMode.name);
     } catch (error) {
-      console.error('Data analysis failed:', error);
+      log.error('Data analysis failed', error);
     }
   };
 
@@ -203,7 +205,7 @@ const DataScientistInputArea: React.FC<DataScientistWidgetProps> = ({
             onChange={(e) => {
               const newValue = e.target.value;
               if (newValue !== query) {
-                console.log('🔬 Query changed');
+                log.debug('Query changed');
               }
               setQuery(newValue);
             }}
@@ -253,9 +255,9 @@ const DataScientistInputArea: React.FC<DataScientistWidgetProps> = ({
               onClick={() => {
                 if (mode.isActive) {
                   setSelectedMode(mode);
-                  console.log('🔬 Mode selected:', mode.name);
+                  log.debug('Mode selected', mode.name);
                 } else {
-                  console.log('🔬 Mode disabled:', mode.name);
+                  log.debug('Mode disabled', mode.name);
                 }
               }}
               disabled={!mode.isActive}
@@ -364,7 +366,7 @@ export const DataScientistWidget: React.FC<DataScientistWidgetProps> = ({
       icon: '📊',
       onClick: (content) => {
         // Open visualization for data
-        console.log('Opening visualization for data:', content);
+        log.info('Opening visualization for data', content);
       }
     }
   ];
@@ -386,21 +388,21 @@ export const DataScientistWidget: React.FC<DataScientistWidgetProps> = ({
       id: 'db',
       label: 'DB',
       icon: '🗋',
-      onClick: () => console.log('🗋 Database mode - coming soon'),
+      onClick: () => log.info('Database mode - coming soon'),
       disabled: true
     },
     {
       id: 'url',
       label: 'URL',
       icon: '🔗',
-      onClick: () => console.log('🔗 URL mode - coming soon'),
+      onClick: () => log.info('URL mode - coming soon'),
       disabled: true
     },
     {
       id: 'other',
       label: 'Other',
       icon: '📄',
-      onClick: () => console.log('📄 Other mode - coming soon'),
+      onClick: () => log.info('Other mode - coming soon'),
       disabled: true
     }
   ];

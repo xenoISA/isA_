@@ -15,7 +15,10 @@
  */
 
 import React, { useState } from 'react';
+import { createLogger } from '../../utils/logger';
 import UserButtonContainer from '../ui/user/UserButtonContainer';
+
+const log = createLogger('OrganizationFeatureShowcase');
 import OrganizationMembersPanel from '../ui/organization/OrganizationMembersPanel';
 import PermissionGuard, { 
   OwnerOnly, 
@@ -73,28 +76,28 @@ export const OrganizationFeatureShowcase: React.FC = () => {
 
   // Mock handlers (in real app, these come from modules)
   const handleInviteMember = async (data: any) => {
-    console.log('Inviting member:', data);
+    log.info('Inviting member:', data);
     // Would call organizationModule.inviteMember(organizationId, data)
   };
 
   const handleUpdateMemberRole = async (userId: string, role: string) => {
-    console.log('Updating member role:', { userId, role });
+    log.info('Updating member role:', { userId, role });
   };
 
   const handleRemoveMember = async (userId: string) => {
-    console.log('Removing member:', userId);
+    log.info('Removing member:', userId);
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
-    console.log('Cancelling invitation:', invitationId);
+    log.info('Cancelling invitation:', invitationId);
   };
 
   const handleResendInvitation = async (invitationId: string) => {
-    console.log('Resending invitation:', invitationId);
+    log.info('Resending invitation:', invitationId);
   };
 
   const handleRefresh = async () => {
-    console.log('Refreshing data...');
+    log.info('Refreshing data...');
   };
 
   return (

@@ -14,7 +14,9 @@
 
 import { useCallback, useMemo } from 'react';
 import { useAuthContext } from '../providers/AuthProvider';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('useAuth');
 
 // ================================================================================
 // Auth Hook Interface
@@ -173,9 +175,9 @@ export const useAuthLegacy = () => {
     currentPlan: 'unknown',
     hasCredits: false,
     isPremium: false,
-    refreshUser: async () => { console.warn('refreshUser is deprecated, use UserModule instead'); },
-    initializeUser: async () => { console.warn('initializeUser is deprecated, use UserModule instead'); },
-    checkHealth: async () => { console.warn('checkHealth is deprecated, use UserModule instead'); }
+    refreshUser: async () => { log.warn('refreshUser is deprecated, use UserModule instead'); },
+    initializeUser: async () => { log.warn('initializeUser is deprecated, use UserModule instead'); },
+    checkHealth: async () => { log.warn('checkHealth is deprecated, use UserModule instead'); }
   };
 };
 

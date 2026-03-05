@@ -8,7 +8,8 @@
  */
 
 import React, { useState } from 'react';
-import { 
+import { createLogger } from '../../../utils/logger';
+import {
   ContentRenderer, 
   StatusRenderer, 
   Button,
@@ -40,6 +41,8 @@ import {
   GlassMessageBubble,
   GlassChatInput
 } from '../index';
+
+const log = createLogger('ComponentDemo');
 
 // 内部组件，使用Toast
 const ComponentDemoContent: React.FC = () => {
@@ -237,7 +240,7 @@ console.log(fibonacci(10));`
                         imagePreview: true,
                         truncate: contentType === 'text' ? 100 : undefined
                       }}
-                      onAction={(action, data) => console.log('Chat action:', action, data)}
+                      onAction={(action, data) => log.debug('Chat action', { action, data })}
                     />
                   </div>
                 </div>
@@ -255,7 +258,7 @@ console.log(fibonacci(10));`
                       saveButton: contentType === 'image',
                       imagePreview: true
                     }}
-                    onAction={(action, data) => console.log('Widget action:', action, data)}
+                    onAction={(action, data) => log.debug('Widget action', { action, data })}
                   />
                 </div>
 
@@ -273,7 +276,7 @@ console.log(fibonacci(10));`
                       expandButton: true,
                       truncate: 200
                     }}
-                    onAction={(action, data) => console.log('Artifact action:', action, data)}
+                    onAction={(action, data) => log.debug('Artifact action', { action, data })}
                   />
                 </div>
 

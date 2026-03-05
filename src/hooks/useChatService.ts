@@ -8,7 +8,10 @@
  */
 
 import { useChatService as useAIChatService } from '../providers/AIProvider';
+import { createLogger } from '../utils/logger';
 import { ChatService } from '../api/chatService';
+
+const log = createLogger('useChatService');
 
 // 创建一个全局变量来存储当前的 ChatService 实例
 let globalChatServiceInstance: ChatService | null = null;
@@ -18,9 +21,9 @@ let globalChatServiceInstance: ChatService | null = null;
  * 由 AIProvider 调用
  */
 export const setChatServiceInstance = (instance: ChatService | null) => {
-  console.log('🔧 setChatServiceInstance called:', { 
-    hasInstance: !!instance, 
-    instanceType: instance?.constructor?.name 
+  log.debug('setChatServiceInstance called:', {
+    hasInstance: !!instance,
+    instanceType: instance?.constructor?.name
   });
   globalChatServiceInstance = instance;
 };

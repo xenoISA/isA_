@@ -3,7 +3,10 @@
  * Ultra-modern glass effects inspired by ChatGPT, Claude, Gemini, and Grok
  */
 import React from 'react';
+import { createLogger } from '../../../utils/logger';
 import { GlassButton, GlassCard } from '../../shared';
+
+const log = createLogger('ModernMobileHeader');
 
 // Simple SVG icon components
 const Menu = ({ className }: { className?: string }) => (
@@ -75,7 +78,7 @@ export const ModernMobileHeader: React.FC<ModernMobileHeaderProps> = ({
           {/* Menu Button */}
           <button
             onClick={() => {
-              console.log('🔥🔥🔥 GLASS MENU CLICKED');
+              log.debug('Glass menu clicked');
               onMenuClick?.();
             }}
             className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10 hover:bg-white/15 border border-white/20 transition-all duration-200"
@@ -114,7 +117,7 @@ export const ModernMobileHeader: React.FC<ModernMobileHeaderProps> = ({
           {showUserAvatar && (
             <button
               onClick={() => {
-                console.log('🔥🔥🔥 GLASS USER AVATAR CLICKED');
+                log.debug('Glass user avatar clicked');
                 onUserAvatarClick?.();
               }}
               className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 border border-white/20 transition-all duration-200 shadow-lg"

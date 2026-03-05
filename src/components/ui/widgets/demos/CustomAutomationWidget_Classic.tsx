@@ -10,9 +10,11 @@
  */
 
 import React, { useState } from 'react';
+import { createLogger } from '../../../../utils/logger';
 import { BaseWidget } from '../BaseWidget';
 import { Button } from '../../../shared/ui/Button';
 import { Dropdown } from '../../../shared/widgets/Dropdown';
+const log = createLogger('ClassicAutomationDemo');
 
 interface AutomationField {
   id: string;
@@ -189,21 +191,21 @@ const ClassicAutomationDemo: React.FC = () => {
       id: 'schedule',
       label: '定时执行',
       icon: '⏰',
-      onClick: () => console.log('Schedule'),
+      onClick: () => log.info('Schedule'),
       variant: 'secondary' as const
     },
     {
       id: 'test',
       label: '测试运行',
       icon: '🧪',
-      onClick: () => console.log('Test'),
+      onClick: () => log.info('Test'),
       variant: 'secondary' as const
     },
     {
       id: 'history',
       label: '执行历史',
       icon: '📊',
-      onClick: () => console.log('History'),
+      onClick: () => log.info('History'),
       variant: 'secondary' as const
     }
   ];

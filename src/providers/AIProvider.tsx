@@ -28,7 +28,10 @@
  * - Use useConnectionStatus() to get connection state
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createLogger } from '../utils/logger';
 import { ChatService } from '../api/chatService';
+
+const log = createLogger('AIProvider');
 import { setChatServiceInstance } from '../hooks/useChatService';
 
 interface AIContextType {
@@ -75,7 +78,7 @@ export const useAIError = () => {
 
 // Keep backward compatibility for existing code
 export const useAI = () => {
-  console.warn('useAI is deprecated, use useChatService instead');
+  log.warn('useAI is deprecated, use useChatService instead');
   return useChatService();
 };
 
@@ -98,7 +101,7 @@ export const AIProvider: React.FC<AIProviderProps> = ({ children }) => {
       setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown initialization error';
-      console.error('AIProvider: ChatService initialization failed', { error: errorMessage });
+      log.error('ChatService initialization failed', { error: errorMessage });
       setError(errorMessage);
       setIsConnected(false);
       setChatServiceInstance(null);

@@ -15,6 +15,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { createLogger } from '../../../utils/logger';
+
+const log = createLogger('CreateOrganizationModal');
 
 export interface CreateOrganizationData {
   name: string;
@@ -123,7 +126,7 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
       
     } catch (error) {
       // Error is handled by parent component
-      console.error('Create organization error:', error);
+      log.error('Create organization error:', error);
     }
   }, [name, domain, plan, billingEmail, description, validateName, validateEmail, onCreate]);
 

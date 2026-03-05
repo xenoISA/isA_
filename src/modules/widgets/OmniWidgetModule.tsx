@@ -21,6 +21,8 @@ import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { OmniWidgetParams, OmniWidgetResult } from '../../types/widgetTypes';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useOmniState } from '../../stores/useWidgetStores';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('OmniWidget');
 
 interface OmniWidgetModuleProps {
   triggeredInput?: string;
@@ -141,11 +143,7 @@ const prepareOmniTemplateParams = (params: OmniWidgetParams & {
     reference_text: referenceText || `Create ${contentType} content with ${tone} tone. Focus on ${topicForMapping} domain expertise.`
   };
   
-  console.log('⚡ OMNI_MODULE: Prepared template params for topic', topicForMapping, ':', {
-    template_id: final_template_id,
-    prompt_args,
-    originalContentType: contentType
-  });
+  log.debug('Prepared template params', { topic: topicForMapping, template_id: final_template_id, prompt_args, originalContentType: contentType });
   
   return {
     template_id: final_template_id,
@@ -240,7 +238,7 @@ const omniWidgetConfig = createWidgetConfig({
       icon: '📋',
       onClick: (content) => {
         navigator.clipboard.writeText(content);
-        console.log('📋 Content copied to clipboard');
+        log.info('Content copied to clipboard');
       }
     },
     {
@@ -248,7 +246,7 @@ const omniWidgetConfig = createWidgetConfig({
       label: 'Export MD',
       icon: '📝',
       onClick: (content) => {
-        console.log('📝 Exporting as Markdown:', content);
+        log.info('Exporting as Markdown');
       }
     },
     {
@@ -256,7 +254,7 @@ const omniWidgetConfig = createWidgetConfig({
       label: 'Refine',
       icon: '✨', 
       onClick: (content) => {
-        console.log('✨ Refining content:', content);
+        log.info('Refining content');
       }
     }
   ],
@@ -265,7 +263,7 @@ const omniWidgetConfig = createWidgetConfig({
       id: 'content_types',
       label: 'Content Types',
       icon: '📑',
-      onClick: () => console.log('📑 Content type selector'),
+      onClick: () => log.info('Content type selector'),
       variant: 'primary' as const,
       disabled: false
     },
@@ -273,21 +271,21 @@ const omniWidgetConfig = createWidgetConfig({
       id: 'templates',
       label: 'Templates',
       icon: '📋',
-      onClick: () => console.log('📋 Content templates library'),
+      onClick: () => log.info('Content templates library'),
       disabled: false
     },
     {
       id: 'tone_style',
       label: 'Tone & Style', 
       icon: '🎨',
-      onClick: () => console.log('🎨 Tone and style settings'),
+      onClick: () => log.info('Tone and style settings'),
       disabled: false
     },
     {
       id: 'ai_models',
       label: 'AI Models',
       icon: '🧠',
-      onClick: () => console.log('🧠 AI model selection - coming soon'),
+      onClick: () => log.info('AI model selection - coming soon'),
       disabled: true
     }
   ]
@@ -325,7 +323,7 @@ export const OmniWidgetModule: React.FC<OmniWidgetModuleProps> = ({
     }];
   }, [generatedContent, lastParams]);
   
-  console.log('⚡ OMNI_MODULE: Converting generated content to output history:', {
+  log.debug('Converting generated content to output history', {
     hasContent: !!generatedContent,
     outputHistoryCount: outputHistory.length,
     latestResult: outputHistory[0]?.title
@@ -361,12 +359,12 @@ export const OmniWidgetModule: React.FC<OmniWidgetModuleProps> = ({
                 templateParams // Add template configuration
               };
               
-              console.log('⚡ OMNI_MODULE: Sending enriched params to store:', enrichedParams);
+              log.debug('Sending enriched params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
             },
             // Add clear content function
             onClearContent: () => {
-              console.log('⚡ OMNI_MODULE: Clearing content');
+              log.info('Clearing content');
               moduleProps.onClearHistory();
             },
             // BaseWidget state with converted data  

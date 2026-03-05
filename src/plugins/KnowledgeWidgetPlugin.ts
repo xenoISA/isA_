@@ -16,7 +16,9 @@
 
 import { WidgetPlugin, PluginInput, PluginOutput } from '../types/pluginTypes';
 import { AppId } from '../types/appTypes';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('KnowledgeWidgetPlugin', LogCategory.ARTIFACT_CREATION);
 
 /**
  * Knowledge Widget 插件实现
@@ -180,13 +182,13 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
 
         const callbacks = {
           onStreamContent: (contentChunk: string) => {
-            console.log(`🧠 KNOWLEDGE_PLUGIN: onStreamContent chunk:`, contentChunk?.substring(0, 50) + '...');
+            log.debug('onStreamContent chunk', { preview: contentChunk?.substring(0, 50) });
             accumulatedContent += contentChunk;
           },
           
           onStreamComplete: (finalContent?: string) => {
             messageCount++;
-            console.log(`🧠 KNOWLEDGE_PLUGIN: onStreamComplete - Final message (${messageCount} total):`, finalContent?.substring(0, 100) + '...');
+            log.debug(`onStreamComplete - Final message (${messageCount} total)`, { preview: finalContent?.substring(0, 100) });
             
             // Only process on [DONE] or when we have substantial accumulated content
             if (finalContent === '[DONE]' || accumulatedContent.length > 100) {
@@ -194,7 +196,7 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
               
               // Use accumulated streaming content as the real result
               const completeMessage = accumulatedContent.trim();
-              console.log(`🧠 KNOWLEDGE_PLUGIN: Processing final result with accumulated content (${completeMessage.length} chars):`, completeMessage.substring(0, 100) + '...');
+              log.debug(`Processing final result with accumulated content (${completeMessage.length} chars)`, { preview: completeMessage.substring(0, 100) });
             
               if (completeMessage) {
                 knowledgeResult = completeMessage;
@@ -205,16 +207,16 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
               }
             } else {
               // Skip this onStreamComplete call - waiting for the final one
-              console.log(`🧠 KNOWLEDGE_PLUGIN: Skipping intermediate completion (${finalContent}), waiting for [DONE] or substantial content...`);
+              log.debug(`Skipping intermediate completion (${finalContent}), waiting for [DONE] or substantial content`);
             }
           },
           
           onStreamStart: (messageId: string, status?: string) => {
-            console.log(`🧠 KNOWLEDGE_PLUGIN: onStreamStart:`, { messageId, status });
+            log.debug('onStreamStart', { messageId, status });
           },
           
           onStreamStatus: (status: string) => {
-            console.log(`🧠 KNOWLEDGE_PLUGIN: onStreamStatus:`, status);
+            log.debug('onStreamStatus', { status });
           },
           
           onArtifactCreated: (artifact: any) => {

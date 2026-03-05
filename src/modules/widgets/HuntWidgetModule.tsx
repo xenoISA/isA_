@@ -21,6 +21,8 @@ import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { HuntWidgetParams, HuntWidgetResult } from '../../types/widgetTypes';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useHuntState } from '../../stores/useWidgetStores';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('HuntWidget');
 
 interface HuntWidgetModuleProps {
   triggeredInput?: string;
@@ -75,10 +77,7 @@ const prepareHuntTemplateParams = (params: HuntWidgetParams) => {
     })
   };
   
-  console.log('🔍 HUNT_MODULE: Prepared template params for mode', category, ':', {
-    template_id: mapping.template_id,
-    prompt_args
-  });
+  log.debug('Prepared template params', { category, template_id: mapping.template_id, prompt_args });
   
   return {
     template_id: mapping.template_id,
@@ -144,7 +143,7 @@ const huntWidgetConfig = createWidgetConfig({
       label: 'Save',
       icon: '🔖', 
       onClick: (content) => {
-        console.log('🔖 Bookmarking search result:', content);
+        log.info('Bookmarking search result');
       }
     }
   ],
@@ -153,7 +152,7 @@ const huntWidgetConfig = createWidgetConfig({
       id: 'search',
       label: 'Search',
       icon: '🔍',
-      onClick: () => console.log('🔍 Search mode active'),
+      onClick: () => log.info('Search mode active'),
       variant: 'primary' as const,
       disabled: false
     },
@@ -161,21 +160,21 @@ const huntWidgetConfig = createWidgetConfig({
       id: 'crawler',
       label: 'Crawler',
       icon: '🕷️',
-      onClick: () => console.log('🕷️ Crawler mode - coming soon'),
+      onClick: () => log.info('Crawler mode - coming soon'),
       disabled: true
     },
     {
       id: 'automation',
       label: 'Automation', 
       icon: '🤖',
-      onClick: () => console.log('🤖 Automation mode - coming soon'),
+      onClick: () => log.info('Automation mode - coming soon'),
       disabled: true
     },
     {
       id: 'other',
       label: 'Other',
       icon: '⚙️',
-      onClick: () => console.log('⚙️ Other tools - coming soon'),
+      onClick: () => log.info('Other tools - coming soon'),
       disabled: true
     }
   ]
@@ -213,9 +212,7 @@ export const HuntWidgetModule: React.FC<HuntWidgetModuleProps> = ({
     }));
   }, [searchResults, lastQuery]);
   
-  console.log('🔍 HUNT_MODULE: Converting search results to output history:', {
-    searchResultsType: typeof searchResults,
-    searchResultsIsArray: Array.isArray(searchResults),
+  log.debug('Converting search results to output history', {
     searchResultsCount: Array.isArray(searchResults) ? searchResults.length : 0,
     outputHistoryCount: outputHistory.length,
     latestResult: outputHistory[0]?.title
@@ -251,7 +248,7 @@ export const HuntWidgetModule: React.FC<HuntWidgetModuleProps> = ({
                 templateParams // Add template configuration
               };
               
-              console.log('🔍 HUNT_MODULE: Sending enriched params to store:', enrichedParams);
+              log.debug('Sending enriched params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
             },
             // BaseWidget state with converted data

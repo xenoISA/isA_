@@ -33,7 +33,9 @@
 import React, { useCallback } from 'react';
 import { useUserStore } from '../stores/useUserStore';
 import { UserService } from '../api/userService';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('useUser');
 import { 
   ExternalUser, 
   CreateExternalUserData, 
@@ -123,7 +125,7 @@ export const useUser = (): UseUserReturn => {
     const used = total - remaining;
     const usageRatio = total > 0 ? used / total : 0;
     
-    console.log('💳 useUser: Credit insights computed', {
+    log.debug('Credit insights computed', {
       remaining,
       total,
       used,
@@ -174,7 +176,7 @@ export const useUser = (): UseUserReturn => {
       setLoading(true);
       setUserError(null);
       
-      console.log('📡 useUser: Fetching current user data with auth token...');
+      log.info('Fetching current user data with auth token...');
       logger.info(LogCategory.USER_AUTH, 'Fetching current user');
       
       // 🔑 创建带认证的userService实例
@@ -186,7 +188,7 @@ export const useUser = (): UseUserReturn => {
         })
       );
       
-      console.log('🔑 useUser: Using authenticated userService with token:', {
+      log.debug('Using authenticated userService with token:', {
         tokenLength: accessToken?.length,
         tokenStart: accessToken?.substring(0, 20) + '...',
         timestamp: new Date().toISOString()
@@ -200,7 +202,7 @@ export const useUser = (): UseUserReturn => {
         const previousCredits = externalUser?.credits ?? -1;
         const newCredits = user.credits;
         
-        console.log('📡 useUser: ✅ User data fetched successfully', {
+        log.info('User data fetched successfully', {
           auth0_id: user.auth0_id,
           creditsChange: {
             from: previousCredits,
@@ -217,13 +219,13 @@ export const useUser = (): UseUserReturn => {
           credits: user.credits
         });
       } else {
-        console.warn('📡 useUser: No current user data returned from service');
+        log.warn('No current user data returned from service');
         logger.warn(LogCategory.USER_AUTH, 'No current user found');
       }
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch user';
-      console.error('📡 useUser: ❌ Failed to fetch current user', {
+      log.error('Failed to fetch current user', {
         error: errorMessage,
         executionTime: Date.now() - startTime + 'ms',
         hasAccessToken: !!accessToken,

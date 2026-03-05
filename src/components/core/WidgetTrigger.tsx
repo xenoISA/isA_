@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAppStore } from '../../stores/useAppStore';
 import { AppId } from '../../types/appTypes';
-import { logger, LogCategory } from '../../utils/logger';
+import { logger, LogCategory, createLogger } from '../../utils/logger';
+const log = createLogger('AppTriggerHandler');
 
 interface AppTriggerHandlerProps {
   availableApps: Array<{
@@ -33,17 +34,17 @@ export const AppTriggerHandler: React.FC<AppTriggerHandlerProps> = ({
       const matchingTrigger = app.triggers.find(trigger => lowerMessage.includes(trigger));
       if (matchingTrigger) {
         logger.trackAppTrigger(app.id, matchingTrigger, message);
-        console.log('🎯 App trigger detected!', { 
-          app: app.name, 
-          trigger: matchingTrigger, 
-          currentApp, 
-          showRightSidebar 
+        log.info('App trigger detected', {
+          app: app.name,
+          trigger: matchingTrigger,
+          currentApp,
+          showRightSidebar
         });
         
         // If the app is already open, let chat send normally
         if (currentApp === app.id && showRightSidebar) {
           logger.info(LogCategory.USER_INPUT, 'App already open, chat sends to API', { appId: app.id });
-          console.log('✅ App already open, chat will send to API');
+          log.info('App already open, chat will send to API');
           return null;
         }
         
@@ -52,14 +53,14 @@ export const AppTriggerHandler: React.FC<AppTriggerHandlerProps> = ({
           appId: app.id, 
           trigger: matchingTrigger 
         });
-        console.log('📱 Opening app, blocking chat API request - app will handle');
+        log.info('Opening app, blocking chat API request - app will handle');
         
         setTimeout(() => {
           setCurrentApp(app.id as AppId);
           setShowRightSidebar(true);
           setTriggeredAppInput(message);
           logger.info(LogCategory.APP_TRIGGER, 'App opened successfully', { appId: app.id });
-          console.log('✨ App opened and will handle API request:', app.id);
+          log.info('App opened and will handle API request', app.id);
         }, 1000);
         
         onAppTriggered?.(app.id, message);

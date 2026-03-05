@@ -16,7 +16,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { useHILStatus, useCurrentHILInterrupt } from '../../../stores/useChatStore';
+
+const log = createLogger('HILInteractionManager');
 import { HILAuthorizationDialog } from './HILAuthorizationDialog';
 import { HILInputDialog } from './HILInputDialog';
 
@@ -46,7 +49,7 @@ export const HILInteractionManager: React.FC<HILInteractionManagerProps> = ({
     if (hilStatus === 'waiting_for_human' && currentInterrupt) {
       const interruptType = currentInterrupt.interrupt?.data?.raw_interrupt?.type || currentInterrupt.interrupt?.interrupt_type;
       
-      console.log('🤖 HIL_MANAGER: HIL interrupt detected:', {
+      log.info('HIL interrupt detected:', {
         type: interruptType,
         hilStatus,
         interruptData: currentInterrupt
@@ -61,7 +64,7 @@ export const HILInteractionManager: React.FC<HILInteractionManagerProps> = ({
         setIsDialogOpen(true);
       } else {
         // 未知类型，默认使用输入对话框
-        console.warn('🤖 HIL_MANAGER: Unknown interrupt type, defaulting to input dialog:', interruptType);
+        log.warn('Unknown interrupt type, defaulting to input dialog:', interruptType);
         setDialogType('input');
         setIsDialogOpen(true);
       }
@@ -102,7 +105,7 @@ export const HILInteractionManager: React.FC<HILInteractionManagerProps> = ({
         );
         
       default:
-        console.warn('🤖 HIL_MANAGER: Unknown dialog type:', dialogType);
+        log.warn('Unknown dialog type:', dialogType);
         return null;
     }
   };

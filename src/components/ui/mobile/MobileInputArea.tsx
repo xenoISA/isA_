@@ -3,6 +3,9 @@
  * Touch-optimized input area with keyboard handling
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createLogger } from '../../../utils/logger';
+
+const log = createLogger('MobileInputArea');
 
 // Simple SVG icon components
 const Send = ({ className }: { className?: string }) => (
@@ -93,7 +96,7 @@ export const MobileInputArea: React.FC<MobileInputAreaProps> = ({
       setAttachedFiles([]);
       setShowActions(false);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      log.error('Failed to send message:', error);
     }
   }, [inputValue, attachedFiles, isLoading, onSendMessage, onSendMultimodalMessage]);
 

@@ -45,7 +45,9 @@ import { useAI } from './providers/AIProvider';
 import { UserButton } from './components/ui/user/UserButton';
 import { LoginScreen } from './components/ui/LoginScreen';
 import { AppArtifact, AppId } from './types/appTypes';
-import { logger, LogCategory } from './utils/logger';
+import { logger, LogCategory, createLogger } from './utils/logger';
+
+const log = createLogger('MainApp');
 
 /**
  * Main App Content Component (inside provider)
@@ -162,10 +164,10 @@ const MainAppContent: React.FC = () => {
   // New chat (now handled by Zustand)
   const handleNewChat = () => {
     logger.info(LogCategory.CHAT_FLOW, 'Starting new chat session');
-    console.log('🔄 Starting new chat...');
+    log.info('Starting new chat...');
     startNewChat();
     logger.info(LogCategory.CHAT_FLOW, 'New chat session started', { chatKey });
-    console.log('✅ New chat session started');
+    log.info('New chat session started');
   };
 
   // 🆕 Enhanced task control handlers with real task state
@@ -176,7 +178,8 @@ const MainAppContent: React.FC = () => {
       isExecutingPlan,
       hasTaskProgress: !!taskProgress
     });
-    console.log('🎛️ Task control action:', action, {
+    log.info('Task control action', {
+      action,
       currentTasks: currentTasks.length,
       executing: isExecutingPlan,
       progress: taskProgress?.toolName
@@ -184,27 +187,27 @@ const MainAppContent: React.FC = () => {
     
     switch (action) {
       case 'pause_all':
-        console.log('⏸️ Pausing all tasks');
+        log.info('Pausing all tasks');
         // 这里可以发送暂停信号给chat service
         // 或者使用useTaskActions来暂停任务
         if (isExecutingPlan) {
-          console.log('  📊 Current execution:', taskProgress?.toolName || 'Processing...');
+          log.info('Current execution:', taskProgress?.toolName || 'Processing...');
           // TODO: Implement pause logic via chat service or task handler
         }
         break;
       case 'resume_all':
-        console.log('▶️ Resuming all tasks');
+        log.info('Resuming all tasks');
         // 恢复任务执行
         if (currentTasks.some(task => task.status === 'pending')) {
-          console.log('  📋 Resuming', currentTasks.filter(t => t.status === 'pending').length, 'pending tasks');
+          log.info('Resuming pending tasks', { count: currentTasks.filter(t => t.status === 'pending').length });
           // TODO: Implement resume logic
         }
         break;
       case 'show_details':
-        console.log('📋 Showing task details');
-        console.log('  📊 Current Tasks:', currentTasks.map(t => `${t.title} (${t.status})`));
-        console.log('  🚀 Progress:', taskProgress ? `${taskProgress.toolName}: ${taskProgress.description}` : 'No active progress');
-        console.log('  🎯 Execution Plan:', isExecutingPlan ? 'Active' : 'Idle');
+        log.info('Showing task details');
+        log.info('Current Tasks:', currentTasks.map(t => `${t.title} (${t.status})`));
+        log.info('Progress:', taskProgress ? `${taskProgress.toolName}: ${taskProgress.description}` : 'No active progress');
+        log.info('Execution Plan:', isExecutingPlan ? 'Active' : 'Idle');
         // TODO: Open detailed task management UI
         break;
     }
@@ -275,7 +278,7 @@ const MainAppContent: React.FC = () => {
 
   // Handle image generation from Dream app
   const handleDreamImageGenerated = (imageUrl: string, prompt: string) => {
-    console.log('🎨 Dream image generated:', { imageUrl, prompt });
+    log.info('Dream image generated:', { imageUrl, prompt });
     
     // Create artifact for the generated image
     const timestamp = Date.now();
@@ -374,7 +377,7 @@ const MainAppContent: React.FC = () => {
                     currentApp,
                     showRightSidebar
                   });
-                  console.log('🔍 Custom renderer called:', { role: message.role, content: message.content?.substring(0, 50) + '...', currentApp, showRightSidebar });
+                  log.debug('Custom renderer called:', { role: message.role, content: message.content?.substring(0, 50) + '...', currentApp, showRightSidebar });
                   
                   return null; // ArtifactModule is now a hook, UI handled elsewhere
                 }
@@ -399,7 +402,7 @@ export const MainApp: React.FC = () => {
     <ErrorBoundary
       onError={(error, errorInfo) => {
         // 发送错误到监控服务（生产环境）
-        console.error('Global error caught:', error, errorInfo);
+        log.error('Global error caught', { error, errorInfo });
       }}
     >
       <AuthProvider>

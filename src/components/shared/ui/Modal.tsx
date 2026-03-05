@@ -17,7 +17,10 @@
  */
 
 import React, { memo, useEffect, useRef, useCallback, forwardRef, useMemo } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { createPortal } from 'react-dom';
+
+const log = createLogger('Modal');
 import { Button, PrimaryButton, SecondaryButton } from './Button';
 
 // ================================================================================
@@ -404,7 +407,7 @@ export const ConfirmModal: React.FC<ModalProps & ConfirmModalProps> = ({
       await onOk();
       modalProps.onClose();
     } catch (error) {
-      console.error('确认操作失败:', error);
+      log.error('确认操作失败:', error);
     } finally {
       setLoading(false);
     }

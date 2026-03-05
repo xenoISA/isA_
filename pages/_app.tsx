@@ -3,6 +3,9 @@ import type { AppProps } from 'next/app'
 import { useEffect } from 'react'
 import { AnalyticsProvider } from '../src/providers/AnalyticsProvider'
 import { isMarketingHostname } from '../src/config/surfaceConfig'
+import { createLogger } from '@/utils/logger'
+
+const log = createLogger('App')
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
@@ -10,7 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
       const isMarketing = isMarketingHostname(hostname)
-      console.log(`🌍 _app.tsx: hostname=${hostname}, isMarketing=${isMarketing}`)
+      log.info(`_app.tsx: hostname=${hostname}, isMarketing=${isMarketing}`)
     }
   }, [])
 

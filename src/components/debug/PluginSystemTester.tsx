@@ -12,13 +12,16 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
+import { createLogger } from '../../utils/logger';
+import {
   getAvailablePlugins, 
   getPluginStats, 
   detectPluginTrigger, 
   executePlugin 
 } from '../../plugins';
 import { PluginInput } from '../../types/pluginTypes';
+
+const log = createLogger('PluginSystemTester');
 
 export const PluginSystemTester: React.FC = () => {
   const [pluginStats, setPluginStats] = useState<any>(null);
@@ -40,7 +43,7 @@ export const PluginSystemTester: React.FC = () => {
   const handleTestTrigger = () => {
     const result = detectPluginTrigger(testMessage);
     setTriggerResult(result);
-    console.log('🧪 Trigger Test Result:', result);
+    log.debug('Trigger Test Result:', result);
   };
 
   const handleTestExecution = async () => {
@@ -63,13 +66,13 @@ export const PluginSystemTester: React.FC = () => {
         }
       };
 
-      console.log('🧪 Executing plugin with input:', input);
+      log.debug('Executing plugin with input:', input);
       const result = await executePlugin(triggerResult.pluginId, input);
       setExecutionResult(result);
-      console.log('🧪 Execution Result:', result);
+      log.debug('Execution Result:', result);
 
     } catch (error) {
-      console.error('🧪 Execution Error:', error);
+      log.error('Execution Error:', error);
       setExecutionResult({
         success: false,
         error: error instanceof Error ? error.message : String(error),

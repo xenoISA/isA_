@@ -335,3 +335,35 @@ export const logger = new MainAppLogger();
 if (typeof window !== 'undefined') {
   (window as any).mainAppLogger = logger;
 }
+
+/**
+ * Module-scoped logger created via createLogger('ModuleName').
+ * Provides a simpler API without requiring LogCategory on every call.
+ */
+export interface ScopedLogger {
+  debug(message: string, data?: any): void;
+  info(message: string, data?: any): void;
+  warn(message: string, data?: any): void;
+  error(message: string, data?: any): void;
+}
+
+/**
+ * Create a module-scoped logger with a simpler API.
+ *
+ * @example
+ * const log = createLogger('ChatModule');
+ * log.info('Message sent', { id });
+ * log.error('Send failed', err);
+ */
+export function createLogger(module: string, category: LogCategory = LogCategory.SYSTEM): ScopedLogger {
+  return {
+    debug: (message: string, data?: any) =>
+      logger.debug(category, `[${module}] ${message}`, data),
+    info: (message: string, data?: any) =>
+      logger.info(category, `[${module}] ${message}`, data),
+    warn: (message: string, data?: any) =>
+      logger.warn(category, `[${module}] ${message}`, data),
+    error: (message: string, data?: any) =>
+      logger.error(category, `[${module}] ${message}`, data),
+  };
+}

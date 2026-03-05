@@ -15,6 +15,8 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createLogger } from '../../../utils/logger';
+const log = createLogger('AutonomousTaskDisplay');
 
 // ================================================================================
 // 基于SSE事件的任务数据接口
@@ -106,7 +108,7 @@ export const AutonomousTaskDisplay: React.FC<AutonomousTaskDisplayProps> = ({
             });
           });
         } catch (error) {
-          console.error('解析工具调用失败:', error);
+          log.error('Failed to parse tool calls', error);
         }
       }
     }

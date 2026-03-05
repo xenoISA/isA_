@@ -20,6 +20,8 @@ import React, { ReactNode } from 'react';
 import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useAppStore } from '../../stores/useAppStore';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('KnowledgeWidget');
 
 interface KnowledgeDocument {
   id: string;
@@ -138,7 +140,8 @@ const prepareKnowledgeTemplateParams = (params: KnowledgeWidgetParams) => {
       };
   }
   
-  console.log('🧠 KNOWLEDGE_MODULE: Prepared template params for search type', searchType, ':', {
+  log.debug('Prepared template params for search type', {
+    searchType,
     template_id: mapping.template_id,
     prompt_args
   });
@@ -209,7 +212,7 @@ const knowledgeWidgetConfig = createWidgetConfig({
       label: 'Cite',
       icon: '📚',
       onClick: (content) => {
-        console.log('📚 Generating citations for:', content);
+        log.info('Generating citations for content');
       }
     },
     {
@@ -217,7 +220,7 @@ const knowledgeWidgetConfig = createWidgetConfig({
       label: 'Export',
       icon: '📤',
       onClick: (content) => {
-        console.log('📤 Exporting knowledge:', content);
+        log.info('Exporting knowledge');
       }
     },
     {
@@ -225,7 +228,7 @@ const knowledgeWidgetConfig = createWidgetConfig({
       label: 'Related',
       icon: '🔗', 
       onClick: (content) => {
-        console.log('🔗 Finding related topics for:', content);
+        log.info('Finding related topics');
       }
     }
   ],
@@ -234,7 +237,7 @@ const knowledgeWidgetConfig = createWidgetConfig({
       id: 'upload_docs',
       label: 'Upload Docs',
       icon: '📁',
-      onClick: () => console.log('📁 Document upload dialog'),
+      onClick: () => log.info('Document upload dialog'),
       variant: 'primary' as const,
       disabled: false
     },
@@ -242,21 +245,21 @@ const knowledgeWidgetConfig = createWidgetConfig({
       id: 'knowledge_base',
       label: 'Knowledge Base',
       icon: '🗂️',
-      onClick: () => console.log('🗂️ Knowledge base manager'),
+      onClick: () => log.info('Knowledge base manager'),
       disabled: false
     },
     {
       id: 'embeddings',
       label: 'Embeddings', 
       icon: '🔍',
-      onClick: () => console.log('🔍 Embedding management - coming soon'),
+      onClick: () => log.info('Embedding management - coming soon'),
       disabled: true
     },
     {
       id: 'graph_view',
       label: 'Graph View',
       icon: '🕸️',
-      onClick: () => console.log('🕸️ Knowledge graph view - coming soon'),
+      onClick: () => log.info('Knowledge graph view - coming soon'),
       disabled: true
     }
   ]
@@ -295,7 +298,7 @@ export const KnowledgeWidgetModule: React.FC<KnowledgeWidgetModuleProps> = ({
     }];
   }, [searchResult]);
   
-  console.log('🧠 KNOWLEDGE_MODULE: Converting search result to output history:', {
+  log.debug('Converting search result to output history', {
     hasResult: !!searchResult,
     outputHistoryCount: outputHistory.length,
     latestResult: outputHistory[0]?.title
@@ -318,7 +321,7 @@ export const KnowledgeWidgetModule: React.FC<KnowledgeWidgetModuleProps> = ({
             knowledgeBase,
             // Add knowledge actions with template parameter preparation
             onUploadDocuments: async (files: File[]) => {
-              console.log('🧠 KNOWLEDGE_MODULE: Uploading documents:', files.length);
+              log.info('Uploading documents', { count: files.length });
               
               // Prepare template parameters for document upload
               const templateParams = prepareKnowledgeTemplateParams({
@@ -336,7 +339,7 @@ export const KnowledgeWidgetModule: React.FC<KnowledgeWidgetModuleProps> = ({
                 templateParams
               };
               
-              console.log('🧠 KNOWLEDGE_MODULE: Sending enriched upload params to store:', enrichedParams);
+              log.debug('Sending enriched upload params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
             },
             onProcess: async (params: KnowledgeWidgetParams) => {
@@ -356,7 +359,7 @@ export const KnowledgeWidgetModule: React.FC<KnowledgeWidgetModuleProps> = ({
                 templateParams // Add template configuration
               };
               
-              console.log('🧠 KNOWLEDGE_MODULE: Sending enriched search params to store:', enrichedParams);
+              log.debug('Sending enriched search params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
               
               // 模拟成功生成的结果（在真实应用中，这应该在API回调中处理）
@@ -383,15 +386,15 @@ export const KnowledgeWidgetModule: React.FC<KnowledgeWidgetModuleProps> = ({
                 templateParams // Add template configuration
               };
               
-              console.log('🧠 KNOWLEDGE_MODULE: Sending enriched search params to store:', enrichedParams);
+              log.debug('Sending enriched search params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
             },
             onRemoveDocument: (docId: string) => {
-              console.log('🧠 KNOWLEDGE_MODULE: Removing document:', docId);
+              log.info('Removing document', { docId });
               setKnowledgeBase(prev => prev.filter(doc => doc.id !== docId));
             },
             onClearResults: () => {
-              console.log('🧠 KNOWLEDGE_MODULE: Clearing results');
+              log.info('Clearing results');
               setSearchResult(null);
               moduleProps.onClearHistory();
             },

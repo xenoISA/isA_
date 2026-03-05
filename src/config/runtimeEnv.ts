@@ -3,6 +3,9 @@
  * Avoid hardcoded service URLs in application code.
  */
 
+import { createLogger } from '../utils/logger';
+const log = createLogger('RuntimeEnv');
+
 const DEFAULT_GATEWAY_URL = 'http://localhost:9080';
 
 export const getRequiredPublicEnv = (key: string): string => {
@@ -21,7 +24,7 @@ export const getGatewayUrl = (): string => {
 
   if (process.env.NODE_ENV !== 'production') {
     if (typeof console !== 'undefined') {
-      console.warn(
+      log.warn(
         `Missing NEXT_PUBLIC_GATEWAY_URL, falling back to ${DEFAULT_GATEWAY_URL} for local development.`
       );
     }

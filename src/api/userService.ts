@@ -34,7 +34,9 @@ import {
   HealthCheckResult,
   UserServiceCallbacks
 } from '../types/userTypes';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('UserService', LogCategory.API_REQUEST);
 
 // ================================================================================
 // UserService Class
@@ -308,7 +310,7 @@ export const ensureExternalUserExists = async (
   userData: CreateExternalUserData,
   accessToken: string
 ): Promise<ExternalUser> => {
-  console.warn('ensureExternalUserExists is deprecated, use UserService class');
+  log.warn('ensureExternalUserExists is deprecated, use UserService class');
   throw new Error('This function is deprecated, please use UserService class with proper authentication');
 };
 
@@ -316,7 +318,7 @@ export const ensureExternalUserExists = async (
  * @deprecated Use UserService class instead
  */
 export const getCurrentExternalUser = async (accessToken: string): Promise<ExternalUser> => {
-  console.warn('getCurrentExternalUser is deprecated, use UserService class');
+  log.warn('getCurrentExternalUser is deprecated, use UserService class');
   throw new Error('This function is deprecated, please use UserService class with proper authentication');
 };
 
@@ -329,7 +331,7 @@ export const consumeCredits = async (
   reason: string,
   accessToken: string
 ): Promise<CreditConsumptionResult> => {
-  console.warn('consumeCredits is deprecated, use UserService class');
+  log.warn('consumeCredits is deprecated, use UserService class');
   // Authentication handled in UserService constructor
   return userService.consumeCredits(auth0_id, { amount, reason });
 };
@@ -341,7 +343,7 @@ export const getUserExternalSubscription = async (
   auth0_id: string,
   accessToken: string
 ): Promise<ExternalSubscription | null> => {
-  console.warn('getUserExternalSubscription is deprecated, use UserService class');
+  log.warn('getUserExternalSubscription is deprecated, use UserService class');
   // Authentication handled in UserService constructor
   return userService.getUserSubscription(auth0_id);
 };
@@ -353,7 +355,7 @@ export const createExternalCheckoutSession = async (
   planType: string,
   accessToken: string
 ): Promise<CheckoutSession> => {
-  console.warn('createExternalCheckoutSession is deprecated, use UserService class');
+  log.warn('createExternalCheckoutSession is deprecated, use UserService class');
   // Authentication handled in UserService constructor
   return userService.createCheckoutSession(planType);
 };
@@ -364,7 +366,7 @@ export const createExternalCheckoutSession = async (
 export const checkExternalServiceHealth = async (
   accessToken?: string
 ): Promise<HealthCheckResult> => {
-  console.warn('checkExternalServiceHealth is deprecated, use UserService class');
+  log.warn('checkExternalServiceHealth is deprecated, use UserService class');
   if (accessToken) {
     // Authentication handled in UserService constructor
   }

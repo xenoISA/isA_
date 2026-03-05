@@ -38,7 +38,8 @@ import { useChat } from '../hooks/useChat';
 import { useChatStore } from '../stores/useChatStore';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentSession, useSessionActions } from '../stores/useSessionStore';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+const log = createLogger('ChatModule');
 import { useUserModule } from './UserModule';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
 import { useAppActions, useAppStore } from '../stores/useAppStore';
@@ -131,12 +132,12 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     
     // 如果 ChatService 不可用，等待一下再重试
     if (!chatService) {
-      console.warn('💬 CHAT_MODULE: ChatService not ready, waiting 500ms...');
+      log.warn('ChatService not ready, waiting 500ms...');
       await new Promise(resolve => setTimeout(resolve, 500));
       chatService = getChatServiceInstance();
       
       if (!chatService) {
-        console.warn('💬 CHAT_MODULE: ChatService still not ready, waiting 1000ms...');
+        log.warn('ChatService still not ready, waiting 1000ms...');
         await new Promise(resolve => setTimeout(resolve, 1000));
         chatService = getChatServiceInstance();
       }
@@ -178,7 +179,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   }>({
     listeners: {},
     emit: function(event: string, data: any) {
-      console.log(`🔌 EVENT_EMITTER: Emitting ${event} to ${this.listeners[event]?.length || 0} listeners:`, data);
+      log.debug(`Emitting ${event} to ${this.listeners[event]?.length || 0} listeners`, data);
       if (this.listeners[event]) {
         this.listeners[event].forEach(handler => handler(data));
       }
@@ -188,14 +189,14 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         this.listeners[event] = [];
       }
       this.listeners[event].push(handler);
-      console.log(`🔌 EVENT_EMITTER: Added listener for ${event}, total: ${this.listeners[event].length}`);
+      log.debug(`Added listener for ${event}, total: ${this.listeners[event].length}`);
     },
     off: function(event: string, handler: (data: any) => void) {
       if (this.listeners[event]) {
         const index = this.listeners[event].indexOf(handler);
         if (index > -1) {
           this.listeners[event].splice(index, 1);
-          console.log(`🔌 EVENT_EMITTER: Removed listener for ${event}, remaining: ${this.listeners[event].length}`);
+          log.debug(`Removed listener for ${event}, remaining: ${this.listeners[event].length}`);
         }
       }
     }
@@ -220,10 +221,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         // 监听Widget请求事件
         eventEmitterRef.current.on('widget:request', handleWidgetRequest);
         
-        console.log('🔌 CHAT_MODULE: Plugin mode initialized, Widget events will be handled by ChatModule');
+        log.info('Plugin mode initialized, Widget events will be handled by ChatModule');
         
       } catch (error) {
-        console.error('❌ CHAT_MODULE: Failed to initialize Plugin mode:', error);
+        log.error('Failed to initialize Plugin mode:', error);
       }
     };
     
@@ -265,11 +266,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         // 检查HIL服务是否可用
         const isServiceAvailable = await executionControlService.isServiceAvailable();
         if (!isServiceAvailable) {
-          console.warn('🔄 CHAT_MODULE: HIL service not available, but HIL interrupt handling enabled for ask_human');
+          log.warn('HIL service not available, but HIL interrupt handling enabled for ask_human');
           return;
         }
 
-        console.log('🚀 CHAT_MODULE: HIL service available, initializing event handlers');
+        log.info('HIL service available, initializing event handlers');
 
         // REMOVED: HIL事件回调注册 - defaultAGUIProcessor已删除
         // defaultAGUIProcessor.registerAGUICallbacks({
@@ -301,7 +302,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         // 这样HIL事件也能通过现有的SSE流处理
         
         setHilMonitoringActive(true);
-        console.log('✅ CHAT_MODULE: HIL system initialized successfully');
+        log.info('HIL system initialized successfully');
         
         // 🧪 测试：添加手动HIL测试功能
         if (typeof window !== 'undefined') {
@@ -320,13 +321,13 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
               }
             };
             handleHILInterrupt(testInterrupt);
-            console.log('🧪 CHAT_MODULE: Test HIL interrupt triggered');
+            log.info('Test HIL interrupt triggered');
           };
-          console.log('🧪 CHAT_MODULE: Test function available at window.testHIL()');
+          log.info('Test function available at window.testHIL()');
         }
 
       } catch (error) {
-        console.error('❌ CHAT_MODULE: Failed to initialize HIL system:', error);
+        log.error('Failed to initialize HIL system:', error);
       }
     };
 
@@ -385,7 +386,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
             }
           });
         } catch (error) {
-          console.error('Failed to start HIL monitoring:', error);
+          log.error('Failed to start HIL monitoring:', error);
         }
       };
 
@@ -402,7 +403,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // 🆕 HIL事件处理函数
   const handleHILInterrupt = useCallback((interrupt: HILInterruptData) => {
-    console.log('⏸️ CHAT_MODULE: HIL interrupt detected:', interrupt);
+    log.info('HIL interrupt detected:', interrupt);
     
     // 🆕 设置正确的thread_id
     const interruptWithThreadId = {
@@ -418,19 +419,19 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     setShowHilStatusPanel(true);
     
     // 🆕 关键：停止当前的SSE流，让HIL接管
-    console.log('🚨 CHAT_MODULE: Stopping current chat stream due to HIL interrupt');
+    log.info('Stopping current chat stream due to HIL interrupt');
     chatStore.finishStreamingMessage(); // 完成当前流式消息，防止卡在processing状态
     
     // 🆕 中断当前的聊天服务流
     try {
       import('../api/chatService').then(({ chatService }) => {
         chatService.cancelAllRequests(); // 取消当前的SSE请求
-        console.log('🚨 CHAT_MODULE: Cancelled current chat service requests');
+        log.info('Cancelled current chat service requests');
       }).catch(error => {
-        console.warn('⚠️ CHAT_MODULE: Failed to cancel chat service requests:', error);
+        log.warn('Failed to cancel chat service requests:', error);
       });
     } catch (error) {
-      console.warn('⚠️ CHAT_MODULE: Failed to import chat service:', error);
+      log.warn('Failed to import chat service:', error);
     }
     
     // 更新聊天状态显示
@@ -443,7 +444,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   }, []);
 
   const handleHILCheckpoint = useCallback((checkpoint: HILCheckpointData) => {
-    console.log('📍 CHAT_MODULE: HIL checkpoint created:', checkpoint);
+    log.info('HIL checkpoint created:', checkpoint);
     
     setHilCheckpoints(prev => [checkpoint, ...prev.slice(0, 19)]); // 保留最近20个检查点
     
@@ -473,32 +474,32 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   }, []);
 
   const handleHILApprovalRequired = useCallback((approval: any) => {
-    console.log('✋ CHAT_MODULE: HIL approval required:', approval);
+    log.info('HIL approval required:', approval);
     // 审批请求会通过handleHILInterrupt统一处理
   }, []);
 
   const handleHILReviewRequired = useCallback((review: any) => {
-    console.log('👁️ CHAT_MODULE: HIL review required:', review);
+    log.info('HIL review required:', review);
     // 审查请求会通过handleHILInterrupt统一处理
   }, []);
 
   const handleHILInputRequired = useCallback((input: any) => {
-    console.log('📝 CHAT_MODULE: HIL input required:', input);
+    log.info('HIL input required:', input);
     // 输入请求会通过handleHILInterrupt统一处理
   }, []);
 
   const handleExecutionStarted = useCallback((event: any) => {
-    console.log('🚀 CHAT_MODULE: Execution started:', event);
+    log.info('Execution started:', event);
     chatStore.updateStreamingStatus('🚀 Execution started...');
   }, []);
 
   const handleExecutionFinished = useCallback((event: any) => {
-    console.log('🎉 CHAT_MODULE: Execution finished:', event);
+    log.info('Execution finished:', event);
     chatStore.updateStreamingStatus('🎉 Execution completed');
   }, []);
 
   const handleExecutionError = useCallback((event: any) => {
-    console.log('❌ CHAT_MODULE: Execution error:', event);
+    log.info('Execution error:', event);
     chatStore.updateStreamingStatus(`❌ Execution error: ${event.error?.message || 'Unknown error'}`);
   }, []);
 
@@ -521,10 +522,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         }
       };
       
-      console.log('✅ CHAT_MODULE: Approving HIL action:', resumeRequest);
+      log.info('Approving HIL action:', resumeRequest);
       
       // 🆕 使用HIL专用的流式恢复，集成到主聊天流
-      console.log('🔄 CHAT_MODULE: Starting HIL resume stream integration...');
+      log.info('Starting HIL resume stream integration...');
       
       // 重新启动流式消息处理，将HIL恢复流作为新的AI回复
       const resumeMessageId = `resume-${Date.now()}`;
@@ -532,11 +533,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       
       await executionControlService.resumeExecutionStream(resumeRequest, {
         onResumeStart: (data) => {
-          console.log('🔄 HIL_RESUME: Resume started:', data);
+          log.info('Resume started:', data);
           chatStore.updateStreamingStatus('🔄 Processing your input...');
         },
         onMessageStream: (data) => {
-          console.log('📨 HIL_RESUME: Message stream event:', data);
+          log.info('Message stream event:', data);
           
           // 处理消息流事件，提取实际内容
           if (data.content?.raw_message) {
@@ -547,7 +548,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
             if (contentMatch) {
               messageContent = contentMatch[1] || contentMatch[2];
               messageContent = messageContent.replace(/\\\\"/g, '"').replace(/\\\\'/g, "'");
-              console.log('📨 HIL_RESUME: Extracted content:', messageContent.substring(0, 100) + '...');
+              log.info('Extracted content:', messageContent.substring(0, 100) + '...');
               
               // 只有当有实际内容时才添加到流式消息
               if (messageContent && messageContent.trim() && !messageContent.includes('tool_calls')) {
@@ -557,12 +558,12 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           }
         },
         onResumeEnd: (data) => {
-          console.log('✅ HIL_RESUME: Resume completed:', data);
+          log.info('Resume completed:', data);
           chatStore.updateStreamingStatus('✅ Response completed');
           chatStore.finishStreamingMessage(); // 完成流式消息
         },
         onError: (error) => {
-          console.error('❌ HIL_RESUME: Resume failed:', error);
+          log.error('Resume failed:', error);
           chatStore.updateStreamingStatus(`❌ Failed to resume: ${error.message}`);
           chatStore.finishStreamingMessage(); // 即使出错也要完成流式消息
         }
@@ -574,7 +575,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       logger.info(LogCategory.CHAT_FLOW, 'HIL action approved and executed', { interruptId });
       
     } catch (error) {
-      console.error('Failed to approve HIL action:', error);
+      log.error('Failed to approve HIL action:', error);
       chatStore.updateStreamingStatus(`❌ Failed to approve action: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessingHilAction(false);
@@ -597,7 +598,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         }
       };
       
-      console.log('❌ CHAT_MODULE: Rejecting HIL action:', resumeRequest);
+      log.info('Rejecting HIL action:', resumeRequest);
       
       const result = await executionControlService.resumeExecution(resumeRequest);
       
@@ -612,7 +613,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
       
     } catch (error) {
-      console.error('Failed to reject HIL action:', error);
+      log.error('Failed to reject HIL action:', error);
       chatStore.updateStreamingStatus(`❌ Failed to reject action: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessingHilAction(false);
@@ -633,7 +634,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     if (!currentSession) return;
     
     try {
-      console.log('🔄 CHAT_MODULE: Rolling back to checkpoint:', checkpointId);
+      log.info('Rolling back to checkpoint:', checkpointId);
       
       const result = await executionControlService.rollbackToCheckpoint(currentSession.id, checkpointId);
       
@@ -646,7 +647,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
             // 使用标准转换工具
             setHilStatus(AGUIConverter.toHILExecutionStatusData(status, currentSession.id));
           })
-          .catch(console.error);
+          .catch(err => log.error('Failed to get execution status', err));
         
         logger.info(LogCategory.CHAT_FLOW, 'HIL rollback completed', { 
           checkpointId, 
@@ -657,7 +658,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
       
     } catch (error) {
-      console.error('Failed to rollback:', error);
+      log.error('Failed to rollback:', error);
       chatStore.updateStreamingStatus(`❌ Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [currentSession, executionControlService]);
@@ -667,11 +668,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     
     try {
       // HIL暂停通常通过中断机制实现
-      console.log('⏸️ CHAT_MODULE: Pausing execution for thread:', currentSession.id);
+      log.info('Pausing execution for thread:', currentSession.id);
       chatStore.updateStreamingStatus('⏸️ Execution paused by user');
       
     } catch (error) {
-      console.error('Failed to pause execution:', error);
+      log.error('Failed to pause execution:', error);
     }
   }, [currentSession]);
 
@@ -688,7 +689,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         }
       };
       
-      console.log('▶️ CHAT_MODULE: Resuming execution:', resumeRequest);
+      log.info('Resuming execution:', resumeRequest);
       
       const result = await executionControlService.resumeExecution(resumeRequest);
       
@@ -699,7 +700,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
       
     } catch (error) {
-      console.error('Failed to resume execution:', error);
+      log.error('Failed to resume execution:', error);
       chatStore.updateStreamingStatus(`❌ Resume failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [currentSession, executionControlService]);
@@ -724,7 +725,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // 🆕 处理Widget请求事件
   const handleWidgetRequest = useCallback(async (eventData: any) => {
-    console.log('🔌 CHAT_MODULE: Received widget request event:', eventData);
+    log.info('Received widget request event:', eventData);
     
     const { widgetType, params, requestId } = eventData;
     
@@ -732,7 +733,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     chatStore.setChatLoading(true);
     
     // CRITICAL: Check user credits before processing widget request
-    console.log('💳 CHAT_MODULE: Credit check details:', {
+    log.info('Credit check details:', {
       hasCredits: userModule.hasCredits,
       credits: userModule.credits,
       totalCredits: userModule.totalCredits,
@@ -743,7 +744,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     const shouldSkipCreditCheck = process.env.NODE_ENV === 'development';
     
     if (!userModule.hasCredits && !shouldSkipCreditCheck) {
-      console.warn('💳 CHAT_MODULE: User has no credits, blocking widget request');
+      log.warn('User has no credits, blocking widget request');
       
       // 🆕 发出错误事件给Widget
       eventEmitterRef.current.emit('widget:result', {
@@ -758,7 +759,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     }
     
     if (shouldSkipCreditCheck) {
-      console.log('🔓 CHAT_MODULE: Development mode - skipping credit check');
+      log.info('Development mode - skipping credit check');
     }
     
     // 确保有valid session
@@ -769,7 +770,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       sessionActions.selectSession(newSession.id);
       activeSessionId = newSession.id;
       
-      console.log('📝 CHAT_MODULE: Auto-created session for widget request:', {
+      log.info('Auto-created session for widget request:', {
         sessionId: newSession.id,
         widgetType
       });
@@ -790,7 +791,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
     };
     
-    console.log('📨 CHAT_MODULE: Adding widget user message to chat');
+    log.info('Adding widget user message to chat');
     chatStore.addMessage(userMessage);
     
     // 通过PluginManager处理Widget请求
@@ -924,7 +925,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         chatStore.setChatLoading(false);
         
         // 🆕 将结果通过事件系统返回给Widget UI
-        console.log('🔌 CHAT_MODULE: Emitting widget:result event:', {
+        log.info('Emitting widget:result event:', {
           widgetType,
           requestId,
           result: pluginResult.output,
@@ -938,10 +939,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           success: true
         });
         
-        console.log('✅ CHAT_MODULE: Widget request processed successfully via Plugin system, artifact created');
+        log.info('Widget request processed successfully via Plugin system, artifact created');
         
       } else {
-        console.error('❌ CHAT_MODULE: Widget plugin execution failed:', pluginResult.error);
+        log.error('Widget plugin execution failed:', pluginResult.error);
         
         // 🆕 清除Chat loading状态
         chatStore.setChatLoading(false);
@@ -956,7 +957,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
       
     } catch (error) {
-      console.error('❌ CHAT_MODULE: Widget request processing failed:', error);
+      log.error('Widget request processing failed:', error);
       
       // 🆕 清除Chat loading状态
       chatStore.setChatLoading(false);
@@ -1000,7 +1001,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     
     // CRITICAL: Check user credits before sending message
     if (!userModule.hasCredits) {
-      console.warn('💳 CHAT_MODULE: User has no credits, blocking message send');
+      log.warn('User has no credits, blocking message send');
       setShowUpgradeModal(true);
       return;
     }
@@ -1048,7 +1049,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     
     if (pluginTrigger.triggered && pluginTrigger.pluginId) {
       // 🔌 PLUGIN ROUTE: Handle via Plugin System
-      console.log('🔌 CHAT_MODULE: Plugin detected, routing to PluginManager:', pluginTrigger);
+      log.info('Plugin detected, routing to PluginManager:', pluginTrigger);
       
       try {
         // Create processing message for plugin
@@ -1100,7 +1101,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           };
           
           chatStore.addMessage(completedMessage);
-          console.log('✅ CHAT_MODULE: Plugin execution completed successfully');
+          log.info('Plugin execution completed successfully');
           
         } else {
           // Handle plugin error
@@ -1116,11 +1117,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           };
           
           chatStore.addMessage(errorMessage);
-          console.error('❌ CHAT_MODULE: Plugin execution failed:', pluginResult.error);
+          log.error('Plugin execution failed:', pluginResult.error);
         }
         
       } catch (error) {
-        console.error('❌ CHAT_MODULE: Plugin system error:', error);
+        log.error('Plugin system error:', error);
         // Handle plugin system error - could still fall back to regular chat
       }
       
@@ -1159,10 +1160,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           }
         });
         
-        console.log('✅ CHAT_MODULE: Regular chat message sent successfully via direct ChatService call');
+        log.info('Regular chat message sent successfully via direct ChatService call');
         
       } catch (error) {
-        console.error('❌ CHAT_MODULE: Failed to send regular chat message:', error);
+        log.error('Failed to send regular chat message:', error);
         throw error;
       }
     }
@@ -1171,11 +1172,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // Business logic: Handle multimodal message sending
   const handleSendMultimodal = useCallback(async (content: string, files: File[], metadata?: Record<string, any>) => {
-    console.log('📨 CHAT_MODULE: sendMultimodalMessage called with:', content, files.length, 'files');
+    log.info('sendMultimodalMessage called', { content, fileCount: files.length });
     
     // CRITICAL: Check user credits before sending multimodal message
     if (!userModule.hasCredits) {
-      console.warn('💳 CHAT_MODULE: User has no credits, blocking multimodal message send');
+      log.warn('User has no credits, blocking multimodal message send');
       
       // Show elegant upgrade prompt for multimodal
       const shouldUpgrade = window.confirm(
@@ -1192,7 +1193,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           const checkoutUrl = await userModule.createCheckout('pro');
           window.open(checkoutUrl, '_blank');
         } catch (error) {
-          console.error('Failed to create checkout:', error);
+          log.error('Failed to create checkout:', error);
           // Fallback to pricing page
           window.open('/pricing', '_blank');
         }
@@ -1202,7 +1203,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       return;
     }
     
-    console.log('✅ CHAT_MODULE: Credit check passed for multimodal, proceeding with message send');
+    log.info('Credit check passed for multimodal, proceeding with message send');
     
     // Business logic: Enrich metadata with user and session info
     const enrichedMetadata = {
@@ -1224,17 +1225,17 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       processed: true // Mark as processed since we're handling it directly
     };
     
-    console.log('📨 CHAT_MODULE: Adding multimodal user message to store');
+    log.info('Adding multimodal user message to store');
     chatStore.addMessage(userMessage);
     
     // 直接调用 sendMessage API (multimodal is handled by metadata)
-    console.log('📨 CHAT_MODULE: Calling sendMessage API for multimodal content');
+    log.info('Calling sendMessage API for multimodal content');
     
     try {
       // 获取用户token用于API认证
       const token = await userModule.getAccessToken();
       const chatService = await getChatService();
-      console.log('🔑 CHAT_MODULE: Retrieved access token for multimodal API call');
+      log.info('Retrieved access token for multimodal API call');
       
       // 直接调用 ChatService multimodal 方法
       await chatService.sendMultimodalMessage(content, enrichedMetadata, token, {
@@ -1262,9 +1263,9 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           chatStore.setExecutingPlan(false);
         }
       }, files);
-      console.log('✅ CHAT_MODULE: Multimodal message sent successfully via direct ChatService call');
+      log.info('Multimodal message sent successfully via direct ChatService call');
     } catch (error) {
-      console.error('❌ CHAT_MODULE: Failed to send multimodal message:', error);
+      log.error('Failed to send multimodal message:', error);
       throw error;
     }
   }, [auth0User, userModule, getChatService]);
@@ -1273,7 +1274,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // Handle message click for artifact navigation
   const handleMessageClick = useCallback((message: any) => {
-    console.log('💬 CHAT_MODULE: Message clicked:', message);
+    log.info('Message clicked:', message);
     
     // Check if this is an artifact message and navigate to the corresponding widget
     if (message.type === 'artifact') {
@@ -1291,7 +1292,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       
       const appId = widgetToAppMap[widgetType as keyof typeof widgetToAppMap];
       if (appId) {
-        console.log(`🔄 CHAT_MODULE: Navigating to ${appId} widget for artifact:`, artifactMessage.artifact.id);
+        log.info(`Navigating to ${appId} widget for artifact`, { artifactId: artifactMessage.artifact.id });
         
         // 🆕 Parse artifact content and set to widget store for display
         const artifactContent = artifactMessage.artifact.content;
@@ -1301,11 +1302,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
             // Parse JSON content and set to hunt store
             const searchResults = typeof artifactContent === 'string' ? JSON.parse(artifactContent) : artifactContent;
             if (Array.isArray(searchResults)) {
-              console.log(`🔍 CHAT_MODULE: Setting hunt search results:`, searchResults.length, 'items');
+              log.info('Setting hunt search results', { count: searchResults.length });
               setHuntSearchResults(searchResults);
             }
           } catch (e) {
-            console.warn('🔍 CHAT_MODULE: Could not parse hunt artifact content:', e);
+            log.warn('Could not parse hunt artifact content:', e);
           }
         }
         
@@ -1313,9 +1314,9 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         setCurrentApp(appId as AppId);
         setShowRightSidebar(true);
         
-        console.log(`✅ CHAT_MODULE: Navigation completed - App: ${appId}, Sidebar: true`);
+        log.info('Navigation completed', { app: appId, sidebar: true });
       } else {
-        console.warn('💬 CHAT_MODULE: Unknown widget type for navigation:', widgetType);
+        log.warn('Unknown widget type for navigation:', widgetType);
       }
     }
   }, [setCurrentApp, setShowRightSidebar, setTriggeredAppInput, setHuntSearchResults]);
@@ -1328,7 +1329,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       window.open(checkoutUrl, '_blank');
       setShowUpgradeModal(false);
     } catch (error) {
-      console.error('Failed to create checkout:', error);
+      log.error('Failed to create checkout:', error);
       // Fallback to pricing page
       window.open('/pricing', '_blank');
       setShowUpgradeModal(false);
@@ -1342,7 +1343,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // Handle widget selection - 打开真正的widget
   const handleWidgetSelect = useCallback((widgetId: string, mode: 'half' | 'full') => {
-    console.log('🔧 CHAT_MODULE: Widget selected:', { widgetId, mode });
+    log.info('Widget selected:', { widgetId, mode });
     
     // ✅ 设置Plugin模式标志，让Widget知道它们正在Chat环境中运行
     if (typeof window !== 'undefined') {
@@ -1380,7 +1381,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     const newMode = currentWidgetMode === 'half' ? 'full' : 'half';
     setCurrentWidgetMode(newMode);
     
-    console.log('🔄 CHAT_MODULE: Widget mode toggled:', { from: currentWidgetMode, to: newMode });
+    log.info('Widget mode toggled:', { from: currentWidgetMode, to: newMode });
   }, [currentWidgetMode]);
 
   // 🆕 监听全局 App Store 状态变化，同步到本地 widget 模式
@@ -1388,7 +1389,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     if (globalCurrentApp && globalShowRightSidebar) {
       // 从artifact打开widget时，默认使用half模式
       if (!currentWidgetMode) {
-        console.log('🔄 CHAT_MODULE: Syncing from global store - setting widget mode to half for app:', globalCurrentApp);
+        log.info('Syncing from global store - setting widget mode to half for app:', globalCurrentApp);
         setCurrentWidgetMode('half');
         
         // 设置Plugin模式标志
@@ -1398,7 +1399,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
     } else if (!globalShowRightSidebar && currentWidgetMode) {
       // 当全局状态关闭右侧栏时，清理本地状态
-      console.log('🔄 CHAT_MODULE: Global sidebar closed - clearing local widget mode');
+      log.info('Global sidebar closed - clearing local widget mode');
       setCurrentWidgetMode(null);
     }
   }, [globalCurrentApp, globalShowRightSidebar, currentWidgetMode]);

@@ -12,6 +12,10 @@
  * ✅ Types: SDK-provided type safety
  */
 
+import { createLogger, LogCategory } from '../../utils/logger';
+
+const log = createLogger('SSETransport', LogCategory.API_REQUEST);
+
 // Re-export compatibility types
 export enum ConnectionState {
   IDLE = 'idle',
@@ -126,7 +130,7 @@ export class SSEConnection {
       if (error instanceof Error && error.name === 'AbortError') {
         // Normal abort
       } else {
-        console.warn('SSE_CONNECTION: Error during close:', error);
+        log.warn('Error during close', error);
       }
       this.setState(ConnectionState.CLOSED);
     }
@@ -216,7 +220,7 @@ export class SSEConnection {
       if (error instanceof Error && error.name === 'AbortError') {
         // Stream was aborted
       } else {
-        console.error('SSE_CONNECTION: Stream reading error:', error);
+        log.error('Stream reading error', error);
         const streamError = error instanceof Error ? error : new Error(String(error));
         this.emit('error', { error: streamError, timestamp: Date.now() });
         throw streamError;
@@ -285,7 +289,7 @@ export class SSEConnection {
       try {
         listener(connectionEvent);
       } catch (error) {
-        console.error(`Connection ${this.id}: Event listener error:`, error);
+        log.error(`Connection ${this.id}: Event listener error`, error);
       }
     }
   }

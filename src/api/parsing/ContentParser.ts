@@ -17,6 +17,9 @@
  */
 
 import { BaseParser, ParseResult } from './Parser';
+import { createLogger, LogCategory } from '../../utils/logger';
+
+const log = createLogger('ContentParser', LogCategory.API_REQUEST);
 
 // ================================================================================
 // 类型定义
@@ -239,7 +242,7 @@ export class ContentParser extends BaseParser<string, ParsedContent> {
       };
       
     } catch (error) {
-      console.warn('ContentParser: Parse failed:', error);
+      log.warn('Parse failed', error);
       // 回退到纯文本
       return {
         raw: content,

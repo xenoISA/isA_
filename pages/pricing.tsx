@@ -3,6 +3,9 @@ import Head from 'next/head'
 import MarketingHeader from '../src/components/marketing/MarketingHeader'
 import MarketingFooter from '../src/components/marketing/MarketingFooter'
 import { GATEWAY_CONFIG } from '../src/config/gatewayConfig'
+import { createLogger } from '@/utils/logger'
+
+const log = createLogger('PricingPage')
 
 // Define pricing plans
 const pricingPlans = [
@@ -160,7 +163,7 @@ export default function PricingPage() {
       const { url } = await response.json()
       window.location.href = url
     } catch (error) {
-      console.error('Error creating checkout session:', error)
+      log.error('Error creating checkout session:', error)
       alert('Error creating checkout session. Please try again.')
     } finally {
       setIsLoading(false)

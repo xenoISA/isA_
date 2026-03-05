@@ -10,6 +10,9 @@
  */
 
 import { useState, useEffect } from 'react';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('useTheme');
 
 export type Theme = 'light' | 'dark';
 
@@ -34,7 +37,7 @@ export const useTheme = () => {
         applyTheme(initialTheme);
         setIsLoading(false);
       } catch (error) {
-        console.warn('Failed to initialize theme:', error);
+        log.warn('Failed to initialize theme:', error);
         setTheme('dark'); // 默认深色主题
         applyTheme('dark');
         setIsLoading(false);
@@ -82,7 +85,7 @@ export const useTheme = () => {
     try {
       localStorage.setItem('theme', newTheme);
     } catch (error) {
-      console.warn('Failed to save theme to localStorage:', error);
+      log.warn('Failed to save theme to localStorage:', error);
     }
   };
 
@@ -93,7 +96,7 @@ export const useTheme = () => {
     try {
       localStorage.setItem('theme', newTheme);
     } catch (error) {
-      console.warn('Failed to save theme to localStorage:', error);
+      log.warn('Failed to save theme to localStorage:', error);
     }
   };
 

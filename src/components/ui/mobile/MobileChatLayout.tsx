@@ -11,7 +11,10 @@
  * - Optimized performance for mobile devices
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ChatMessage } from '../chat/ChatLayout';
+
+const log = createLogger('MobileChatLayout');
 import { ModernMobileMessageList } from './ModernMobileMessageList';
 import { ModernMobileInputArea } from './ModernMobileInputArea';
 import { ModernMobileHeader } from './ModernMobileHeader';
@@ -136,7 +139,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         onMenuClick={onToggleLeftSidebar}
         onNewChatClick={() => {
           // Reset chat logic would go here
-          console.log('New chat clicked');
+          log.info('New chat clicked');
         }}
         onUserAvatarClick={onToggleRightSidebar}
         isNativeApp={isNativeApp}

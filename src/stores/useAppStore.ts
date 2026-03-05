@@ -35,7 +35,9 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { AppId } from '../types/appTypes';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('AppStore', LogCategory.STATE_CHANGE);
 
 // Widget使用状态跟踪
 export interface WidgetUsageState {
@@ -199,7 +201,7 @@ export const useAppStore = create<AppStore>()(
           resetTaskHistory();
         });
       } catch (error) {
-        console.warn('Failed to reset task history:', error);
+        log.warn('Failed to reset task history', error);
       }
     },
     

@@ -17,6 +17,8 @@
  */
 
 import { GATEWAY_CONFIG } from './gatewayConfig';
+import { createLogger } from '../utils/logger';
+const log = createLogger('Config');
 
 // ================================================================================
 // 环境变量接口定义
@@ -73,7 +75,7 @@ export interface AppConfiguration {
 const getEnvVar = (key: string, defaultValue?: string): string => {
   const value = process.env[key] || defaultValue;
   if (!value) {
-    console.warn(`⚠️  Environment variable ${key} is not set`);
+    log.warn(`Environment variable ${key} is not set`);
     return '';
   }
   return value.trim();
@@ -194,19 +196,19 @@ export const getUserServiceUrl = (endpoint: string = '') => {
 // ================================================================================
 
 if (isDevelopment()) {
-  console.group('🔧 Application Configuration');
-  console.log('API Base URL:', config.api.baseUrl);
-  console.log('Environment:', config.app.environment);
-  console.log('Debug Mode:', config.app.debugMode);
-  console.log('Features:', config.features);
-  
+  log.info('Application Configuration', {
+    apiBaseUrl: config.api.baseUrl,
+    environment: config.app.environment,
+    debugMode: config.app.debugMode,
+    features: config.features
+  });
+
   const validation = validateConfig();
   if (!validation.isValid) {
-    console.warn('⚠️  Configuration Issues:', validation.errors);
+    log.warn('Configuration Issues', { errors: validation.errors });
   } else {
-    console.log('✅ Configuration is valid');
+    log.info('Configuration is valid');
   }
-  console.groupEnd();
 }
 
 export default config;

@@ -12,6 +12,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { createLogger } from '../../../utils/logger';
+
+const log = createLogger('ScrollFollowUpActions');
 
 // ================================================================================
 // 类型定义
@@ -261,7 +264,7 @@ export const MinimalScrollActions: React.FC<ScrollFollowUpActionsProps> = (props
       variant: 'secondary',
       onClick: () => {
         // 可以触发更多选项的显示
-        console.log('Show more options');
+        log.debug('Show more options');
       },
     }
   ];

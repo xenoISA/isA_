@@ -35,7 +35,8 @@ import React, { useEffect, useCallback, useMemo } from 'react';
 import { useAuthContext } from '../providers/AuthProvider';
 import { useUserStore } from '../stores/useUserStore';
 import { UserService } from '../api/userService';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+const log = createLogger('UserModule');
 import { PlanType, CreateExternalUserData, CreditConsumption } from '../types/userTypes';
 import { useUser } from '../hooks/useUser';
 import '../utils/creditMonitor'; // 🎯 初始化信用监控系统
@@ -202,7 +203,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     };
 
     try {
-      console.log('👤 UserModule: 🚀 Initializing user', {
+      log.info('Initializing user', {
         auth0_id: auth0User.sub,
         email: auth0User.email,
         timestamp: new Date().toISOString()
@@ -211,7 +212,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.info(LogCategory.USER_AUTH, 'Starting user initialization', userData);
 
       // 🔄 Step 1: 确保外部用户存在
-      console.log('👤 UserModule: 📡 Calling userService.ensureUserExists...');
+      log.info('Calling userService.ensureUserExists...');
       const userResult = await userService.ensureUserExists(userData);
       
       // 📊 Step 2: 验证返回的用户数据
@@ -219,8 +220,8 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         throw new Error('Invalid user data returned from service');
       }
 
-      console.log('👤 UserModule: ✅ User ensured successfully', { 
-        auth0_id: userResult.auth0_id, 
+      log.info('User ensured successfully', {
+        auth0_id: userResult.auth0_id,
         credits: userResult.credits,
         totalCredits: userResult.credits_total,
         plan: userResult.plan,
@@ -228,7 +229,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       });
         
       // 💾 Step 3: 保存用户数据到store
-      console.log('👤 UserModule: 💾 Saving user data to store...');
+      log.info('Saving user data to store...');
       const userStore = useUserStore.getState();
       userStore.setExternalUser(userResult);
       
@@ -240,7 +241,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('👤 UserModule: ❌ User initialization failed', {
+      log.error('User initialization failed', {
         error: errorMessage,
         auth0_id: auth0User.sub,
         executionTime: Date.now() - startTime + 'ms'
@@ -257,43 +258,42 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const refreshUser = useCallback(async () => {
     if (!isAuthenticated) {
-      console.log('👤 UserModule: Skipping user refresh - not authenticated');
+      log.info('Skipping user refresh - not authenticated');
       return;
     }
 
     try {
-      console.log('👤 UserModule: Starting user refresh process...');
-      console.log('👤 UserModule: Auth status:', { 
-        isAuthenticated, 
+      log.info('Starting user refresh process...');
+      log.debug('Auth status', {
+        isAuthenticated,
         hasAuth0User: !!auth0User,
-        auth0UserSub: auth0User?.sub 
+        auth0UserSub: auth0User?.sub
       });
       
       // Get access token with detailed logging
-      console.log('👤 UserModule: Getting access token...');
+      log.debug('Getting access token...');
       const token = await getAccessToken();
-      console.log('👤 UserModule: Token obtained:', {
+      log.debug('Token obtained', {
         hasToken: !!token,
-        tokenLength: token?.length,
-        tokenStart: token?.substring(0, 30) + '...'
+        tokenLength: token?.length
       });
       
       // Call fetchCurrentUser with token
-      console.log('👤 UserModule: Calling fetchCurrentUser...');
+      log.info('Calling fetchCurrentUser...');
       try {
         await userHook.fetchCurrentUser(token);
-        console.log('👤 UserModule: User data refreshed successfully');
+        log.info('User data refreshed successfully');
       } catch (error) {
         // If user doesn't exist (404), try to initialize user first
         if (error instanceof Error && error.message.includes('404')) {
-          console.log('👤 UserModule: User not found (404), attempting to initialize user...');
-          
+          log.info('User not found (404), attempting to initialize user...');
+
           if (auth0User?.sub && auth0User?.email && auth0User?.name) {
-            console.log('👤 UserModule: Initializing user via ensureUserExists...');
+            log.info('Initializing user via ensureUserExists...');
             await initializeUser();
-            console.log('👤 UserModule: User initialized, retrying fetchCurrentUser...');
+            log.info('User initialized, retrying fetchCurrentUser...');
             await userHook.fetchCurrentUser(token);
-            console.log('👤 UserModule: User data refreshed successfully after initialization');
+            log.info('User data refreshed successfully after initialization');
           } else {
             throw new Error('Cannot initialize user: missing auth user data');
           }
@@ -303,23 +303,22 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       }
       
     } catch (error) {
-      console.error('👤 UserModule: Failed to refresh user', error);
-      
+      log.error('Failed to refresh user', error);
+
       // Enhanced error reporting
       if (error instanceof Error) {
-        console.error('👤 UserModule: Error details:', {
+        log.error('Error details', {
           message: error.message,
-          name: error.name,
-          stack: error.stack
+          name: error.name
         });
-        
+
         // Check for specific error types
         if (error.message.includes('404')) {
-          console.error('👤 UserModule: 404 Error - API endpoint not found or user not exists');
+          log.error('404 Error - API endpoint not found or user not exists');
         } else if (error.message.includes('401') || error.message.includes('403')) {
-          console.error('👤 UserModule: Auth Error - Token invalid or expired');
+          log.error('Auth Error - Token invalid or expired');
         } else if (error.message.includes('Network Error') || error.message.includes('fetch')) {
-          console.error('👤 UserModule: Network Error - Service might be down');
+          log.error('Network Error - Service might be down');
         }
       }
       
@@ -398,7 +397,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     const currentUserId = auth0User?.sub;
     const hasRequiredData = auth0User?.sub && auth0User?.email && auth0User?.name;
     
-    console.log('👤 UserModule: Auth state changed', {
+    log.debug('Auth state changed', {
       auth0Loading,
       isAuthenticated,
       hasRequiredData,
@@ -409,13 +408,13 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
     // 🔄 情况1：正在加载 - 等待
     if (auth0Loading) {
-      console.log('👤 UserModule: Auth0 still loading, waiting...');
+      log.debug('Auth0 still loading, waiting...');
       return;
     }
 
     // 🚪 情况2：未认证 - 清理状态
     if (!isAuthenticated) {
-      console.log('👤 UserModule: User not authenticated, clearing state');
+      log.info('User not authenticated, clearing state');
       if (initializationStatus !== 'idle') {
         setInitializationStatus('idle');
         initializationRef.current = null;
@@ -426,7 +425,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
     // ✅ 情况3：已认证但缺少数据 - 等待完整数据
     if (!hasRequiredData) {
-      console.log('👤 UserModule: Authenticated but missing required user data, waiting...');
+      log.debug('Authenticated but missing required user data, waiting...');
       return;
     }
 
@@ -437,7 +436,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     ) && initializationStatus !== 'initializing';
 
     if (shouldInitialize) {
-      console.log('👤 UserModule: Starting user initialization', {
+      log.info('Starting user initialization', {
         userId: currentUserId,
         previousStatus: initializationStatus
       });
@@ -447,11 +446,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       
       initializeUser()
         .then(() => {
-          console.log('👤 UserModule: User initialization completed successfully');
+          log.info('User initialization completed successfully');
           setInitializationStatus('initialized');
         })
         .catch((error) => {
-          console.error('👤 UserModule: User initialization failed', error);
+          log.error('User initialization failed', error);
           setInitializationStatus('error');
         });
     }

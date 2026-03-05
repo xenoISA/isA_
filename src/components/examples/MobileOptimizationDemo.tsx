@@ -3,7 +3,10 @@
  * Demonstrates the new mobile-optimized task progress, loading, and status components
  */
 import React, { useState, useEffect } from 'react';
+import { createLogger } from '../../utils/logger';
 import { MobileTaskBar } from '../ui/mobile/MobileTaskBar';
+
+const log = createLogger('MobileOptimizationDemo');
 import { MobileTaskProgress, MobileTypingIndicator, MobileLoadingState } from '../ui/mobile/MobileTaskProgress';
 import { MobileStatusBar, MobileConnectionStatus, MobileNetworkQuality } from '../ui/mobile/MobileStatusBar';
 
@@ -144,7 +147,7 @@ export const MobileOptimizationDemo: React.FC = () => {
               taskTitle="Mobile UI Optimization"
               progress={progress}
               isStreaming={demoState === 'processing'}
-              onTap={() => console.log('Task tapped')}
+              onTap={() => log.debug('Task tapped')}
               compact={false}
             />
 
@@ -173,9 +176,9 @@ export const MobileOptimizationDemo: React.FC = () => {
               position="top"
               compact={false}
               autoCollapse={false}
-              onTaskClick={(taskId) => console.log('Task clicked:', taskId)}
-              onClearCompleted={() => console.log('Clear completed tasks')}
-              onRetryFailed={() => console.log('Retry failed tasks')}
+              onTaskClick={(taskId) => log.debug('Task clicked:', taskId)}
+              onClearCompleted={() => log.debug('Clear completed tasks')}
+              onRetryFailed={() => log.debug('Retry failed tasks')}
             />
           </div>
         </div>

@@ -10,8 +10,10 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createLogger } from '../../../../utils/logger';
 import { BaseWidget } from '../BaseWidget';
 import { Button } from '../../../shared/ui/Button';
+const log = createLogger('MinimalAutomationDemo');
 
 interface ChatMessage {
   id: string;
@@ -182,7 +184,7 @@ const MinimalAutomationDemo: React.FC = () => {
         break;
 
       default:
-        console.log('Action not handled:', action.id);
+        log.debug('Action not handled', action.id);
     }
   };
 
@@ -231,7 +233,7 @@ const MinimalAutomationDemo: React.FC = () => {
       id: 'export-config',
       label: '导出配置',
       icon: '📤',
-      onClick: () => console.log('Export config'),
+      onClick: () => log.info('Export config'),
       variant: 'secondary' as const,
       disabled: !context.isComplete
     },
@@ -239,14 +241,14 @@ const MinimalAutomationDemo: React.FC = () => {
       id: 'templates',
       label: '模板库',
       icon: '📚',
-      onClick: () => console.log('Templates'),
+      onClick: () => log.info('Templates'),
       variant: 'secondary' as const
     },
     {
       id: 'help',
       label: '帮助',
       icon: '❓',
-      onClick: () => console.log('Help'),
+      onClick: () => log.info('Help'),
       variant: 'secondary' as const
     }
   ];

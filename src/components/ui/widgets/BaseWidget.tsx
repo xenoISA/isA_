@@ -16,10 +16,12 @@
  * 4. Management Area: Quick action menu (optional)
  */
 import React, { useState, ReactNode, useRef } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ScrollFollowUpActions } from '../../shared/widgets/ScrollFollowUpActions';
 import { Button } from '../../shared/ui/Button';
 import { Dropdown } from '../../shared/widgets/Dropdown';
 import { ContentRenderer, ContentType } from '../../shared/content/ContentRenderer';
+const log = createLogger('BaseWidget');
 
 // Compact Dropdown components for title bar
 const CompactArtifactDropdown: React.FC<{
@@ -449,7 +451,7 @@ export const BaseWidget: React.FC<BaseWidgetProps> = ({
     ? widgetSession.title
     : 'Widget Session';
     
-  console.log('🔧 BASEWIDGET: Mode detection:', {
+  log.debug('Mode detection', {
     mode,
     isPluginMode,
     isIndependentMode,
@@ -687,7 +689,7 @@ export const BaseWidget: React.FC<BaseWidgetProps> = ({
                 }}
                 maxHeight={400}
                 onAction={(action, data) => {
-                  console.log('🎬 BASEWIDGET: Content action:', action, data);
+                  log.debug('Content action', { action, data });
                 }}
               />
             </div>
@@ -708,7 +710,7 @@ export const BaseWidget: React.FC<BaseWidgetProps> = ({
                 }}
                 maxHeight={400}
                 onAction={(action, data) => {
-                  console.log('🎬 BASEWIDGET: Content action:', action, data);
+                  log.debug('Content action', { action, data });
                 }}
               />
             </div>
@@ -729,7 +731,7 @@ export const BaseWidget: React.FC<BaseWidgetProps> = ({
                 }}
                 maxHeight={400}
                 onAction={(action, data) => {
-                  console.log('🎬 BASEWIDGET: Content action:', action, data);
+                  log.debug('Content action', { action, data });
                 }}
               />
             </div>

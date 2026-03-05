@@ -10,7 +10,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { createLogger } from '../utils/logger';
 import { creditMonitor, CreditChangeEvent, CreditAlert } from '../utils/creditMonitor';
+
+const log = createLogger('useCreditMonitor');
 
 export interface UseCreditMonitorReturn {
   // 当前状态
@@ -45,7 +48,7 @@ export const useCreditMonitor = (): UseCreditMonitorReturn => {
   // 📡 订阅信用变化事件
   useEffect(() => {
     const unsubscribe = creditMonitor.addListener((change) => {
-      console.log('🎯 useCreditMonitor: Credit change received', {
+      log.info('Credit change received', {
         credits: change.newCredits,
         difference: change.difference,
         source: change.source

@@ -44,7 +44,9 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('ChatStore', LogCategory.CHAT_FLOW);
 // 使用全局实例获取函数而不是直接导入
 import { getChatServiceInstance } from '../hooks/useChatService';
 import { ChatMetadata, ChatMessage, StreamingStatus } from '../types/chatTypes';
@@ -511,7 +513,7 @@ export const useChatStore = create<ChatStore>()(
             parsedContent = contentParser.parse(finalizedMessage.content) || undefined;
             // Content parsed successfully
           } catch (error) {
-            console.warn('🔍 CONTENT_PARSER: Failed to parse content:', error);
+            log.warn('Failed to parse content', error);
           }
         }
         

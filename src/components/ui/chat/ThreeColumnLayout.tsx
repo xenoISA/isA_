@@ -11,11 +11,13 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ChatContentLayout } from './ChatContentLayout';
 import { InputAreaLayout } from './InputAreaLayout';
 import { RightPanel } from './RightPanel';
 import { SmartWidgetSelector } from '../widgets/SmartWidgetSelector';
 import { ChatMessage } from '../../../types/chatTypes';
+const log = createLogger('ThreeColumnLayout');
 
 export interface ThreeColumnLayoutProps {
   // Header
@@ -92,8 +94,8 @@ export const ThreeColumnLayout: React.FC<ThreeColumnLayoutProps> = ({
 }) => {
   // 计算布局尺寸
   const layoutConfig = useMemo(() => {
-    console.log('🔧 ThreeColumnLayout: Computing layout config', { 
-      showSidebar, showRightPanel, showRightSidebar 
+    log.debug('Computing layout config', {
+      showSidebar, showRightPanel, showRightSidebar
     });
     // Widget半屏模式时的特殊处理
     if (showRightSidebar) {
@@ -121,7 +123,7 @@ export const ThreeColumnLayout: React.FC<ThreeColumnLayoutProps> = ({
       rightPanelWidth: `${rightWidth}%`
     };
     
-    console.log('🔧 ThreeColumnLayout: Final layout config', config);
+    log.debug('Final layout config', config);
     return config;
   }, [showSidebar, showRightPanel, showRightSidebar, rightSidebarWidth]);
 

@@ -24,6 +24,8 @@ import { useAppStore } from '../stores/useAppStore';
 import { useSessionStore } from '../stores/useSessionStore';
 import { ChatMessage, ArtifactMessage } from '../types/chatTypes';
 import { AppArtifact } from '../types/appTypes';
+import { createLogger } from '../utils/logger';
+const log = createLogger('ArtifactModule');
 
 /**
  * Modern Artifact Business Logic Hook
@@ -50,7 +52,7 @@ export const useArtifactLogic = () => {
     // First try legacy system
     const legacyArtifact = legacyArtifacts?.find(a => a.id === artifactId);
     if (legacyArtifact) {
-      console.log('📱 ARTIFACT_MODULE: Reopening legacy artifact app:', legacyArtifact.appId);
+      log.info('Reopening legacy artifact app', { appId: legacyArtifact.appId });
       setCurrentApp(legacyArtifact.appId);
       setShowRightSidebar(true);
       return;
@@ -59,7 +61,7 @@ export const useArtifactLogic = () => {
     // Then try artifact message system
     const artifactMessage = artifactMessages.find(am => am.artifact.id === artifactId);
     if (artifactMessage) {
-      console.log('📱 ARTIFACT_MODULE: Reopening artifact from message:', artifactMessage.artifact.widgetType);
+      log.info('Reopening artifact from message', { widgetType: artifactMessage.artifact.widgetType });
       // Map widget type to app ID
       const appId = artifactMessage.artifact.widgetType; // 'dream', 'hunt', etc.
       setCurrentApp(appId as any); // TODO: Fix type casting

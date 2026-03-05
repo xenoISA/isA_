@@ -17,7 +17,9 @@
  */
 
 import React, { useEffect } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { useAppStore } from '../../../stores/useAppStore';
+const log = createLogger('ChatWelcome');
 import { WidgetType } from '../../../types/widgetTypes';
 import { 
   useOmniActions,
@@ -53,15 +55,15 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   useEffect(() => {
     const isValid = validateWelcomeConfig();
     if (!isValid) {
-      console.error('🎯 CHAT_WELCOME: Invalid welcome configuration detected');
+      log.error('Invalid welcome configuration detected');
     } else {
-      console.log('🎯 CHAT_WELCOME: Welcome configuration loaded successfully', { language: currentLanguage });
+      log.info('Welcome configuration loaded successfully', { language: currentLanguage });
     }
   }, [currentLanguage]);
 
   // 处理widget卡片点击
   const handleWidgetClick = async (widget: typeof welcomeConfig.widgets[0]) => {
-    console.log(`🎯 CHAT_WELCOME: Widget clicked - ${widget.title} (${widget.id})`);
+    log.info(`Widget clicked - ${widget.title} (${widget.id})`);
     
     try {
       // 1. 打开对应widget的侧边栏
@@ -89,18 +91,18 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
           await triggerKnowledgeAnalysis(params);
           break;
         default:
-          console.warn(`🎯 CHAT_WELCOME: Unknown widget type - ${widget.id}`);
+          log.warn(`Unknown widget type - ${widget.id}`);
       }
       
-      console.log(`🎯 CHAT_WELCOME: Widget ${widget.title} activated successfully`);
+      log.info(`Widget ${widget.title} activated successfully`);
     } catch (error) {
-      console.error(`🎯 CHAT_WELCOME: Failed to activate widget ${widget.title}:`, error);
+      log.error(`Failed to activate widget ${widget.title}`, error);
     }
   };
 
   // 处理示例提示词点击
   const handlePromptClick = (prompt: string) => {
-    console.log(`💬 CHAT_WELCOME: Example prompt clicked - ${prompt}`);
+    log.info(`Example prompt clicked - ${prompt}`);
     if (onSendMessage) {
       onSendMessage(prompt);
     }

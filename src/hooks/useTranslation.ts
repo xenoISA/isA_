@@ -12,7 +12,10 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { createLogger } from '../utils/logger';
 import { useLanguageStore } from '../stores/useLanguageStore';
+
+const log = createLogger('useTranslation');
 import { translations, Translations } from '../locales/translations';
 
 // ================================================================================
@@ -82,13 +85,13 @@ export const useTranslation = (): UseTranslationReturn => {
         if (value && typeof value === 'object' && k in value) {
           value = value[k];
         } else {
-          console.warn(`Translation key not found: ${key} for language ${currentLanguage}`);
+          log.warn(`Translation key not found: ${key} for language ${currentLanguage}`);
           return key; // Return the key itself as fallback
         }
       }
       
       if (typeof value !== 'string') {
-        console.warn(`Translation value is not a string: ${key} for language ${currentLanguage}`);
+        log.warn(`Translation value is not a string: ${key} for language ${currentLanguage}`);
         return key;
       }
       
@@ -101,7 +104,7 @@ export const useTranslation = (): UseTranslationReturn => {
       
       return value;
     } catch (error) {
-      console.error(`Error translating key ${key}:`, error);
+      log.error(`Error translating key ${key}:`, error);
       return key;
     }
   }, [currentTranslations, currentLanguage]);

@@ -16,7 +16,10 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { Button } from './Button';
+
+const log = createLogger('FileUploader');
 
 export interface FileUploadResult {
   file: File;
@@ -377,7 +380,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                       variant="ghost"
                       size="xs"
                       icon="👁️"
-                      onClick={() => console.log('Preview data:', fileResult.data)}
+                      onClick={() => log.debug('Preview data:', fileResult.data)}
                       tooltipText="Preview processed data"
                     />
                   )}
