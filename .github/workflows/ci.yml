@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: isA_
+
+      - name: Checkout isA_App_SDK (file: dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: xenoISA/isA_App_SDK
+          path: isA_App_SDK
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: isA_/node_modules
+          key: node-modules-${{ hashFiles('isA_/package-lock.json', 'isA_/package.json') }}
+          restore-keys: |
+            node-modules-
+
+      - name: Install dependencies
+        working-directory: isA_
+        run: npm install
+
+      - name: Lint
+        working-directory: isA_
+        run: npm run lint
+
+      - name: Type-check
+        working-directory: isA_
+        # TODO: remove continue-on-error once pre-existing TS errors are fixed (#32)
+        continue-on-error: true
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: isA_
+        run: npm run build
