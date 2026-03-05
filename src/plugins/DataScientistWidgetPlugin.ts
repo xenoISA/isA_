@@ -80,8 +80,13 @@ export class DataScientistWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // 调用现有的数据分析逻辑
-      const analysisResult = await this.performAnalysis(input.prompt, input.options);
+      // 调用现有的数据分析逻辑 - 传递context信息
+      const analysisResult = await this.performAnalysis(input.prompt, {
+        ...input.options,
+        sessionId: input.context?.sessionId,
+        userId: input.context?.userId,
+        authToken: input.context?.authToken
+      });
 
       // 构造插件输出
       const output: PluginOutput = {
@@ -149,7 +154,7 @@ export class DataScientistWidgetPlugin implements WidgetPlugin {
       
       // 模拟现有的 Widget Store 调用流程
       const sessionId = options.sessionId || `datascientist_plugin_${Date.now()}`;
-      const userId = options.userId || 'plugin_user';
+      const userId = options.userId || (() => { throw new Error('User ID is required for data analysis') })();
       
       // 构造与现有系统兼容的请求
       const chatOptions = {
@@ -157,9 +162,9 @@ export class DataScientistWidgetPlugin implements WidgetPlugin {
         user_id: userId,
         prompt_name: 'csv_analyze_prompt',
         prompt_args: {
-          analysis_request: request,
-          data_type: options.dataType || 'general',
-          analysis_depth: options.depth || 'comprehensive'
+          prompt: request,
+          csv_url: options.csv_url || options.dataUrl || '',
+          depth: options.depth || 'comprehensive'
         }
       };
 
@@ -261,8 +266,9 @@ export class DataScientistWidgetPlugin implements WidgetPlugin {
           }
         };
 
-        // 调用现有的 chatService
-        chatService.sendMessage(request, chatOptions, 'dev_key_test', callbacks)
+        // 调用现有的 chatService - 修正参数顺序
+        // Note: ChatService.sendMessage expects (message, sessionId, callbacks, userId)
+        chatService.sendMessage(request, chatOptions.session_id, callbacks, chatOptions.user_id)
           .catch(error => {
             clearTimeout(timeout);
             reject(error);

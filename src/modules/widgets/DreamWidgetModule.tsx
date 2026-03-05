@@ -74,7 +74,7 @@ const prepareDreamTemplateParams = (params: DreamWidgetParams) => {
   switch (mode) {
     case 'text_to_image':
       prompt_args = {
-        prompt: params.prompt || 'Generate an image',
+        prompt: params.prompt, // Don't use fallback
         style_preset: params.stylePreset || 'photorealistic',
         quality: params.quality || 'high'
       };
@@ -275,11 +275,17 @@ const dreamConfig = createWidgetConfig<DreamWidgetParams, DreamWidgetResult>({
   },
   
   // Extract parameters from triggered input
-  extractParamsFromInput: (input: string): DreamWidgetParams => ({
-    prompt: input.trim(),
-    mode: 'smart', // Default to smart mode
-    style: 'photographic' // Default style
-  }),
+  extractParamsFromInput: (input: string): DreamWidgetParams | null => {
+    const trimmedInput = input?.trim();
+    if (!trimmedInput) {
+      return null; // Don't process empty input
+    }
+    return {
+      prompt: trimmedInput,
+      mode: 'smart', // Default to smart mode
+      style: 'photographic' // Default style
+    };
+  },
   
   // Lifecycle callbacks
   onProcessStart: (params: DreamWidgetParams) => {

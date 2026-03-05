@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><title>Gateway Test</title></head>
+<body>
+<h1>Gateway Chat Test</h1>
+<button onclick="testChat()">Test Chat</button>
+<pre id="result"></pre>
+<script>
+async function testChat() {
+  const resultDiv = document.getElementById('result');
+  resultDiv.textContent = 'Testing...';
+  
+  try {
+    const response = await fetch('http://localhost:8000/api/v1/agents/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify({
+        message: 'hello test',
+        user_id: 'test-user',
+        session_id: 'test-session'
+      })
+    });
+    
+    resultDiv.textContent = 'Status: ' + response.status + '\n';
+    
+    if (response.ok) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        resultDiv.textContent += decoder.decode(value);
+      }
+    } else {
+      resultDiv.textContent += 'Error: ' + response.statusText;
+    }
+  } catch (error) {
+    resultDiv.textContent = 'Error: ' + error.message;
+  }
+}
+</script>
+</body>
+</html>

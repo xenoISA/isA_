@@ -477,7 +477,25 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
           instructions: legacyEvent.instructions
         };
         
+      case 'content':
+        // content事件包含完整的AI响应 (推荐方法)
+        return {
+          ...baseEvent,
+          type: 'text_message_content' as const,
+          message_id: legacyEvent.message_id || `msg_${Date.now()}`,
+          delta: legacyEvent.content || '',
+          metadata: {
+            ...baseEvent.metadata,
+            is_complete_response: true,
+            extraction_method: 'content_event',
+            final_content: legacyEvent.content || ''
+          }
+        };
+        
       case 'custom_event':
+        // 处理custom_event的多种子类型
+        return this.handleCustomEvent(legacyEvent, baseEvent);
+        
       case 'message_stream':
         // 检查多种可能的token数据位置 - 适配后端实际数据结构
         const customLLMChunk = legacyEvent.custom_llm_chunk || 
@@ -676,11 +694,11 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
         return {
           ...baseEvent,
           type: 'billing' as const,
-          credits_remaining: legacyEvent.creditsRemaining || legacyEvent.credits_remaining,
-          total_credits: legacyEvent.totalCredits || legacyEvent.total_credits,
-          model_calls: legacyEvent.modelCalls || legacyEvent.model_calls || 0,
-          tool_calls: legacyEvent.toolCalls || legacyEvent.tool_calls || 0,
-          cost: legacyEvent.cost
+          credits_remaining: legacyEvent.creditsRemaining || legacyEvent.credits_remaining || legacyEvent.data?.credits_remaining,
+          total_credits: legacyEvent.totalCredits || legacyEvent.total_credits || legacyEvent.data?.total_credits,
+          model_calls: legacyEvent.modelCalls || legacyEvent.model_calls || legacyEvent.data?.model_calls || 0,
+          tool_calls: legacyEvent.toolCalls || legacyEvent.tool_calls || legacyEvent.data?.tool_calls || 0,
+          cost: legacyEvent.cost || legacyEvent.data?.cost
         };
         
       // Resume事件
@@ -706,6 +724,59 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
           type: 'state_update' as const,
           state_data: legacyEvent.graph || legacyEvent.data,
           node: legacyEvent.node
+        };
+        
+      // 真实API事件类型 - 基于实际测试
+      case 'tool_calls':
+        // 从metadata中提取工具调用信息
+        const toolCalls = legacyEvent.metadata?.tool_calls;
+        if (toolCalls && toolCalls.length > 0) {
+          // 返回第一个工具调用（通常一次处理一个）
+          const firstCall = toolCalls[0];
+          return {
+            ...baseEvent,
+            type: 'tool_call_start' as const,
+            tool_call_id: firstCall.id || `tool_${Date.now()}`,
+            tool_name: firstCall.name || 'unknown_tool',
+            parameters: firstCall.args || {}
+          };
+        }
+        return {
+          ...baseEvent,
+          type: 'custom_event' as const,
+          metadata: { ...baseEvent.metadata, tool_calls_info: legacyEvent.content }
+        } as BaseAGUIEvent;
+        
+      case 'tool_result_msg':
+        // 从content中解析工具结果
+        const toolResult = this.extractToolResultFromContent(legacyEvent.content || '');
+        if (toolResult) {
+          return {
+            ...baseEvent,
+            type: 'tool_call_end' as const,
+            tool_call_id: `tool_${Date.now()}`,
+            tool_name: toolResult.action || 'unknown_tool',
+            result: toolResult.data,
+            error: toolResult.status === 'success' ? undefined : toolResult.error
+          };
+        }
+        return {
+          ...baseEvent,
+          type: 'custom_event' as const,
+          metadata: { ...baseEvent.metadata, tool_result_raw: legacyEvent.content }
+        } as BaseAGUIEvent;
+        
+      case 'node_update':
+        // 从content中解析节点信息
+        const nodeInfo = this.extractNodeInfoFromContent(legacyEvent.content || '');
+        return {
+          ...baseEvent,
+          type: 'node_update' as const,
+          node_name: nodeInfo?.node_name || 'unknown_node',
+          status: (nodeInfo?.status === 'active' ? 'started' : nodeInfo?.status || 'started') as 'started' | 'completed' | 'failed',
+          credits: nodeInfo?.credits || 0,
+          messages_count: nodeInfo?.messages || 0,
+          data: legacyEvent.metadata || {}
         };
         
       default:
@@ -912,6 +983,151 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
     return [
       'text_message_start', 'text_message_content', 'text_message_end'
     ].includes(eventType);
+  }
+  
+  /**
+   * 处理custom_event的复杂子类型
+   * 基于真实测试数据的8种子类型
+   */
+  private handleCustomEvent(legacyEvent: LegacySSEEvent, baseEvent: any): AGUIEvent {
+    const content = legacyEvent.content || '';
+    const metadata = legacyEvent.metadata || {};
+    
+    // 子类型1: LLM Token流 - 最频繁
+    const customLLMChunk = metadata.raw_chunk?.custom_llm_chunk;
+    if (customLLMChunk || content.includes("'custom_llm_chunk':")) {
+      const chunk = customLLMChunk || this.extractLLMChunk(content);
+      return {
+        ...baseEvent,
+        type: 'text_message_content' as const,
+        message_id: legacyEvent.message_id || `msg_${Date.now()}`,
+        delta: chunk || '',
+        metadata: {
+          ...baseEvent.metadata,
+          extraction_method: 'custom_event_llm_chunk'
+        }
+      };
+    }
+    
+    // 子类型2: 工具执行进度
+    if (content.includes("'type': 'progress'") || content.includes('Starting execution') || content.includes('Completed -')) {
+      const progressInfo = this.extractProgressInfo(content);
+      return {
+        ...baseEvent,
+        type: 'tool_executing' as const,
+        tool_name: progressInfo?.tool_name || 'unknown_tool',
+        status: progressInfo?.status || 'running',
+        progress: progressInfo?.progress || 0,
+        metadata: {
+          ...baseEvent.metadata,
+          progress_info: progressInfo
+        }
+      };
+    }
+    
+    // 子类型3: 任务规划状态
+    if (content.includes('Task Planning:') || content.includes('📋 Task Planning') || metadata.task_planning) {
+      return {
+        ...baseEvent,
+        type: 'task_progress_update' as const,
+        task: {
+          id: `task_${Date.now()}`,
+          name: 'Task Planning',
+          progress: 50,
+          status: 'running' as const,
+          description: content.substring(0, 100)
+        }
+      };
+    }
+    
+    // 默认返回自定义事件
+    return {
+      ...baseEvent,
+      type: 'custom_event' as const,
+      metadata: {
+        ...baseEvent.metadata,
+        custom_content: content,
+        custom_metadata: metadata
+      }
+    } as BaseAGUIEvent;
+  }
+  
+  /**
+   * 从content字符串中提取LLM chunk
+   */
+  private extractLLMChunk(content: string): string | null {
+    const chunkMatch = content.match(/'custom_llm_chunk':\s*'([^']*)'/) || 
+                       content.match(/"custom_llm_chunk":\s*"([^"]*)"/);
+    return chunkMatch ? chunkMatch[1] : null;
+  }
+  
+  /**
+   * 提取进度信息
+   */
+  private extractProgressInfo(content: string): {
+    tool_name: string;
+    status: string;
+    progress: number;
+  } | null {
+    // 匹配: [tool_name] Starting execution (1/2)
+    const startMatch = content.match(/\[([^\]]+)\] Starting execution \((\d+\/\d+)\)/);
+    if (startMatch) {
+      return {
+        tool_name: startMatch[1],
+        status: 'starting',
+        progress: 0
+      };
+    }
+    
+    // 匹配: [tool_name] Completed - 1234 chars result
+    const completeMatch = content.match(/\[([^\]]+)\] Completed - (\d+) chars result/);
+    if (completeMatch) {
+      return {
+        tool_name: completeMatch[1],
+        status: 'completed',
+        progress: 100
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * 从content字符串中提取工具结果
+   */
+  private extractToolResultFromContent(content: string): any | null {
+    // 匹配: 🔧 ToolMessage: {"status": "success", ...}
+    const toolMessageMatch = content.match(/🔧 ToolMessage: ({[\s\S]*})/);
+    if (toolMessageMatch) {
+      try {
+        return JSON.parse(toolMessageMatch[1]);
+      } catch (e) {
+        console.warn('🎯 AGUI_EVENT_PARSER: Failed to parse tool result JSON:', e);
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * 从content字符串中提取节点信息
+   */
+  private extractNodeInfoFromContent(content: string): {
+    node_name: string;
+    status: string;
+    credits: number;
+    messages: number;
+  } | null {
+    // 匹配: 📊 reason_model: Credits: N/A, Messages: 1
+    const nodeMatch = content.match(/📊 ([^:]+): Credits: ([^,]+), Messages: (\d+)/);
+    if (nodeMatch) {
+      return {
+        node_name: nodeMatch[1].trim(),
+        status: 'active',
+        credits: nodeMatch[2].trim() === 'N/A' ? 0 : parseInt(nodeMatch[2]),
+        messages: parseInt(nodeMatch[3])
+      };
+    }
+    return null;
   }
   
   validate(data: AGUIEvent): boolean {

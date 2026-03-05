@@ -97,6 +97,7 @@ export const useAuth = (): UseAuthReturn => {
 
       const response = await fetch(url, {
         ...options,
+        credentials: 'include',
         headers: { ...headers, ...options.headers }
       });
 

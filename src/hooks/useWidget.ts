@@ -105,6 +105,27 @@ export const useWidget = () => {
       icon: '🤖',
       description: 'General purpose AI assistant',
       component: null as any
+    },
+    'code-reviewer': {
+      id: 'code-reviewer',
+      title: 'Code Reviewer',
+      icon: '👨‍💻',
+      description: 'AI code review and analysis',
+      component: null as any
+    },
+    translator: {
+      id: 'translator',
+      title: 'Translator',
+      icon: '🌐',
+      description: 'Language translation service',
+      component: null as any
+    },
+    custom_automation: {
+      id: 'custom_automation',
+      title: 'Custom Automation',
+      icon: '⚙️',
+      description: 'Custom automation workflows',
+      component: null as any
     }
   }), []);
   

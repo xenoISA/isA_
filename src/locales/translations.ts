@@ -131,6 +131,12 @@ export interface Translations {
     secureAuthentication: string;
     welcomeBack: string;
     loginRequired: string;
+    email: string;
+    password: string;
+    name: string;
+    verificationCode: string;
+    verify: string;
+    createAccount: string;
   };
 
   // Chat and messaging
@@ -150,6 +156,10 @@ export interface Translations {
     welcomeTitle: string;
     welcomeSubtitle: string;
     tipText: string;
+    
+    // URLs and links
+    relatedLinks: string;
+    copyLink: string;
     
     // Example prompts
     examplePrompts: {
@@ -447,7 +457,7 @@ export interface Translations {
   };
   
   // Task management
-  tasks: {
+  taskManagement: {
     management: string;
     total: string;
     active: string;
@@ -557,7 +567,6 @@ export interface Translations {
     yesterday: string;
     daysAgo: string;
     messageCount: string;
-    newSession: string;
   };
   
   // Header and navigation
@@ -751,9 +760,15 @@ const zhCN: Translations = {
     signOut: '退出登录',
     signUp: '注册',
     signInToContinue: '登录以继续',
-    secureAuthentication: '安全认证由 Auth0 提供支持',
+    secureAuthentication: '安全认证由 isA 提供支持',
     welcomeBack: '欢迎回来',
-    loginRequired: '需要登录'
+    loginRequired: '需要登录',
+    email: '邮箱',
+    password: '密码',
+    name: '姓名',
+    verificationCode: '验证码',
+    verify: '验证',
+    createAccount: '创建账号'
   },
 
   // Chat and messaging
@@ -773,6 +788,10 @@ const zhCN: Translations = {
     welcomeTitle: '欢迎使用 AI 智能助手',
     welcomeSubtitle: '选择下方任一工具开始您的AI之旅，或直接在下方输入您的需求',
     tipText: '点击上方任一工具开始使用，或在下方输入您的消息',
+    
+    // URLs and links
+    relatedLinks: '相关链接',
+    copyLink: '复制链接',
     
     // Example prompts
     examplePrompts: {
@@ -1069,7 +1088,7 @@ const zhCN: Translations = {
   },
   
   // Task management
-  tasks: {
+  taskManagement: {
     management: '任务管理',
     total: '总计',
     active: '活跃',
@@ -1178,8 +1197,7 @@ const zhCN: Translations = {
     today: '今天',
     yesterday: '昨天',
     daysAgo: '{days} 天前',
-    messageCount: '{count} 条消息',
-    newSession: '新会话'
+    messageCount: '{count} 条消息'
   },
   
   // Header and navigation
@@ -1373,9 +1391,15 @@ const enUS: Translations = {
     signOut: 'Sign Out',
     signUp: 'Sign Up',
     signInToContinue: 'Sign In to Continue',
-    secureAuthentication: 'Secure authentication powered by Auth0',
+    secureAuthentication: 'Secure authentication powered by isA',
     welcomeBack: 'Welcome Back',
-    loginRequired: 'Login Required'
+    loginRequired: 'Login Required',
+    email: 'Email',
+    password: 'Password',
+    name: 'Name',
+    verificationCode: 'Verification Code',
+    verify: 'Verify',
+    createAccount: 'Create Account'
   },
 
   // Chat and messaging
@@ -1395,6 +1419,10 @@ const enUS: Translations = {
     welcomeTitle: 'Welcome to AI Assistant',
     welcomeSubtitle: 'Choose any tool below to start your AI journey, or type your request directly below',
     tipText: 'Click any widget above to get started, or type your message below',
+    
+    // URLs and links
+    relatedLinks: 'Related Links',
+    copyLink: 'Copy Link',
     
     // Example prompts
     examplePrompts: {
@@ -1691,7 +1719,7 @@ const enUS: Translations = {
   },
   
   // Task management
-  tasks: {
+  taskManagement: {
     management: 'Task Management',
     total: 'Total',
     active: 'Active',
@@ -1800,8 +1828,7 @@ const enUS: Translations = {
     today: 'Today',
     yesterday: 'Yesterday',
     daysAgo: '{days} days ago',
-    messageCount: '{count} messages',
-    newSession: 'New Session'
+    messageCount: '{count} messages'
   },
   
   // Header and navigation

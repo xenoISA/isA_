@@ -16,6 +16,7 @@
  */
 
 import { getGatewayUrl } from './runtimeEnv';
+import { authTokenStore } from '../stores/authTokenStore';
 
 // ================================================================================
 // 网关基础配置
@@ -233,46 +234,32 @@ export const LEGACY_TO_GATEWAY_MAP = {
 // ================================================================================
 
 /**
- * 获取认证头
+ * Get auth headers from in-memory token store.
  */
 export const getAuthHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {};
-  
-  // 优先使用JWT Token
-  const token = typeof window !== 'undefined' 
-    ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY) 
-    : null;
-    
+
+  const token = authTokenStore.getToken();
   if (token) {
     headers[GATEWAY_CONFIG.AUTH.AUTH_HEADER] = `Bearer ${token}`;
-    return headers;
   }
-  
-  // 备用：使用API Key
-  const apiKey = typeof window !== 'undefined' 
-    ? localStorage.getItem(GATEWAY_CONFIG.AUTH.API_KEY) 
-    : null;
-    
-  if (apiKey) {
-    headers[GATEWAY_CONFIG.AUTH.API_KEY_HEADER] = apiKey;
-  }
-  
+
   return headers;
 };
 
 /**
- * 保存认证Token
+ * Save auth token to in-memory store (never localStorage).
  */
 export const saveAuthToken = (token: string): void => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY, token);
-  }
+  authTokenStore.setToken(token);
 };
 
 /**
- * 清除认证信息
+ * Clear auth credentials from in-memory store and remove any legacy localStorage entries.
  */
 export const clearAuth = (): void => {
+  authTokenStore.clearToken();
+  // Clean up legacy localStorage entries from pre-migration
   if (typeof window !== 'undefined') {
     localStorage.removeItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
     localStorage.removeItem(GATEWAY_CONFIG.AUTH.API_KEY);

@@ -235,7 +235,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         const requestId = `${config.type}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         
         // Listen for result from ChatModule
-        const resultPromise = new Promise((resolve, reject) => {
+        const resultPromise = new Promise<any>((resolve, reject) => {
           const timeout = setTimeout(() => {
             eventEmitter.off('widget:result', resultHandler);
             reject(new Error('Widget request timeout'));
@@ -449,6 +449,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
           updateCurrentOutput({
             content: formattedContent,
             title: displayTitle,
+            type: config.type === 'dream' && result.type === 'image' ? 'image' as const : 'text' as const,
             isStreaming: false
           });
         }

@@ -82,8 +82,13 @@ export class OmniWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // 调用现有的内容生成逻辑
-      const content = await this.generateContent(input.prompt, input.options);
+      // 调用现有的内容生成逻辑 - 传递context信息
+      const content = await this.generateContent(input.prompt, {
+        ...input.options,
+        sessionId: input.context?.sessionId,
+        userId: input.context?.userId,
+        authToken: input.context?.authToken
+      });
 
       // 构造插件输出
       const output: PluginOutput = {
@@ -151,7 +156,7 @@ export class OmniWidgetPlugin implements WidgetPlugin {
       
       // 模拟现有的 Widget Store 调用流程
       const sessionId = options.sessionId || `omni_plugin_${Date.now()}`;
-      const userId = options.userId || 'plugin_user';
+      const userId = options.userId || (() => { throw new Error('User ID is required for content generation') })();
       
       // 构造与现有系统兼容的请求
       const chatOptions = {
@@ -161,8 +166,8 @@ export class OmniWidgetPlugin implements WidgetPlugin {
         prompt_args: {
           subject: prompt,
           depth: options.depth || 'deep',
-          reference_urls: options.referenceUrls || [],
-          reference_text: options.referenceText || `You are an expert content creator with research capabilities.\n\nTASK: Create content about "${prompt}"\nDEPTH: ${options.depth || 'deep'} analysis\n\nREFERENCES PROVIDED:\n\n\n\nBegin your research and content creation now.`
+          reference_urls: Array.isArray(options.referenceUrls) ? options.referenceUrls.join('\n') : (options.referenceUrls || ''),
+          reference_text: options.referenceText || ''
         }
       };
 
@@ -228,8 +233,9 @@ export class OmniWidgetPlugin implements WidgetPlugin {
           }
         };
 
-        // 调用现有的 chatService
-        chatService.sendMessage(prompt, chatOptions, 'dev_key_test', callbacks)
+        // 调用现有的 chatService - 修正参数顺序
+        // Note: ChatService.sendMessage expects (message, sessionId, callbacks, userId)
+        chatService.sendMessage(prompt, chatOptions.session_id, callbacks, chatOptions.user_id)
           .catch(error => {
             clearTimeout(timeout);
             reject(error);

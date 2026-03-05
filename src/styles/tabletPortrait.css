@@ -1,0 +1,91 @@
+/*
+ * Tablet Portrait Overrides
+ * Target: touch devices with width between 769–1024 in portrait
+ * Applied via a root class on <body> or top container: .tablet-portrait
+ */
+
+.tablet-portrait {
+}
+
+/* General typography scaling to avoid overflow */
+.tablet-portrait .text-xl { font-size: 1.1rem; line-height: 1.4; }
+.tablet-portrait .text-2xl { font-size: 1.25rem; line-height: 1.5; }
+.tablet-portrait .text-3xl { font-size: 1.4rem; line-height: 1.6; }
+
+/* Buttons: reduce padding and font-size to prevent wrapping/overlap */
+.tablet-portrait button {
+  white-space: nowrap;
+}
+.tablet-portrait .px-3xl { padding-left: 1.25rem; padding-right: 1.25rem; }
+.tablet-portrait .px-2xl { padding-left: 1rem; padding-right: 1rem; }
+.tablet-portrait .py-xl { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.tablet-portrait .py-lg { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+.tablet-portrait .text-xl { font-size: 1.1rem; }
+.tablet-portrait .text-lg { font-size: 1rem; }
+
+/* Button groups and toolbars: wrap safely and add gaps */
+.tablet-portrait .toolbar,
+.tablet-portrait .btn-group,
+.tablet-portrait .action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Grids: reduce columns to prevent cards squeezing */
+.tablet-portrait .md\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tablet-portrait .lg\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tablet-portrait .lg\:grid-cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Chat header and side panels spacing tweaks */
+.tablet-portrait .header-actions {
+  gap: 0.5rem;
+}
+.tablet-portrait .sidebar { width: 18%; }
+.tablet-portrait .right-panel { width: 18%; }
+
+/* Session header: allow wrapping and prevent overlap with New button */
+.tablet-portrait .session-header {
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+}
+.tablet-portrait .session-header h3 {
+  min-width: 0;
+}
+
+/* User button: constrain text and compact spacing */
+.tablet-portrait .user-button { padding: 0.625rem; }
+.tablet-portrait .user-button__text { min-width: 0; }
+.tablet-portrait .user-button__name { max-width: 100%; }
+.tablet-portrait .user-button__subtitle { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Reinforce avatar and button border visibility in tablet portrait */
+.tablet-portrait .user-button { border-width: 1px !important; border-color: rgba(255,255,255,0.16) !important; }
+.tablet-portrait .user-button:hover { border-color: rgba(255,255,255,0.24) !important; }
+.tablet-portrait .user-button__avatar { box-shadow: 0 2px 6px rgba(0,0,0,0.25) !important; outline: 1px solid rgba(255,255,255,0.15); outline-offset: -1px; }
+
+/* Prevent long labels from overflowing */
+.tablet-portrait .truncate,
+.tablet-portrait .line-clamp-1,
+.tablet-portrait .line-clamp-2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tablet-portrait .label,
+.tablet-portrait .badge,
+.tablet-portrait .chip {
+  max-width: 100%;
+}
+
+/* Inputs: compact paddings */
+.tablet-portrait input,
+.tablet-portrait textarea,
+.tablet-portrait select {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Ensure icons don’t force overflow */
+.tablet-portrait .icon-button { min-width: 2.25rem; }
+
+

@@ -53,7 +53,7 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
   onNewChat,
   ...props
 }) => {
-  const { isMobile, isTablet, screenWidth, touchSupport } = useDeviceType();
+  const { isMobile, isTablet, screenWidth, touchSupport, isPortrait } = useDeviceType();
 
   // Determine which layout to use
   const layoutType = useMemo(() => {
@@ -76,9 +76,8 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
       return 'mobile';
     }
 
-    // Check for tablet with touch in portrait mode
-    if (isTablet && touchSupport && screenWidth < screenWidth * adaptiveThreshold) {
-      console.log('📱 Tablet in portrait mode, using mobile layout');
+    // Tablet portrait mode prefers the mobile-optimized layout for better ergonomics
+    if (isTablet && touchSupport && isPortrait) {
       return 'mobile';
     }
 
@@ -99,7 +98,8 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
     isTablet,
     touchSupport,
     adaptiveThreshold,
-    isMobile
+    isMobile,
+    isPortrait
   ]);
 
   // Common props for both layouts

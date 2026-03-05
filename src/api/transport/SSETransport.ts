@@ -310,7 +310,7 @@ export class SSETransportFactory {
       ...config,
       reconnectInterval: 1000,
       maxReconnectAttempts: 3,
-      withCredentials: false
+      withCredentials: true
     };
     
     return new SSEConnection(sseConfig);
@@ -399,7 +399,7 @@ export const StandardSSEConfig: SSETransportConfig = {
   timeout: 300000, // 5 minutes
   reconnectInterval: 1000,
   maxReconnectAttempts: 3,
-  withCredentials: false,
+  withCredentials: true,
   retryConfig: {
     maxRetries: 3,
     retryDelay: 1000,

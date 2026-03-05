@@ -27,6 +27,7 @@
 import { BaseApiService } from './BaseApiService';
 import { logger, LogCategory } from '../utils/logger';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
+import { authTokenStore } from '../stores/authTokenStore';
 import { 
   HILInterruptDetectedEvent, 
   HILCheckpointCreatedEvent,
@@ -191,14 +192,11 @@ export class ExecutionControlService {
   }
 
   /**
-   * Get current auth token from centralized storage.
+   * Get current auth token from in-memory store.
    * Returns null when no token is available so callers can decide how to handle.
    */
   private getAuthToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
-    }
-    return null;
+    return authTokenStore.getToken();
   }
 
   /**

@@ -81,8 +81,13 @@ export class HuntWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // 调用现有的搜索逻辑
-      const searchResults = await this.performSearch(input.prompt, input.options);
+      // 调用现有的搜索逻辑 - 传递context信息
+      const searchResults = await this.performSearch(input.prompt, {
+        ...input.options,
+        sessionId: input.context?.sessionId,
+        userId: input.context?.userId,
+        authToken: input.context?.authToken
+      });
 
       // 构造插件输出
       const output: PluginOutput = {
@@ -151,17 +156,27 @@ export class HuntWidgetPlugin implements WidgetPlugin {
       
       // 模拟现有的 Widget Store 调用流程
       const sessionId = options.sessionId || `hunt_plugin_${Date.now()}`;
-      const userId = options.userId || 'plugin_user';
+      const userId = options.userId || (() => { throw new Error('User ID is required for hunt search') })();
+      
+      // 根据category选择正确的prompt模板
+      const promptNameMap: Record<string, string> = {
+        'ecommerce': 'hunt_ecommerce_prompt',
+        'academic': 'hunt_academic_prompt', 
+        'social': 'hunt_social_prompt',
+        'general': 'hunt_general_prompt'
+      };
+      
+      const promptName = promptNameMap[options.category] || 'hunt_general_prompt';
       
       // 构造与现有系统兼容的请求
       const chatOptions = {
         session_id: sessionId,
         user_id: userId,
-        prompt_name: 'hunt_general_prompt',
+        prompt_name: promptName,
         prompt_args: {
-          search_query: query,
-          max_results: options.maxResults || 10,
-          search_type: options.searchType || 'product'
+          query: query,
+          search_depth: options.search_depth || 'medium',
+          result_format: options.result_format || 'structured'
         }
       };
 
@@ -267,8 +282,9 @@ export class HuntWidgetPlugin implements WidgetPlugin {
           }
         };
 
-        // 调用现有的 chatService
-        chatService.sendMessage(query, chatOptions, 'dev_key_test', callbacks)
+        // 调用现有的 chatService - 修正参数顺序
+        // Note: ChatService.sendMessage expects (message, sessionId, callbacks, userId)
+        chatService.sendMessage(query, chatOptions.session_id, callbacks, chatOptions.user_id)
           .catch(error => {
             clearTimeout(timeout);
             reject(error);

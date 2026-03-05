@@ -17,6 +17,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../../config/gatewayConfig';
+import { authTokenStore } from '../../stores/authTokenStore';
 
 // Glass Button Style Creator
 const createGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'md', isDisabled: boolean = false) => ({
@@ -162,7 +163,7 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
 
     try {
       // Call Chat API
-      const token = localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+      const token = authTokenStore.getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;

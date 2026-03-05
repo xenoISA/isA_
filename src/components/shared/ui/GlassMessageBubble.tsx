@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Avatar } from './Avatar';
 import { ContentRenderer } from '../content/ContentRenderer';
 import { ParsedContent } from '../../../api/parsing/ContentParser';
+import { UrlDisplayComponent } from '../../ui/chat/UrlDisplayComponent';
 
 export interface GlassMessageBubbleProps {
   content: string;
@@ -264,6 +265,13 @@ export const GlassMessageBubble: React.FC<GlassMessageBubbleProps> = ({
               </span>
             )}
           </div>
+          
+          {/* URL Display - only for assistant messages */}
+          {role === 'assistant' && !isStreaming && (
+            <div className="relative mt-4">
+              <UrlDisplayComponent content={content} className="text-sm" />
+            </div>
+          )}
           
           {/* Enhanced Streaming status - 只显示LLM token状态 */}
           {shouldShowBubbleStreamingStatus() && (

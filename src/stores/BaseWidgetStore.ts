@@ -377,10 +377,11 @@ export function createBaseWidgetStore<TSpecificState, TSpecificActions>(
               'chatOptions.template_parameters': chatOptions.template_parameters,
               'chatOptions完整': chatOptions
             });
-            // chatService.sendMessage expects: (message, metadata, token, callbacks)
-            // Use default token like in useChatStore.ts - real token should come from UserModule
-            const token = 'dev_key_test';
-            await chatService.sendMessage(prompt, chatOptions, token, callbacks);
+            // chatService.sendMessage expects: (message, sessionId, callbacks, userId)
+            // Extract sessionId and userId from chatOptions
+            const sessionId = chatOptions.session_id || `widget_${Date.now()}`;
+            const userId = chatOptions.user_id || 'default_user';
+            await chatService.sendMessage(prompt, sessionId, callbacks, userId);
             
           } catch (error) {
             setProcessing(false);

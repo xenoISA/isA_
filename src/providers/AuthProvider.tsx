@@ -10,6 +10,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { GATEWAY_ENDPOINTS, GATEWAY_CONFIG } from '../config/gatewayConfig';
 import { getAuthHeaders, saveAuthToken, clearAuth } from '../config/gatewayConfig';
+import { authTokenStore } from '../stores/authTokenStore';
 import { logger, LogCategory } from '../utils/logger';
 
 // ================================================================================
@@ -49,44 +50,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = authUser !== null;
 
-  // Check for existing token on mount (verifyExistingToken inlined to
-  // satisfy React exhaustive-deps and avoid stale closure references).
+  // On mount: attempt silent refresh via HttpOnly refresh-token cookie.
+  // Falls back to in-memory token if already set (e.g. hot reload).
+  // Also cleans up any legacy localStorage tokens from pre-migration.
   useEffect(() => {
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY)
-      : null;
-
-    if (!token) {
-      setIsLoading(false);
-      return;
+    // Clean up legacy localStorage tokens
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
+      localStorage.removeItem(GATEWAY_CONFIG.AUTH.API_KEY);
     }
 
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
+        // Try silent refresh — the HttpOnly cookie is sent automatically
+        const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/refresh', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
         });
 
         if (cancelled) return;
 
         if (res.ok) {
           const data = await res.json();
-          const user = data.user || {};
-          setAuthUser({
-            ...user,
-            sub: data.user_id || user.sub || data.sub || '',
-            email: user.email || data.email || '',
-            name: user.name || data.name || data.email || '',
-          });
-          logger.info(LogCategory.USER_AUTH, 'Restored session from stored token');
+          const tokenValue = data.token || data.access_token;
+          if (tokenValue) {
+            saveAuthToken(tokenValue);
+            const user = data.user || {};
+            setAuthUser({
+              ...user,
+              sub: data.user_id || user.sub || data.sub || '',
+              email: user.email || data.email || '',
+              name: user.name || data.name || data.email || '',
+            });
+            logger.info(LogCategory.USER_AUTH, 'Restored session via silent refresh');
+          }
         } else {
-          clearAuth();
-          logger.info(LogCategory.USER_AUTH, 'Stored token invalid, cleared');
+          // If refresh fails, try verifying any existing in-memory token (hot reload case)
+          const existingToken = authTokenStore.getToken();
+          if (existingToken) {
+            const verifyRes = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${existingToken}` },
+              credentials: 'include',
+            });
+
+            if (cancelled) return;
+
+            if (verifyRes.ok) {
+              const data = await verifyRes.json();
+              const user = data.user || {};
+              setAuthUser({
+                ...user,
+                sub: data.user_id || user.sub || data.sub || '',
+                email: user.email || data.email || '',
+                name: user.name || data.name || data.email || '',
+              });
+              logger.info(LogCategory.USER_AUTH, 'Restored session from in-memory token');
+            } else {
+              clearAuth();
+              logger.info(LogCategory.USER_AUTH, 'In-memory token invalid, cleared');
+            }
+          }
         }
       } catch (err) {
-        logger.warn(LogCategory.USER_AUTH, 'Token verification failed', { error: err });
+        logger.warn(LogCategory.USER_AUTH, 'Session restore failed', { error: err });
         if (!cancelled) clearAuth();
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -103,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
@@ -142,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password, name: name || email }),
       });
 
@@ -180,6 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ code }),
       });
 
@@ -218,9 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const getAccessToken = useCallback((): string | null => {
-    return typeof window !== 'undefined'
-      ? localStorage.getItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY)
-      : null;
+    return authTokenStore.getToken();
   }, []);
 
   const getAuthHeadersAsync = useCallback(async (): Promise<Record<string, string>> => {

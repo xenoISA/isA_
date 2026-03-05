@@ -83,8 +83,13 @@ export class DreamWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // 调用现有的图片生成逻辑
-      const imageUrl = await this.generateImage(input.prompt, input.options);
+      // 调用现有的图片生成逻辑 - 传递context信息
+      const imageUrl = await this.generateImage(input.prompt, {
+        ...input.options,
+        sessionId: input.context?.sessionId,
+        userId: input.context?.userId,
+        authToken: input.context?.authToken
+      });
 
       // 构造插件输出
       const output: PluginOutput = {
@@ -155,17 +160,32 @@ export class DreamWidgetPlugin implements WidgetPlugin {
       
       // 模拟现有的 Widget Store 调用流程
       const sessionId = options.sessionId || `dream_plugin_${Date.now()}`;
-      const userId = options.userId || 'plugin_user';
+      const userId = options.userId || (() => { throw new Error('User ID is required for image generation') })();
+      
+      // 根据mode选择正确的prompt模板
+      const promptNameMap: Record<string, string> = {
+        'text_to_image': 'text_to_image_prompt',
+        'image_to_image': 'image_to_image_prompt',
+        'style_transfer': 'style_transfer_prompt',
+        'face_swap': 'face_swap_prompt',
+        'professional_headshot': 'professional_headshot_prompt',
+        'emoji_generation': 'emoji_generation_prompt',
+        'photo_inpainting': 'photo_inpainting_prompt',
+        'photo_outpainting': 'photo_outpainting_prompt',
+        'sticker_generation': 'sticker_generation_prompt'
+      };
+      
+      const promptName = promptNameMap[options.mode] || 'text_to_image_prompt';
       
       // 构造与现有系统兼容的请求
       const chatOptions = {
         session_id: sessionId,
         user_id: userId,
-        prompt_name: 'dream_template', // 使用现有模板
+        prompt_name: promptName,
         prompt_args: {
           prompt: prompt,
-          style: options.style || 'default',
-          quality: options.quality || 'standard'
+          style_preset: options.style_preset || options.style || 'photorealistic',
+          quality: options.quality || 'high'
         }
       };
 
@@ -243,8 +263,9 @@ export class DreamWidgetPlugin implements WidgetPlugin {
           }
         };
 
-        // 调用现有的 chatService
-        chatService.sendMessage(prompt, chatOptions, 'dev_key_test', callbacks)
+        // 调用现有的 chatService - 修正参数顺序
+        // Note: ChatService.sendMessage expects (message, sessionId, callbacks, userId)
+        chatService.sendMessage(prompt, chatOptions.session_id, callbacks, chatOptions.user_id)
           .catch(error => {
             clearTimeout(timeout);
             reject(error);

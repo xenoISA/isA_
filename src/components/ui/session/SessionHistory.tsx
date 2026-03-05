@@ -58,8 +58,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   return (
     <div className={`session-history ${className} flex flex-col h-full`}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <h3 className="text-lg font-semibold text-white/90 flex-1 min-w-0">{t('sessions.title')}</h3>
+      <div className="flex items-center justify-between mb-4 gap-3 session-header">
+        <h3 className="text-lg font-semibold text-white/90 flex-1 min-w-0 truncate">{t('sessions.title')}</h3>
         {showCreateButton && (
           <button
             onClick={onNewSession}

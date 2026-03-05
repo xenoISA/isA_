@@ -19,7 +19,7 @@
 
 import React, { ReactNode } from 'react';
 import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
-import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
+import { EditAction, ManagementAction, OutputHistoryItem } from '../../components/ui/widgets/BaseWidget';
 import { useCustomAutomationWidgetStore } from '../../stores/useWidgetStores';
 
 // Custom Automation specific types
@@ -48,12 +48,13 @@ interface CustomAutomationWidgetModuleProps {
   onAutomationCompleted?: (results: CustomAutomationWidgetResult) => void;
   children: ReactNode | ((moduleProps: {
     isProcessing: boolean;
-    outputHistory: any[];
-    currentOutput: any;
+    outputHistory: OutputHistoryItem[];
+    currentOutput: OutputHistoryItem | null;
     isStreaming: boolean;
     streamingContent: string;
-    onStartAutomation: (params: CustomAutomationWidgetParams) => Promise<void>;
-    onClearData: () => void;
+    startProcessing: (params: CustomAutomationWidgetParams) => Promise<void>;
+    onSelectOutput: (item: OutputHistoryItem) => void;
+    onClearHistory: () => void;
   }) => ReactNode);
 }
 
@@ -332,7 +333,6 @@ export const CustomAutomationWidgetModule: React.FC<CustomAutomationWidgetModule
       config={customAutomationConfig}
       triggeredInput={triggeredInput}
       onResultGenerated={onAutomationCompleted}
-      prepareTemplateParams={prepareAutomationTemplateParams}
     >
       {children}
     </BaseWidgetModule>

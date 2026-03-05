@@ -163,23 +163,23 @@ export const UserButton: React.FC<UserButtonProps> = ({
       {/* Main User Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="w-full p-3 hover:bg-white/8 transition-all duration-200 rounded-xl flex items-center space-x-3 group border border-white/10 hover:border-white/20"
+        className="w-full p-3 hover:bg-white/8 transition-all duration-200 rounded-xl flex items-center space-x-3 group border border-white/10 hover:border-white/20 user-button"
         title="Account Settings"
       >
         {/* Context-aware Avatar */}
         <div 
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg user-button__avatar"
           style={getAvatarStyle()}
         >
           {getAvatarContent()}
         </div>
 
         {/* Context-aware User Info */}
-        <div className="flex-1 text-left min-w-0">
-          <div className="text-sm font-semibold truncate text-white/95">
+        <div className="flex-1 text-left min-w-0 user-button__text">
+          <div className="text-sm font-semibold truncate text-white/95 user-button__name">
             {getDisplayName()}
           </div>
-          <div className="text-xs text-white/70 leading-tight">
+          <div className="text-xs text-white/70 leading-tight user-button__subtitle">
             {getDisplaySubtitle()}
           </div>
         </div>
