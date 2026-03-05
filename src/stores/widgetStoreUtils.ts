@@ -10,6 +10,9 @@
  */
 
 import { WidgetHelpers, CustomResultHandlers } from '../types/widgetTypes';
+import { createLogger, LogCategory } from '../utils/logger';
+
+const log = createLogger('WidgetStoreUtils', LogCategory.ARTIFACT_CREATION);
 
 /**
  * 通用图片URL提取函数 (用于Dream等图片生成Widget)
@@ -34,10 +37,10 @@ export function extractImageFromMessage(
         messageLength: completeMessage.length
       });
     } else {
-      console.log(`${helpers.config.logEmoji} ${helpers.config.widgetType.toUpperCase()}_STORE: No valid image URL found in complete message`);
+      log.debug(`${helpers.config.widgetType} no valid image URL found in complete message`);
     }
   } else {
-    console.log(`${helpers.config.logEmoji} ${helpers.config.widgetType.toUpperCase()}_STORE: No image markdown found in complete message`);
+    log.debug(`${helpers.config.widgetType} no image markdown found in complete message`);
   }
 }
 
@@ -58,7 +61,7 @@ export function extractTextFromMessage(
       contentPreview: completeMessage.substring(0, 100) + '...'
     });
   } else {
-    console.log(`${helpers.config.logEmoji} ${helpers.config.widgetType.toUpperCase()}_STORE: No complete message content provided`);
+    log.debug(`${helpers.config.widgetType} no complete message content provided`);
   }
 }
 
@@ -72,7 +75,7 @@ export function extractSearchResultFromMessage(
   helpers: WidgetHelpers
 ): void {
   if (completeMessage && completeMessage.trim()) {
-    console.log(`${helpers.config.logEmoji} ${helpers.config.widgetType.toUpperCase()}_STORE: Processing complete search response from chatService:`, completeMessage.substring(0, 200) + '...');
+    log.debug(`${helpers.config.widgetType} processing complete search response`, { preview: completeMessage.substring(0, 200) });
     
     // 创建搜索结果
     const searchResult = {
@@ -91,7 +94,7 @@ export function extractSearchResultFromMessage(
     });
   } else {
     // Fallback if no complete message was provided
-    console.log(`${helpers.config.logEmoji} ${helpers.config.widgetType.toUpperCase()}_STORE: No complete message provided, creating placeholder result`);
+    log.debug(`${helpers.config.widgetType} no complete message provided, creating placeholder result`);
     const placeholderResult = {
       title: `Search Results for: ${params.query}`,
       description: 'Search completed but no content was returned.',
@@ -144,7 +147,7 @@ export function extractAnalysisFromMessage(
       });
     }
   } else {
-    console.log(`${helpers.config.logEmoji} ${helpers.config.widgetType.toUpperCase()}_STORE: No complete message content provided`);
+    log.debug(`${helpers.config.widgetType} no complete message content provided`);
   }
 }
 

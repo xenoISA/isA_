@@ -1,5 +1,8 @@
 import React from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ChatSession } from '../../../hooks/useSession';
+
+const log = createLogger('SessionHistory');
 import { GlassButton } from '../../shared';
 import { useTranslation } from '../../../hooks/useTranslation';
 
@@ -163,7 +166,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                               }
                               return t('sessions.noMessages');
                             } catch (error) {
-                              console.error('Error rendering session message:', error);
+                              log.error('Error rendering session message:', error);
                               return t('sessions.errorLoadingMessage');
                             }
                           })()}

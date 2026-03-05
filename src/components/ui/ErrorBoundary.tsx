@@ -1,5 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { logger, LogCategory } from '../../utils/logger';
+import { logger, LogCategory, createLogger } from '../../utils/logger';
+
+const log = createLogger('ErrorBoundary');
 import { GlassButton } from '../shared';
 
 interface ErrorBoundaryState {
@@ -139,7 +141,7 @@ export const useErrorHandler = () => {
     }
 
     // 生产环境中只记录错误，不中断用户体验
-    console.error('Error handled:', error);
+    log.error('Error handled:', error);
   }, []);
 
   return { handleError };

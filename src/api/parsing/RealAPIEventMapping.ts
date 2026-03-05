@@ -2,10 +2,14 @@
  * ============================================================================
  * 基于真实测试数据的API事件映射 - Real API Event Mapping
  * ============================================================================
- * 
+ *
  * 根据2025-09-14真实测试结果重新设计的事件映射关系
  * 测试场景包括: simple2, weather, autonomous, billing, mixed_operations
  */
+
+import { createLogger, LogCategory } from '../../utils/logger';
+
+const log = createLogger('RealAPIEventMapping', LogCategory.API_REQUEST);
 
 // ================================================================================
 // 真实API事件类型定义 - 基于实际测试数据
@@ -141,7 +145,7 @@ class RealAPIEventMapper {
       try {
         return JSON.parse(toolMessageMatch[1]);
       } catch (e) {
-        console.warn('Failed to parse tool result JSON:', e);
+        log.warn('Failed to parse tool result JSON', e);
       }
     }
     

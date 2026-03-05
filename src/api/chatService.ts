@@ -18,6 +18,9 @@
 import { createSSETransport } from './transport/SSETransport';
 import { createAGUIEventParser } from './parsing/AGUIEventParser';
 import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
+import { createLogger, LogCategory } from '../utils/logger';
+
+const log = createLogger('ChatService', LogCategory.CHAT_FLOW);
 
 // 定义标准的回调接口 - 扩展支持所有事件类型
 export interface ChatServiceCallbacks {
@@ -198,16 +201,16 @@ export class ChatService {
                     this.handleAGUIEvent(aguiEvent, callbacks);
                     
                   } catch (parseError) {
-                    console.warn('🔗 CHAT_SERVICE: Failed to parse event:', parseError);
+                    log.warn('Failed to parse event', parseError);
                   }
                 }
               }
             }
           } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
-              console.log('🔗 CHAT_SERVICE: Data processing aborted normally');
+              log.debug('Data processing aborted normally');
             } else {
-              console.error('🔗 CHAT_SERVICE: Data processing error:', error);
+              log.error('Data processing error', error);
               await handleError(error instanceof Error ? error : new Error(String(error)));
             }
           }
@@ -218,7 +221,7 @@ export class ChatService {
       });
       
     } catch (error) {
-      console.error('🚀 CHAT_SERVICE: Failed to initialize:', error);
+      log.error('Failed to initialize', error);
       callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
@@ -230,7 +233,7 @@ export class ChatService {
   private handleAGUIEvent(event: any, callbacks: ChatServiceCallbacks): void {
     // 记录事件处理（开发模式）
     if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 CHAT_SERVICE: Processing AGUI event:', event.type, event);
+      log.debug('Processing AGUI event', { type: event.type, event });
     }
     
     switch (event.type) {
@@ -241,7 +244,7 @@ export class ChatService {
         
       case 'text_message_start':
         // 只是标记开始，不创建消息。实际内容由 token 事件处理
-        console.log('🎬 CHAT_SERVICE: Message generation started', event.message_id || event.run_id);
+        log.debug('Message generation started', { messageId: event.message_id || event.run_id });
         break;
         
       case 'text_message_end':
@@ -393,7 +396,7 @@ export class ChatService {
         break;
         
       default:
-        console.warn('🚨 CHAT_SERVICE: Unhandled AGUI event type:', event.type, event);
+        log.warn('Unhandled AGUI event type', { type: event.type, event });
         break;
     }
   }
@@ -411,7 +414,7 @@ export class ChatService {
         if (event.metadata?.content || customData.content) {
           const content = event.metadata?.content || customData.content;
           callbacks.onStreamContent?.(content);
-          console.log('🎯 CHAT_SERVICE: Streaming content forwarded to callbacks:', content.substring(0, 50) + '...');
+          log.debug('Streaming content forwarded to callbacks', { preview: content.substring(0, 50) });
         }
         break;
         
@@ -431,7 +434,7 @@ export class ChatService {
         break;
         
       default:
-        console.log('🔍 CHAT_SERVICE: Custom event:', customType, customData);
+        log.debug('Custom event', { customType, customData });
         break;
     }
   }
@@ -455,7 +458,7 @@ export class ChatService {
     callbacks: ChatServiceCallbacks,
     files?: File[]
   ): Promise<void> {
-    console.log('🖼️ CHAT_SERVICE: Starting multimodal message', {
+    log.info('Starting multimodal message', {
       hasFiles: !!files,
       fileCount: files?.length || 0
     });
@@ -483,7 +486,7 @@ export class ChatService {
     token: string,
     callbacks: ChatServiceCallbacks
   ): Promise<void> {
-    console.log('⏭️ CHAT_SERVICE: Resuming HIL session');
+    log.info('Resuming HIL session');
     
     // HIL恢复使用相同的架构模式
     return this.sendMessage(message, metadata, token, callbacks);

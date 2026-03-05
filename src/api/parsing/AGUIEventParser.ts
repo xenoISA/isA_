@@ -19,6 +19,9 @@
  */
 
 import { BaseParser, ParseError, ParserOptions } from './Parser';
+import { createLogger, LogCategory } from '../../utils/logger';
+
+const log = createLogger('AGUIEventParser', LogCategory.API_REQUEST);
 
 // ================================================================================
 // AGUI Event Types - 基于现有 aguiTypes.ts
@@ -397,7 +400,7 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
       return aguiEvent;
       
     } catch (error) {
-      console.error('🎯 AGUI_EVENT_PARSER: Parse error:', error);
+      log.error('Parse error', error);
       
       if (error instanceof ParseError) {
         throw error;
@@ -1102,7 +1105,7 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
       try {
         return JSON.parse(toolMessageMatch[1]);
       } catch (e) {
-        console.warn('🎯 AGUI_EVENT_PARSER: Failed to parse tool result JSON:', e);
+        log.warn('Failed to parse tool result JSON', e);
       }
     }
     return null;
@@ -1134,7 +1137,7 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
     try {
       return this.validateEventStructure(data);
     } catch (error) {
-      console.error('🎯 AGUI_EVENT_PARSER: Validation error:', error);
+      log.error('Validation error', error);
       return false;
     }
   }

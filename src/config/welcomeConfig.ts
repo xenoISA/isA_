@@ -11,6 +11,8 @@ import React from 'react';
 import { WidgetType } from '../types/widgetTypes';
 import { getTranslation } from '../locales/translations';
 import { SupportedLanguage } from '../stores/useLanguageStore';
+import { createLogger } from '../utils/logger';
+const log = createLogger('WelcomeConfig');
 
 export interface WelcomeWidget {
   id: WidgetType;
@@ -144,18 +146,18 @@ export const validateWelcomeConfig = (): boolean => {
   
   for (const field of requiredFields) {
     if (!(field in welcomeConfig)) {
-      console.error(`WelcomeConfig missing required field: ${field}`);
+      log.error(`WelcomeConfig missing required field: ${field}`);
       return false;
     }
   }
   
   if (!Array.isArray(welcomeConfig.widgets) || welcomeConfig.widgets.length === 0) {
-    console.error('WelcomeConfig widgets must be a non-empty array');
+    log.error('WelcomeConfig widgets must be a non-empty array');
     return false;
   }
   
   if (!Array.isArray(welcomeConfig.examplePrompts) || welcomeConfig.examplePrompts.length === 0) {
-    console.error('WelcomeConfig examplePrompts must be a non-empty array');
+    log.error('WelcomeConfig examplePrompts must be a non-empty array');
     return false;
   }
   

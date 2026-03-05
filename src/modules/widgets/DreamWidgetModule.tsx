@@ -21,6 +21,8 @@ import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { DreamWidgetParams, DreamWidgetResult } from '../../types/widgetTypes';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useDreamGeneratedImage, useDreamIsGenerating, useDreamLastParams } from '../../stores/useWidgetStores';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('DreamWidget');
 
 // Dream mode to MCP template mapping (based on the 9 MCP prompts)
 const DREAM_TEMPLATE_MAPPING = {
@@ -154,10 +156,7 @@ const prepareDreamTemplateParams = (params: DreamWidgetParams) => {
       };
   }
   
-  console.log('🎨 DREAM_MODULE: Prepared template params for mode', mode, ':', {
-    template_id: mapping.template_id,
-    prompt_args
-  });
+  log.debug('Prepared template params', { mode, template_id: mapping.template_id, prompt_args });
   
   return {
     template_id: mapping.template_id,
@@ -186,7 +185,7 @@ const dreamEditActions: EditAction[] = [
         link.target = '_blank';
         link.click();
       }
-      console.log('🎨 DREAM: Image download initiated');
+      log.info('Image download initiated');
     }
   },
   {
@@ -198,7 +197,7 @@ const dreamEditActions: EditAction[] = [
       const imageUrl = typeof content === 'string' ? content : content?.imageUrl;
       if (imageUrl) {
         window.open(imageUrl, '_blank');
-        console.log('🎨 DREAM: Image opened in new tab');
+        log.info('Image opened in new tab');
       }
     }
   },
@@ -211,7 +210,7 @@ const dreamEditActions: EditAction[] = [
       const imageUrl = typeof content === 'string' ? content : content?.imageUrl;
       if (imageUrl) {
         navigator.clipboard.writeText(imageUrl);
-        console.log('🎨 DREAM: Image URL copied to clipboard');
+        log.info('Image URL copied to clipboard');
       }
     }
   }
@@ -224,7 +223,7 @@ const dreamManagementActions: ManagementAction[] = [
     label: 'Create',
     icon: '🎨',
     onClick: () => {
-      console.log('🎨 DREAM: Creating new image variation');
+      log.info('Creating new image variation');
       // Could trigger a variation of the last generated image
     }
   },
@@ -233,7 +232,7 @@ const dreamManagementActions: ManagementAction[] = [
     label: 'Transform',
     icon: '✨',
     onClick: () => {
-      console.log('🎨 DREAM: Transforming image style');
+      log.info('Transforming image style');
       // Could apply style transformations
     }
   },
@@ -242,7 +241,7 @@ const dreamManagementActions: ManagementAction[] = [
     label: 'Enhance',
     icon: '⚡',
     onClick: () => {
-      console.log('🎨 DREAM: Enhancing image quality');
+      log.info('Enhancing image quality');
       // Could trigger image enhancement
     }
   }
@@ -289,18 +288,18 @@ const dreamConfig = createWidgetConfig<DreamWidgetParams, DreamWidgetResult>({
   
   // Lifecycle callbacks
   onProcessStart: (params: DreamWidgetParams) => {
-    console.log('🎨 DREAM_MODULE: Starting image generation:', params.prompt);
+    log.info('Starting image generation', { prompt: params.prompt });
   },
   
   onProcessComplete: (result: DreamWidgetResult) => {
-    console.log('🎨 DREAM_MODULE: Image generation completed:', {
+    log.info('Image generation completed', {
       hasImageUrl: !!result.data?.imageUrl,
       prompt: result.data?.prompt?.substring(0, 50)
     });
   },
   
   onProcessError: (error: Error) => {
-    console.error('🎨 DREAM_MODULE: Image generation failed:', error.message);
+    log.error('Image generation failed', error);
   },
   
   // Custom actions
@@ -344,10 +343,9 @@ export const DreamWidgetModule: React.FC<DreamWidgetModuleProps> = ({
   const generatedImage = useDreamGeneratedImage();
   const lastParams = useDreamLastParams();
   
-  console.log('🎨 DREAM_MODULE: Initializing with BaseWidgetModule architecture', {
+  log.debug('Initializing with BaseWidgetModule architecture', {
     hasTriggeredInput: !!triggeredInput,
-    hasGeneratedImage: !!generatedImage,
-    generatedImageUrl: generatedImage?.substring(0, 80)
+    hasGeneratedImage: !!generatedImage
   });
 
   // Convert generatedImage to outputHistory format for BaseWidget display (like HuntWidgetModule)
@@ -370,10 +368,9 @@ export const DreamWidgetModule: React.FC<DreamWidgetModuleProps> = ({
     }];
   }, [generatedImage, lastParams]);
   
-  console.log('🎨 DREAM_MODULE: Converting image to output history:', {
+  log.debug('Converting image to output history', {
     hasGeneratedImage: !!generatedImage,
-    outputHistoryCount: outputHistory.length,
-    generatedImageUrl: generatedImage?.substring(0, 80)
+    outputHistoryCount: outputHistory.length
   });
 
   return (
@@ -383,11 +380,11 @@ export const DreamWidgetModule: React.FC<DreamWidgetModuleProps> = ({
     >
       {(moduleProps) => {
         // Transform BaseWidgetModule props to match original DreamWidgetModule interface
-        console.log('🎨 DREAM_MODULE: Module props:', {
+        log.debug('Module props', {
           isProcessing: moduleProps.isProcessing,
-          currentOutput: moduleProps.currentOutput,
+          hasCurrentOutput: !!moduleProps.currentOutput,
           hasOutputContent: !!moduleProps.currentOutput?.content,
-          storeGeneratedImage: generatedImage?.substring(0, 80)
+          hasStoreGeneratedImage: !!generatedImage
         });
         
         const legacyProps = {
@@ -404,7 +401,7 @@ export const DreamWidgetModule: React.FC<DreamWidgetModuleProps> = ({
               templateParams // Add template configuration
             };
             
-            console.log('🔥MODULE_DATA_FLOW🔥 DreamWidgetModule 发送数据到 BaseWidgetModule:', enrichedParams);
+            log.debug('Sending data to BaseWidgetModule', enrichedParams);
             await moduleProps.startProcessing(enrichedParams);
           },
           onClearImage: () => {

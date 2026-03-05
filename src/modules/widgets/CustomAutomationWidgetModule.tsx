@@ -21,6 +21,8 @@ import React, { ReactNode } from 'react';
 import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { EditAction, ManagementAction, OutputHistoryItem } from '../../components/ui/widgets/BaseWidget';
 import { useCustomAutomationWidgetStore } from '../../stores/useWidgetStores';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('AutomationWidget');
 
 // Custom Automation specific types
 interface CustomAutomationWidgetParams {
@@ -112,11 +114,7 @@ const prepareAutomationTemplateParams = (params: CustomAutomationWidgetParams) =
     })
   };
   
-  console.log('🤖 AUTOMATION_MODULE: Prepared template params for', templateId, ':', {
-    template_id: mapping.template_id,
-    prompt_args,
-    inputCount: Object.keys(inputs).length
-  });
+  log.debug('Prepared template params', { templateId, template_id: mapping.template_id, prompt_args, inputCount: Object.keys(inputs).length });
   
   return {
     template_id: mapping.template_id,
@@ -216,15 +214,15 @@ export const customAutomationConfig = createWidgetConfig<CustomAutomationWidgetP
   
   // Callbacks
   onProcessStart: (params) => {
-    console.log('🤖 AUTOMATION_MODULE: Starting automation process:', params.templateId);
+    log.info('Starting automation process', { templateId: params.templateId });
   },
   
   onProcessComplete: (result) => {
-    console.log('🤖 AUTOMATION_MODULE: Automation completed:', result.status, 'Steps:', `${result.stepsCompleted}/${result.totalSteps}`);
+    log.info('Automation completed', { status: result.status, steps: `${result.stepsCompleted}/${result.totalSteps}` });
   },
   
   onProcessError: (error) => {
-    console.error('🤖 AUTOMATION_MODULE: Automation failed:', error.message);
+    log.error('Automation failed', error);
   },
   
   // Input processing
@@ -287,7 +285,7 @@ export const customAutomationConfig = createWidgetConfig<CustomAutomationWidgetP
       label: '刷新模板',
       icon: '🔄',
       onClick: () => {
-        console.log('🤖 AUTOMATION_MODULE: Refreshing automation templates...');
+        log.info('Refreshing automation templates...');
         // Logic to refresh available automation templates
       }
     },
@@ -304,7 +302,7 @@ export const customAutomationConfig = createWidgetConfig<CustomAutomationWidgetP
       label: '管理模板',
       icon: '⚙️',
       onClick: () => {
-        console.log('🤖 AUTOMATION_MODULE: Opening template management...');
+        log.info('Opening template management...');
         // Logic to open template management interface
       }
     },
@@ -313,7 +311,7 @@ export const customAutomationConfig = createWidgetConfig<CustomAutomationWidgetP
       label: '执行历史',
       icon: '📊',
       onClick: () => {
-        console.log('🤖 AUTOMATION_MODULE: Opening execution history...');
+        log.info('Opening execution history...');
         // Logic to view automation execution history
       }
     }

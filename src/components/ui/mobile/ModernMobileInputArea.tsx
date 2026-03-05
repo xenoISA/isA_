@@ -3,7 +3,10 @@
  * Ultra-modern glass effects with ChatGPT, Claude, Gemini design patterns
  */
 import React, { useState, useRef, useCallback } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { GlassChatInput, GlassCard, GlassButton } from '../../shared';
+
+const log = createLogger('ModernMobileInputArea');
 
 export interface ModernMobileInputAreaProps {
   onSendMessage?: (content: string, metadata?: Record<string, any>) => Promise<void>;
@@ -48,7 +51,7 @@ export const ModernMobileInputArea: React.FC<ModernMobileInputAreaProps> = ({
       setInputValue('');
       setAttachedFiles([]);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      log.error('Failed to send message:', error);
     }
   }, [attachedFiles, onSendMessage, onSendMultimodalMessage]);
 
@@ -63,11 +66,11 @@ export const ModernMobileInputArea: React.FC<ModernMobileInputAreaProps> = ({
   }, []);
 
   const handleVoiceRecord = useCallback(() => {
-    console.log('Voice recording - coming soon in glassmorphism!');
+    log.info('Voice recording - coming soon in glassmorphism!');
   }, []);
 
   const handleMagicAction = useCallback(() => {
-    console.log('Magic AI actions - enhanced with glass effects!');
+    log.info('Magic AI actions - enhanced with glass effects!');
   }, []);
 
 

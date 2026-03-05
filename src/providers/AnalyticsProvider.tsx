@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createLogger } from '@/utils/logger';
 import analytics, { AnalyticsService } from '@/services/analytics';
+
+const log = createLogger('AnalyticsProvider');
 
 interface AnalyticsContextType {
   analytics: AnalyticsService;
@@ -26,7 +29,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
       const isAnalyticsEnabled = process.env.REACT_APP_ENABLE_ANALYTICS !== 'false';
       
       if (!isAnalyticsEnabled) {
-        console.log('Analytics disabled by feature flag');
+        log.info('Analytics disabled by feature flag');
         return;
       }
 
@@ -34,7 +37,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
         await analytics.initialize();
         setIsReady(true);
       } catch (error) {
-        console.error('Failed to initialize analytics:', error);
+        log.error('Failed to initialize analytics:', error);
       }
     };
 

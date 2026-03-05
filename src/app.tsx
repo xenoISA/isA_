@@ -20,7 +20,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { createLogger } from './utils/logger';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+
+const log = createLogger('App');
 import { AuthProvider } from './providers/AuthProvider';
 import { SessionProvider } from './providers/SessionProvider';
 import { AIProvider } from './providers/AIProvider';
@@ -36,7 +39,7 @@ const InitializationTracker: React.FC<{ children: React.ReactNode }> = ({ childr
   const [initSteps, setInitSteps] = useState<string[]>([]);
 
   useEffect(() => {
-    console.log('🚀 MainAppContainer: Starting application initialization');
+    log.info('Starting application initialization');
     setInitSteps(prev => [...prev, 'App component mounted']);
     
     // Initialize language settings
@@ -44,7 +47,7 @@ const InitializationTracker: React.FC<{ children: React.ReactNode }> = ({ childr
     setInitSteps(prev => [...prev, 'Language initialized']);
     
     return () => {
-      console.log('🏁 MainAppContainer: Application unmounting');
+      log.info('Application unmounting');
     };
   }, []);
 
@@ -77,12 +80,12 @@ export const MainAppContainer: React.FC = () => {
     <InitializationTracker>
       <ErrorBoundary
         onError={(error, errorInfo) => {
-          console.error('💥 MainAppContainer: Global error caught by ErrorBoundary:', error, errorInfo);
+          log.error('Global error caught by ErrorBoundary', { error, errorInfo });
           // Could add error reporting service here
           
           // Log component stack for debugging
           if (errorInfo.componentStack) {
-            console.error('🔍 MainAppContainer: Component stack:', errorInfo.componentStack);
+            log.error('Component stack:', errorInfo.componentStack);
           }
         }}
         fallback={(error, errorInfo) => (

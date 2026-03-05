@@ -41,7 +41,8 @@ import { DataScientistWidget } from '../widgets/DataScientistWidget';
 import { KnowledgeWidget } from '../widgets/KnowledgeWidget';
 import { CustomAutomationWidget } from '../widgets/CustomAutomationWidget';
 
-import { logger, LogCategory } from '../../../utils/logger';
+import { createLogger, logger, LogCategory } from '../../../utils/logger';
+const log = createLogger('RightSidebarLayout');
 
 interface RightSidebarLayoutProps {
   currentApp: string | null;
@@ -80,13 +81,13 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
     hasTriggeredInput: !!triggeredAppInput
   });
   
-  console.log('📱 RIGHT_SIDEBAR: Rendering right sidebar', { currentApp, showRightSidebar });
+  log.debug('Rendering right sidebar', { currentApp, showRightSidebar });
   
   // Use useMemo to cache widget content and prevent unnecessary re-renders
   const widgetContent = useMemo(() => {
     if (!currentApp) return null;
     
-    console.log('📱 RIGHT_SIDEBAR: Creating widget content for app:', currentApp);
+    log.debug('Creating widget content for app', currentApp);
     
     // Use Widget Modules that manage business logic + UI
     switch (currentApp) {
@@ -131,7 +132,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
           <HuntWidgetModule 
             triggeredInput={triggeredAppInput}
             onSearchCompleted={(result) => {
-              console.log('🔍 RIGHT_SIDEBAR: Hunt search completed:', result);
+              log.info('Hunt search completed', result);
             }}
           >
             <HuntWidget 
@@ -156,7 +157,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
           <OmniWidgetModule 
             triggeredInput={triggeredAppInput}
             onContentGenerated={(result) => {
-              console.log('⚡ RIGHT_SIDEBAR: Omni content generated:', result);
+              log.info('Omni content generated', result);
             }}
           >
             <OmniWidget 
@@ -180,7 +181,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
           <KnowledgeWidgetModule 
             triggeredInput={triggeredAppInput}
             onAnalysisCompleted={(result) => {
-              console.log('🧠 RIGHT_SIDEBAR: Knowledge analysis completed:', result);
+              log.info('Knowledge analysis completed', result);
             }}
           >
             <KnowledgeWidget 
@@ -204,7 +205,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
           <DataScientistWidgetModule 
             triggeredInput={triggeredAppInput}
             onAnalysisCompleted={(result) => {
-              console.log('📊 RIGHT_SIDEBAR: DataScientist analysis completed:', result);
+              log.info('DataScientist analysis completed', result);
             }}
           >
             <DataScientistWidget 
@@ -228,7 +229,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
           <CustomAutomationWidgetModule 
             triggeredInput={triggeredAppInput}
             onAutomationCompleted={(result) => {
-              console.log('🤖 RIGHT_SIDEBAR: Custom Automation completed:', result);
+              log.info('Custom Automation completed', result);
             }}
           >
             {(moduleProps: any) => (
@@ -352,7 +353,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
                 key={appId}
                 onClick={() => {
                   logger.trackSidebarInteraction('widget_selected_from_list', appId);
-                  console.log('🚀 Widget selected:', appId);
+                  log.info('Widget selected', appId);
                   onAppSelect?.(appId);
                 }}
                 className={`border rounded-xl transition-all text-left group overflow-hidden ${

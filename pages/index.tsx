@@ -10,6 +10,9 @@ import {
   isMarketingHostname,
   surfaceLinks,
 } from '../src/config/surfaceConfig';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('IndexPage');
 
 interface IndexPageProps {
   isMarketingSite: boolean;
@@ -23,12 +26,12 @@ interface IndexPageProps {
 const IndexPage: React.FC<IndexPageProps> = ({ isMarketingSite, hostname }) => {
   const router = useRouter();
   
-  console.log(`🌐 Index page rendering for hostname: ${hostname}, isMarketingSite: ${isMarketingSite}`);
+  log.info(`Index page rendering for hostname: ${hostname}, isMarketingSite: ${isMarketingSite}`);
   
   useEffect(() => {
     // 如果不是营销站点，重定向到 /app 页面
     if (!isMarketingSite) {
-      console.log('🔄 Redirecting to /app for main application');
+      log.info('Redirecting to /app for main application');
       // 保留URL参数（包括Auth0回调参数）
       const redirectTarget = appendSearchParams(surfaceLinks.appEntry, window.location.search);
 
@@ -44,7 +47,7 @@ const IndexPage: React.FC<IndexPageProps> = ({ isMarketingSite, hostname }) => {
   
   // 营销页面直接返回
   if (isMarketingSite) {
-    console.log('🏠 Rendering marketing home page');
+    log.info('Rendering marketing home page');
     return <MarketingHome />;
   }
   
@@ -66,7 +69,7 @@ export const getServerSideProps: GetServerSideProps<IndexPageProps> = async (con
   const isMarketingSite = isMarketingHostname(hostname);
   
   // 详细日志记录
-  console.log(`🔍 Server-side detection:`, {
+  log.info(`Server-side detection:`, {
     hostname,
     rawHost,
     allHeaders: context.req.headers,

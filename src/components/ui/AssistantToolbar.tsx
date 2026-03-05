@@ -16,8 +16,10 @@
  * - Simple, focused interface for productivity
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { createLogger } from '../../utils/logger';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../../config/gatewayConfig';
 import { authTokenStore } from '../../stores/authTokenStore';
+const log = createLogger('AssistantToolbar');
 
 // Glass Button Style Creator
 const createGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'md', isDisabled: boolean = false) => ({
@@ -203,7 +205,7 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
                   completeResponse = response;
                 });
               } catch (e) {
-                console.error('Failed to parse SSE data:', e);
+                log.error('Failed to parse SSE data', e);
               }
             }
           }
@@ -221,7 +223,7 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
         }
       }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      log.error('Failed to send message', error);
       const errorMessage: ChatMessage = {
         id: `error_${Date.now()}`,
         role: 'system',
@@ -486,7 +488,7 @@ const handleSSEEvent = (
 ) => {
   switch (event.type) {
     case 'start':
-      console.log('Chat processing started');
+      log.info('Chat processing started');
       break;
     
     case 'custom_stream':
@@ -499,7 +501,7 @@ const handleSSEEvent = (
       
       // Handle tool execution progress
       if (event.content?.type === 'progress') {
-        console.log('Tool progress:', event.content.data);
+        log.debug('Tool progress', event.content.data);
       }
       break;
     
@@ -516,23 +518,23 @@ const handleSSEEvent = (
       break;
     
     case 'billing':
-      console.log('Billing info:', event.data);
+      log.debug('Billing info', event.data);
       break;
     
     case 'memory_update':
-      console.log('Memory updated:', event.content);
+      log.debug('Memory updated', event.content);
       break;
     
     case 'end':
-      console.log('Chat processing completed');
+      log.info('Chat processing completed');
       break;
     
     case 'error':
-      console.error('Chat error:', event.content);
+      log.error('Chat error', event.content);
       break;
     
     default:
-      console.log('Unknown event type:', event);
+      log.debug('Unknown event type', event);
   }
 };
 

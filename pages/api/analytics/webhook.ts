@@ -1,6 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('AnalyticsWebhook');
 
 // Supabase 客户端配置  
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -130,13 +133,13 @@ async function processAndStoreEvent(event: RudderStackEvent) {
 
   try {
     // 1. 总是存储到主事件表
-    console.log('Inserting event data:', baseEventData);
+    log.debug('Inserting event data:', baseEventData);
     const { error: eventError } = await supabase
       .from('user_events')
       .insert(baseEventData);
 
     if (eventError) {
-      console.error('Error inserting user event:', eventError);
+      log.error('Error inserting user event:', eventError);
       throw eventError;
     }
 
@@ -158,7 +161,7 @@ async function processAndStoreEvent(event: RudderStackEvent) {
 
     return { success: true };
   } catch (error) {
-    console.error('Error processing event:', error);
+    log.error('Error processing event:', error);
     return { success: false, error };
   }
 }
@@ -189,7 +192,7 @@ async function handleTrackEvent(event: RudderStackEvent, baseData: any) {
       .from('chat_interactions')
       .insert(chatData);
 
-    if (error) console.error('Error inserting chat interaction:', error);
+    if (error) log.error('Error inserting chat interaction:', error);
   }
 
   // Widget 相关事件
@@ -216,7 +219,7 @@ async function handleTrackEvent(event: RudderStackEvent, baseData: any) {
       .from('widget_analytics')
       .insert(widgetData);
 
-    if (error) console.error('Error inserting widget analytics:', error);
+    if (error) log.error('Error inserting widget analytics:', error);
   }
 
   // 性能相关事件
@@ -241,7 +244,7 @@ async function handleTrackEvent(event: RudderStackEvent, baseData: any) {
       .from('performance_metrics')
       .insert(performanceData);
 
-    if (error) console.error('Error inserting performance metrics:', error);
+    if (error) log.error('Error inserting performance metrics:', error);
   }
 }
 
@@ -287,7 +290,7 @@ async function updateSessionInfo(event: RudderStackEvent, baseData: any) {
     });
 
   if (error) {
-    console.error('Error upserting session:', error);
+    log.error('Error upserting session:', error);
   }
 
   // 更新消息计数（对于 track 事件）
@@ -341,14 +344,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const errorCount = results.filter(r => r.status === 'rejected').length;
 
     // 记录处理结果
-    console.log(`Analytics webhook processed: ${successCount} success, ${errorCount} errors`);
+    log.info(`Analytics webhook processed: ${successCount} success, ${errorCount} errors`);
 
     if (errorCount > 0) {
       const errors = results
         .filter(r => r.status === 'rejected')
         .map(r => (r as PromiseRejectedResult).reason);
       
-      console.error('Webhook processing errors:', errors);
+      log.error('Webhook processing errors:', errors);
     }
 
     return res.status(200).json({
@@ -359,7 +362,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
   } catch (error) {
-    console.error('Webhook handler error:', error);
+    log.error('Webhook handler error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error'

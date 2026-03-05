@@ -17,9 +17,11 @@
  * - Image-specific actions (download, share, transform)
  */
 import React, { useState } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { DreamWidgetParams } from '../../../types/widgetTypes';
 import { BaseWidget, OutputHistoryItem, EditAction, ManagementAction, EmptyStateConfig } from './BaseWidget';
 import { useTranslation } from '../../../hooks/useTranslation';
+const log = createLogger('DreamWidget');
 
 // Atomic Image Intelligence Service modes (copied from dream_sidebar.tsx)
 interface ImageMode {
@@ -206,7 +208,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
       const bestMode = detectBestMode(prompt, !!uploadedImage, imageModes);
       if (bestMode.id !== selectedMode.id) {
         setSelectedMode(bestMode);
-        console.log('🎨 Mode recommendation updated:', bestMode.id);
+        log.debug('Mode recommendation updated', bestMode.id);
       }
     }
   }, [prompt, uploadedImage, selectedMode.id]);
@@ -221,7 +223,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
       return;
     }
 
-    console.log('🎨 Starting image processing with mode:', selectedMode.name);
+    log.info('Starting image processing with mode', selectedMode.name);
     
     try {
       const params: DreamWidgetParams = {
@@ -243,9 +245,9 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
       
       await onGenerateImage(params);
       
-      console.log('🚀 Image processing request sent with mode:', selectedMode.name);
+      log.info('Image processing request sent with mode', selectedMode.name);
     } catch (error) {
-      console.error('Image processing failed:', error);
+      log.error('Image processing failed', error);
     }
   };
 
@@ -253,7 +255,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      console.log('🎨 Image file uploaded:', file.name);
+      log.info('Image file uploaded', file.name);
       
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -264,7 +266,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
         if (prompt.trim()) {
           const bestMode = detectBestMode(prompt, true, imageModes);
           setSelectedMode(bestMode);
-          console.log('🎨 Mode updated after image upload:', bestMode.id);
+          log.debug('Mode updated after image upload', bestMode.id);
         }
       };
       reader.readAsDataURL(file);
@@ -295,7 +297,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
           onChange={(e) => {
             const newValue = e.target.value;
             if (newValue !== prompt) {
-              console.log('🎨 Prompt text changed');
+              log.debug('Prompt text changed');
             }
             setPrompt(newValue);
           }}
@@ -341,7 +343,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
                   document.getElementById('image-upload')?.click();
                 }
                 setSelectedMode(mode);
-                console.log('🎨 Mode selected:', mode.name);
+                log.debug('Mode selected', mode.name);
               }}
               className={`p-1.5 rounded border transition-all text-center cursor-pointer ${
                 selectedMode.id === mode.id
@@ -658,7 +660,7 @@ export const DreamWidget: React.FC<DreamWidgetProps> = ({
       label: 'Image',
       icon: '🖼️',
       onClick: () => {
-        console.log('🖼️ Image mode selected (already active)');
+        log.info('Image mode selected (already active)');
       },
       variant: 'primary' as const,
       disabled: false // Current active mode
@@ -668,7 +670,7 @@ export const DreamWidget: React.FC<DreamWidgetProps> = ({
       label: 'Video',
       icon: '🎬',
       onClick: () => {
-        console.log('🎬 Video mode - not implemented yet');
+        log.info('Video mode - not implemented yet');
       },
       disabled: true // Not yet implemented
     },
@@ -677,7 +679,7 @@ export const DreamWidget: React.FC<DreamWidgetProps> = ({
       label: 'Audio',
       icon: '🎵',
       onClick: () => {
-        console.log('🎵 Audio mode - not implemented yet');
+        log.info('Audio mode - not implemented yet');
       },
       disabled: true // Not yet implemented
     },
@@ -686,7 +688,7 @@ export const DreamWidget: React.FC<DreamWidgetProps> = ({
       label: 'Others',
       icon: '📄',
       onClick: () => {
-        console.log('📄 Others mode - not implemented yet');
+        log.info('Others mode - not implemented yet');
       },
       disabled: true // Not yet implemented
     }

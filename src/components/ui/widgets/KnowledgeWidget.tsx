@@ -17,8 +17,10 @@
  * - Knowledge-specific actions (export, summarize, share)
  */
 import React, { useState } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { KnowledgeWidgetParams } from '../../../types/widgetTypes';
 import { BaseWidget, OutputHistoryItem, EditAction, ManagementAction, EmptyStateConfig } from './BaseWidget';
+const log = createLogger('KnowledgeWidget');
 
 // Knowledge processing modes
 interface KnowledgeMode {
@@ -119,7 +121,7 @@ const KnowledgeInputArea: React.FC<KnowledgeWidgetProps> = ({
       const bestMode = detectBestMode(query);
       if (bestMode.id !== selectedMode.id) {
         setSelectedMode(bestMode);
-        console.log('🧠 Mode recommendation updated:', bestMode.id);
+        log.debug('Mode recommendation updated', bestMode.id);
       }
     }
   }, [query, selectedMode.id]);
@@ -136,7 +138,7 @@ const KnowledgeInputArea: React.FC<KnowledgeWidgetProps> = ({
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      console.log('🧠 Files uploaded:', fileArray.length);
+      log.info('Files uploaded', fileArray.length);
       setUploadedFiles(fileArray);
     }
   };
@@ -157,7 +159,7 @@ const KnowledgeInputArea: React.FC<KnowledgeWidgetProps> = ({
       return;
     }
 
-    console.log('🧠 Starting knowledge processing with mode:', selectedMode.name);
+    log.info('Starting knowledge processing with mode', selectedMode.name);
     
     try {
       const params: KnowledgeWidgetParams = {
@@ -170,9 +172,9 @@ const KnowledgeInputArea: React.FC<KnowledgeWidgetProps> = ({
       
       await onProcess(params);
       
-      console.log('🚀 Knowledge processing request sent with mode:', selectedMode.name);
+      log.info('Knowledge processing request sent with mode', selectedMode.name);
     } catch (error) {
-      console.error('Knowledge processing failed:', error);
+      log.error('Knowledge processing failed', error);
     }
   };
 
@@ -199,7 +201,7 @@ const KnowledgeInputArea: React.FC<KnowledgeWidgetProps> = ({
             onChange={(e) => {
               const newValue = e.target.value;
               if (newValue !== query) {
-                console.log('🧠 Query changed');
+                log.debug('Query changed');
               }
               setQuery(newValue);
             }}
@@ -255,9 +257,9 @@ const KnowledgeInputArea: React.FC<KnowledgeWidgetProps> = ({
               onClick={() => {
                 if (mode.isActive) {
                   setSelectedMode(mode);
-                  console.log('🧠 Mode selected:', mode.name);
+                  log.debug('Mode selected', mode.name);
                 } else {
-                  console.log('🧠 Mode disabled:', mode.name);
+                  log.debug('Mode disabled', mode.name);
                 }
               }}
               disabled={!mode.isActive}
@@ -348,7 +350,7 @@ export const KnowledgeWidget: React.FC<KnowledgeWidgetProps> = ({
       icon: '📄',
       onClick: (content) => {
         // Generate summary of the knowledge content
-        console.log('Generating summary for:', content);
+        log.info('Generating summary for', content);
       }
     },
     {
@@ -398,21 +400,21 @@ export const KnowledgeWidget: React.FC<KnowledgeWidgetProps> = ({
       id: 'search',
       label: 'Search',
       icon: '🔎',
-      onClick: () => console.log('🔎 Search mode - coming soon'),
+      onClick: () => log.info('Search mode - coming soon'),
       disabled: true
     },
     {
       id: 'manage',
       label: 'Manage',
       icon: '📚',
-      onClick: () => console.log('📚 Manage mode - coming soon'),
+      onClick: () => log.info('Manage mode - coming soon'),
       disabled: true
     },
     {
       id: 'other',
       label: 'Other',
       icon: '📄',
-      onClick: () => console.log('📄 Other mode - coming soon'),
+      onClick: () => log.info('Other mode - coming soon'),
       disabled: true
     }
   ];

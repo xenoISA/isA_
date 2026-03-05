@@ -11,6 +11,8 @@
  */
 
 import { SupportedLanguage } from '../stores/useLanguageStore';
+import { createLogger } from '../utils/logger';
+const log = createLogger('Translations');
 
 // ================================================================================
 // Translation Types
@@ -1953,7 +1955,7 @@ export const getTranslation = (
   try {
     const translation = translations[language];
     if (!translation) {
-      console.warn(`Translation for language "${language}" not found, falling back to zh-CN`);
+      log.warn(`Translation for language "${language}" not found, falling back to zh-CN`);
       return getTranslation(key, 'zh-CN', variables);
     }
 
@@ -1965,13 +1967,13 @@ export const getTranslation = (
       if (value && typeof value === 'object' && k in value) {
         value = value[k];
       } else {
-        console.warn(`Translation key "${key}" not found in language "${language}"`);
+        log.warn(`Translation key "${key}" not found in language "${language}"`);
         return key; // Return the key as fallback
       }
     }
 
     if (typeof value !== 'string') {
-      console.warn(`Translation value for key "${key}" is not a string`);
+      log.warn(`Translation value for key "${key}" is not a string`);
       return key;
     }
 
@@ -1984,7 +1986,7 @@ export const getTranslation = (
 
     return value;
   } catch (error) {
-    console.error(`Error getting translation for key "${key}":`, error);
+    log.error(`Error getting translation for key "${key}"`, error);
     return key; // Return the key as fallback
   }
 };

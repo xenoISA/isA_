@@ -16,6 +16,8 @@
  * - Non-intrusive but informative
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('NotificationToolbar');
 
 // Glass Button Style Creator for Notification Toolbar
 const createGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'md', isDisabled: boolean = false) => ({
@@ -87,8 +89,8 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
       read: false,
       actionable: true,
       actions: [
-        { id: 'complete', label: 'Mark Done', action: () => console.log('Mark done') },
-        { id: 'snooze', label: 'Snooze', action: () => console.log('Snooze') }
+        { id: 'complete', label: 'Mark Done', action: () => log.info('Mark done') },
+        { id: 'snooze', label: 'Snooze', action: () => log.info('Snooze') }
       ]
     },
     {
@@ -100,8 +102,8 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
       read: false,
       actionable: true,
       actions: [
-        { id: 'accept', label: 'Accept', action: () => console.log('Accept suggestion') },
-        { id: 'dismiss', label: 'Dismiss', action: () => console.log('Dismiss') }
+        { id: 'accept', label: 'Accept', action: () => log.info('Accept suggestion') },
+        { id: 'dismiss', label: 'Dismiss', action: () => log.info('Dismiss') }
       ]
     },
     {

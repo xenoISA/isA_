@@ -1,5 +1,7 @@
 
 import { RudderAnalytics } from '@rudderstack/analytics-js';
+import { createLogger } from '../utils/logger';
+const log = createLogger('Analytics');
 
 interface AnalyticsConfig {
   writeKey: string;
@@ -27,7 +29,7 @@ class AnalyticsService {
 
     try {
       if (!this.config.writeKey || !this.config.dataPlaneUrl) {
-        console.warn('RudderStack not configured: missing write key or data plane URL');
+        log.warn('RudderStack not configured: missing write key or data plane URL');
         return;
       }
 
@@ -49,7 +51,7 @@ class AnalyticsService {
       });
 
       this.isInitialized = true;
-      console.log('RudderStack Analytics initialized successfully');
+      log.info('RudderStack Analytics initialized successfully');
       
       // 如果是营销页面，初始化营销会话追踪
       if (this.isMarketingPage()) {
@@ -60,14 +62,14 @@ class AnalyticsService {
       }
       
     } catch (error) {
-      console.error('Failed to initialize RudderStack:', error);
+      log.error('Failed to initialize RudderStack', error);
     }
   }
 
   // 页面浏览事件
   page(name?: string, properties?: Record<string, any>): void {
     if (!this.isInitialized || !this.analytics) {
-      console.warn('Analytics not initialized');
+      log.warn('Analytics not initialized');
       return;
     }
 
@@ -93,7 +95,7 @@ class AnalyticsService {
   // 事件追踪
   track(event: string, properties?: Record<string, any>): void {
     if (!this.isInitialized || !this.analytics) {
-      console.warn('Analytics not initialized');
+      log.warn('Analytics not initialized');
       return;
     }
 
@@ -106,7 +108,7 @@ class AnalyticsService {
   // 用户识别
   identify(userId: string, traits?: Record<string, any>): void {
     if (!this.isInitialized || !this.analytics) {
-      console.warn('Analytics not initialized');
+      log.warn('Analytics not initialized');
       return;
     }
 
@@ -119,7 +121,7 @@ class AnalyticsService {
   // 用户组
   group(groupId: string, traits?: Record<string, any>): void {
     if (!this.isInitialized || !this.analytics) {
-      console.warn('Analytics not initialized');
+      log.warn('Analytics not initialized');
       return;
     }
 
@@ -129,7 +131,7 @@ class AnalyticsService {
   // 别名
   alias(newId: string, previousId?: string): void {
     if (!this.isInitialized || !this.analytics) {
-      console.warn('Analytics not initialized');
+      log.warn('Analytics not initialized');
       return;
     }
 
@@ -139,7 +141,7 @@ class AnalyticsService {
   // 重置用户
   reset(): void {
     if (!this.isInitialized || !this.analytics) {
-      console.warn('Analytics not initialized');
+      log.warn('Analytics not initialized');
       return;
     }
 
@@ -359,7 +361,7 @@ class AnalyticsService {
       // 追踪落地页访问
       this.trackLandingPageEntry();
     } catch (error) {
-      console.warn('Failed to initialize marketing session:', error);
+      log.warn('Failed to initialize marketing session', error);
     }
   }
 

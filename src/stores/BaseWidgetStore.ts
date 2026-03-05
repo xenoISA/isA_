@@ -18,7 +18,9 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('BaseWidgetStore', LogCategory.ARTIFACT_CREATION);
 import { chatService } from '../api/chatService';
 import { useAppStore } from './useAppStore';
 import { useSessionStore } from './useSessionStore';
@@ -84,7 +86,7 @@ function createChatServiceCallbacks(
           contentPreview: completeMessage.substring(0, 100) + '...'
         });
       } else {
-        console.log(`${config.logEmoji} ${config.widgetType.toUpperCase()}_STORE: No complete message content provided`);
+        log.debug(`${config.widgetType} message completed with no content`);
       }
     },
 
@@ -114,7 +116,7 @@ function createChatServiceCallbacks(
           (currentState as any)._lastProcessedArtifact = artifactKey;
         }
       } catch (error) {
-        console.warn('Failed to update _lastProcessedArtifact:', error);
+        log.warn('Failed to update _lastProcessedArtifact', error);
       }
 
       if (customHandlers.onArtifactCreated) {
@@ -303,10 +305,10 @@ export function createBaseWidgetStore<TSpecificState, TSpecificActions>(
           set((state) => {
             // 浅比较，如果内容相同就不更新，避免不必要的引用变化
             if (JSON.stringify(state.lastParams) === JSON.stringify(params)) {
-              console.log('🚨DEBUG_DUPLICATE🚨 setParams 跳过更新，内容相同');
+              log.debug('setParams skipped, content identical');
               return state; // 不更新，保持引用不变
             }
-            console.log('🚨DEBUG_DUPLICATE🚨 setParams 更新参数:', params);
+            log.debug('setParams updating', params);
             return { ...state, lastParams: params };
           });
           logger.debug(LogCategory.ARTIFACT_CREATION, `${config.logEmoji} ${config.widgetType} params updated`, { 
@@ -369,13 +371,12 @@ export function createBaseWidgetStore<TSpecificState, TSpecificActions>(
             const callbacks = createChatServiceCallbacks(config, params, helpers, customHandlers, get);
             
             // 调用chatService
-            console.log('🔥MODULE_DATA_FLOW🔥 BaseWidgetStore 发送到 chatService:', {
+            log.debug('Sending to chatService', {
               prompt,
               widgetType: config.widgetType,
-              'chatOptions.prompt_name': chatOptions.prompt_name,
-              'chatOptions.prompt_args': chatOptions.prompt_args,
-              'chatOptions.template_parameters': chatOptions.template_parameters,
-              'chatOptions完整': chatOptions
+              promptName: chatOptions.prompt_name,
+              promptArgs: chatOptions.prompt_args,
+              templateParameters: chatOptions.template_parameters
             });
             // chatService.sendMessage expects: (message, sessionId, callbacks, userId)
             // Extract sessionId and userId from chatOptions

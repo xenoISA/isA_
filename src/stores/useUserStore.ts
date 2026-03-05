@@ -38,7 +38,9 @@ import {
   ExternalSubscription,
   CreditConsumption 
 } from '../types/userTypes';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('UserStore', LogCategory.USER_AUTH);
 
 // ================================================================================
 // Store State Interface
@@ -188,7 +190,7 @@ export const useUserStore = create<UserStore>()(
     updateCredits: (newCredits: number, source?: 'api' | 'billing' | 'manual') => {
       const currentUser = get().externalUser;
       if (!currentUser) {
-        console.warn('💳 USER_STORE: Cannot update credits - no current user');
+        log.warn('Cannot update credits - no current user');
         return;
       }
       
@@ -198,14 +200,13 @@ export const useUserStore = create<UserStore>()(
       
       // 🔍 数据验证
       if (newCredits < 0) {
-        console.warn('💳 USER_STORE: Invalid credits value - cannot be negative', { newCredits });
+        log.warn('Invalid credits value - cannot be negative', { newCredits });
         return;
       }
       
       // 🛡️ 防御性检查：确保用户数据完整
       if (!currentUser.auth0_id) {
-        console.error('💳 USER_STORE: Critical error - currentUser missing auth0_id', {
-          currentUser,
+        log.error('Critical error - currentUser missing auth0_id', {
           hasAuth0Id: !!currentUser.auth0_id,
           userKeys: Object.keys(currentUser),
           newCredits,
@@ -214,13 +215,13 @@ export const useUserStore = create<UserStore>()(
         return; // 阻止继续执行，避免错误传播
       }
       
-      console.log('💳 USER_STORE: 🚀 Updating user credits', { 
+      log.info('Updating user credits', {
         auth0_id: currentUser.auth0_id,
         transition: `${oldCredits} → ${newCredits}`,
         difference: difference > 0 ? `+${difference}` : `${difference}`,
         source: source || 'unknown',
         timestamp,
-        totalCredits: currentUser.credits_total // 保持总积分不变
+        totalCredits: currentUser.credits_total
       });
         
       logger.info(LogCategory.USER_AUTH, 'Smart credit update', { 

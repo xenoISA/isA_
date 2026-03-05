@@ -26,7 +26,8 @@
  */
 import React, { useCallback } from 'react';
 import { useChatActions, useHILStatus, useCurrentHILInterrupt, useHILActions } from '../../stores/useChatStore';
-import { logger, LogCategory } from '../../utils/logger';
+import { logger, LogCategory, createLogger } from '../../utils/logger';
+const log = createLogger('ChatInputHandler');
 
 interface ChatInputHandlerProps {
   children: (handlers: {
@@ -48,7 +49,7 @@ export const ChatInputHandler: React.FC<ChatInputHandlerProps> = ({
   const onBeforeSend = useCallback((message: string): string | null => {
     const traceId = logger.startTrace('USER_INPUT_PROCESSING');
     logger.trackUserInput(message, {});
-    console.log('🚀 ChatInputHandler: Processing user input:', message);
+    log.info('Processing user input', message);
     
     // HIL行为监控：检查是否是对HIL中断的响应
     const isHILResponse = hilStatus === 'waiting_for_human' && currentHILInterrupt;
@@ -58,7 +59,7 @@ export const ChatInputHandler: React.FC<ChatInputHandlerProps> = ({
         interruptType: currentHILInterrupt?.type,
         responseLength: message.length
       });
-      console.log('🤖 HIL_MONITORING: User providing response to HIL interrupt', {
+      log.info('HIL_MONITORING: User providing response to HIL interrupt', {
         threadId: currentHILInterrupt?.thread_id,
         responseLength: message.length
       });
@@ -120,7 +121,7 @@ export const ChatInputHandler: React.FC<ChatInputHandlerProps> = ({
       fileCount: files.length,
       fileNames: Array.from(files).map(f => f.name)
     });
-    console.log('📎 ChatInputHandler: Files selected:', Array.from(files).map(f => f.name));
+    log.info('Files selected', Array.from(files).map(f => f.name));
     
     // HIL行为监控：文件上传在HIL上下文中的处理
     const isFileUploadDuringHIL = hilStatus !== 'idle';
@@ -131,7 +132,7 @@ export const ChatInputHandler: React.FC<ChatInputHandlerProps> = ({
         threadId: currentHILInterrupt?.thread_id,
         fileCount: files.length
       });
-      console.log('🤖 HIL_MONITORING: File upload during HIL session', {
+      log.info('HIL_MONITORING: File upload during HIL session', {
         hilStatus,
         fileCount: files.length
       });

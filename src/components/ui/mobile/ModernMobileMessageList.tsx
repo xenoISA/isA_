@@ -3,7 +3,10 @@
  * Ultra-modern glass effects with ChatGPT, Claude, Gemini design patterns
  */
 import React, { useRef, useEffect, useCallback } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ChatMessage } from '../chat/ChatLayout';
+
+const log = createLogger('ModernMobileMessageList');
 import { GlassMessageBubble, EmptyState, TypingIndicator, GlassCard } from '../../shared';
 
 export interface ModernMobileMessageListProps {
@@ -109,13 +112,13 @@ export const ModernMobileMessageList: React.FC<ModernMobileMessageListProps> = (
             navigator.clipboard?.writeText(message.content);
           }}
           onLike={() => {
-            console.log('Message liked:', message.id);
+            log.debug('Message liked:', message.id);
           }}
           onDislike={() => {
-            console.log('Message disliked:', message.id);
+            log.debug('Message disliked:', message.id);
           }}
           onRegenerate={() => {
-            console.log('Message regenerate:', message.id);
+            log.debug('Message regenerate:', message.id);
           }}
         />
       ))}

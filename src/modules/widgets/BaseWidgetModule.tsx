@@ -18,7 +18,8 @@
  */
 import React, { useCallback, useEffect, useState, useRef, ReactNode } from 'react';
 import { useWidget, useWidgetActions } from '../../hooks/useWidget';
-import { logger, LogCategory } from '../../utils/logger';
+import { logger, LogCategory, createLogger } from '../../utils/logger';
+const log = createLogger('BaseWidget');
 import { WidgetType } from '../../types/widgetTypes';
 import { getChatServiceInstance } from '../../hooks/useChatService';
 import widgetHandler from '../../components/core/WidgetHandler';
@@ -132,14 +133,12 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
   useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
   useEffect(() => { currentOutputRef.current = currentOutput; }, [currentOutput]);
   
-  console.log(`🔧 ${config.type.toUpperCase()}_MODULE: Initializing with config:`, {
+  log.debug(`${config.type} initializing with config`, {
     type: config.type,
     title: config.title,
     maxHistory: config.maxHistoryItems,
     hasTriggeredInput: !!triggeredInput
   });
-  
-  console.log(`🚨DEBUG_WIDGET🚨 ${config.type.toUpperCase()}_MODULE: Mounted and running`);
   
   // Add item to output history
   const addToHistory = useCallback((item: Omit<OutputHistoryItem, 'id' | 'timestamp'>) => {
@@ -157,20 +156,19 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
     
     setCurrentOutput(historyItem);
     
-    console.log(`📋 ${config.type.toUpperCase()}_MODULE: Added to history:`, historyItem.title);
+    log.debug(`${config.type} added to history`, { title: historyItem.title });
     return historyItem;
   }, [config.type, config.maxHistoryItems]);
   
   // Update current output item
   const updateCurrentOutput = useCallback((updates: Partial<OutputHistoryItem>) => {
-    console.log(`🔍 ${config.type.toUpperCase()}_MODULE: updateCurrentOutput called:`, {
+    log.debug(`${config.type} updateCurrentOutput called`, {
       hasCurrentOutput: !!currentOutput,
-      currentOutput: currentOutput,
-      updates: updates
+      updates
     });
     
     if (!currentOutput) {
-      console.warn(`⚠️ ${config.type.toUpperCase()}_MODULE: No currentOutput to update, creating new one`);
+      log.warn(`${config.type} no currentOutput to update, creating new one`);
       // 创建新的output如果不存在
       const newOutput = {
         id: `output_${Date.now()}`,
@@ -181,14 +179,14 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         ...updates
       };
       setCurrentOutput(newOutput);
-      console.log(`📋 ${config.type.toUpperCase()}_MODULE: Created new currentOutput:`, newOutput);
+      log.debug(`${config.type} created new currentOutput`);
       return;
     }
     
     const updatedOutput = { ...currentOutput, ...updates };
     setCurrentOutput(updatedOutput);
     
-    console.log(`📋 ${config.type.toUpperCase()}_MODULE: Updated currentOutput:`, updatedOutput);
+    log.debug(`${config.type} updated currentOutput`);
     
     // Update in history as well
     setOutputHistory(prev =>
@@ -198,13 +196,13 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
   
   // Start processing with streaming support
   const startProcessing = useCallback(async (params: TParams): Promise<void> => {
-    console.log(`🚀 ${config.type.toUpperCase()}_MODULE: Starting processing with params:`, params);
+    log.info(`${config.type} starting processing`, { params });
     
     // 🆕 检查是否在Plugin模式中运行
     const isPluginMode = typeof window !== 'undefined' && (window as any).__CHAT_MODULE_PLUGIN_MODE__;
     
     if (isPluginMode) {
-      console.log(`🔌 ${config.type.toUpperCase()}_MODULE: Plugin mode detected - delegating to ChatModule via WidgetHandler event`);
+      log.info(`${config.type} plugin mode detected - delegating to ChatModule`);
       
       setIsProcessing(true);
       setIsStreaming(true);
@@ -224,7 +222,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
       
       // In Plugin mode, directly emit event to ChatModule - skip WidgetHandler to avoid double processing
       try {
-        console.log('🔌 BaseWidgetModule: Emitting widget:request directly to ChatModule');
+        log.info('Emitting widget:request directly to ChatModule');
         
         // Get ChatModule's event emitter
         const eventEmitter = (window as any).__CHAT_MODULE_EVENT_EMITTER__;
@@ -269,7 +267,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         
         // Wait for result
         const result = await resultPromise;
-        console.log('🔌 BaseWidgetModule: Received result from ChatModule:', result);
+        log.info('Received result from ChatModule');
         
         // Update UI state after receiving result
         setIsProcessing(false);
@@ -457,11 +455,11 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         // Call completion callback
         config.onProcessComplete?.(result);
         
-        console.log('🔌 BaseWidgetModule: Plugin mode processing completed, UI updated');
+        log.info('Plugin mode processing completed, UI updated');
         return;
         
       } catch (error) {
-        console.error('❌ BaseWidgetModule: Failed to communicate with ChatModule:', error);
+        log.error('Failed to communicate with ChatModule', error);
         setIsProcessing(false);
         setIsStreaming(false);
         throw error;
@@ -469,7 +467,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
     }
     
     // Independent mode - process directly  
-    console.log(`🔧 ${config.type.toUpperCase()}_MODULE: Independent mode - processing directly`);
+    log.info(`${config.type} independent mode - processing directly`);
     
     setIsProcessing(true);
     setIsStreaming(true);
@@ -489,10 +487,9 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
     
     try {
       // Use WidgetHandler to route request with streaming callbacks
-      console.log('🔥MODULE_DATA_FLOW🔥 BaseWidgetModule 转发数据到 WidgetHandler (Independent mode):', {
+      log.debug(`${config.type} forwarding data to WidgetHandler (Independent mode)`, {
         type: config.type,
-        params,
-        sessionId: `${config.sessionIdPrefix}_${Date.now()}`
+        params
       });
       logger.info(LogCategory.ARTIFACT_CREATION, `${config.type} module routing request via WidgetHandler (Independent mode)`, { params });
       
@@ -507,11 +504,11 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         userId: 'widget_user'
       });
       
-      console.log(`🔌 ${config.type.toUpperCase()}_MODULE: WidgetHandler returned:`, pluginResult);
+      log.debug(`${config.type} WidgetHandler returned`, { pluginResult });
       
       // 🆕 如果是Plugin模式，处理返回的结果
       if (pluginResult && pluginResult.content) {
-        console.log(`🔌 ${config.type.toUpperCase()}_MODULE: Received Plugin result:`, pluginResult);
+        log.debug(`${config.type} received Plugin result`);
         
         // 处理不同类型的Plugin返回格式
         let processedContent = pluginResult.content;
@@ -525,10 +522,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
             processedContent = results[0].content || results[0].description || JSON.stringify(results[0]);
             title = `Search Results (${results.length} found)`;
             
-            console.log(`🔍 ${config.type.toUpperCase()}_MODULE: Processed Hunt results:`, {
-              resultCount: results.length,
-              firstResultPreview: processedContent.substring(0, 100) + '...'
-            });
+            log.debug(`${config.type} processed Hunt results`, { resultCount: results.length });
           } else {
             processedContent = 'No search results found';
             title = 'Search completed - No results';
@@ -544,7 +538,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
           metadata: pluginResult.metadata
         };
         
-        console.log(`🔌 ${config.type.toUpperCase()}_MODULE: Updating currentOutput with:`, outputUpdate);
+        log.debug(`${config.type} updating currentOutput`, { title: outputUpdate.title });
         updateCurrentOutput(outputUpdate);
         
         // 🆕 清除所有loading状态
@@ -556,11 +550,11 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         config.onProcessComplete?.(pluginResult);
         
       } else {
-        console.log(`✅ ${config.type.toUpperCase()}_MODULE: Request successfully routed to store (Independent mode)`);
+        log.info(`${config.type} request successfully routed to store (Independent mode)`);
       }
       
     } catch (error) {
-      console.error(`❌ ${config.type.toUpperCase()}_MODULE: WidgetHandler request failed:`, error);
+      log.error(`${config.type} WidgetHandler request failed`, error);
       logger.error(LogCategory.ARTIFACT_CREATION, `${config.type} WidgetHandler request failed`, { error, params });
       
       // Update output with error
@@ -584,13 +578,13 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
   // Handle triggered input processing
   useEffect(() => {
     if (triggeredInput && !isProcessing && config.extractParamsFromInput) {
-      console.log(`🎯 ${config.type.toUpperCase()}_MODULE: Processing triggered input:`, triggeredInput);
+      log.info(`${config.type} processing triggered input`, { triggeredInput });
       
       const params = config.extractParamsFromInput(triggeredInput);
       if (params) {
         startProcessing(params);
       } else {
-        console.log(`⚠️ ${config.type.toUpperCase()}_MODULE: Could not extract params from input:`, triggeredInput);
+        log.warn(`${config.type} could not extract params from input`, { triggeredInput });
       }
     }
   }, [triggeredInput, isProcessing, config, startProcessing]);
@@ -634,9 +628,9 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
             finalResult = extractedResult.finalResult;
             outputContent = extractedResult.outputContent;
             outputTitle = extractedResult.title || outputTitle;
-            console.log(`✅ ${config.type.toUpperCase()}_MODULE: Extracted result using custom extractor:`, { 
+            log.debug(`${config.type} extracted result using custom extractor`, {
               hasResult: !!finalResult,
-              contentLength: outputContent?.length 
+              contentLength: outputContent?.length
             });
           }
         } else {
@@ -707,7 +701,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
   
   // Clear output history
   const handleClearHistory = useCallback(() => {
-    console.log(`🗑️ ${config.type.toUpperCase()}_MODULE: Clearing output history`);
+    log.info(`${config.type} clearing output history`);
     setOutputHistory([]);
     setCurrentOutput(null);
     setIsStreaming(false);
@@ -717,7 +711,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
   
   // Handle output selection
   const handleSelectOutput = useCallback((item: OutputHistoryItem) => {
-    console.log(`📋 ${config.type.toUpperCase()}_MODULE: Selected output:`, item.title);
+    log.debug(`${config.type} selected output`, { title: item.title });
     setCurrentOutput(item);
   }, [config.type]);
   
@@ -729,7 +723,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
       icon: '📋',
       onClick: (content) => {
         navigator.clipboard.writeText(typeof content === 'string' ? content : JSON.stringify(content));
-        console.log(`📋 ${config.type.toUpperCase()}_MODULE: Content copied to clipboard`);
+        log.info(`${config.type} content copied to clipboard`);
       }
     },
     {
@@ -745,7 +739,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         link.download = `${config.type}_output_${Date.now()}.txt`;
         link.click();
         URL.revokeObjectURL(url);
-        console.log(`💾 ${config.type.toUpperCase()}_MODULE: Content downloaded`);
+        log.info(`${config.type} content downloaded`);
       }
     }
   ];

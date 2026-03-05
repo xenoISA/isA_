@@ -1,7 +1,9 @@
 import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { FileUpload } from './FileUpload';
 import { GlassChatInput, GlassCard, GlassButton, IntelligentModeSettings } from '../../shared';
 import { useTranslation } from '../../../hooks/useTranslation';
+const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {
   placeholder?: string;
@@ -71,7 +73,7 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
     try {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     } catch (e) {
-      console.log('Audio not supported');
+      log.debug('Audio not supported');
     }
   }, []);
 
@@ -128,7 +130,7 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
   // File handling functions
   const handleFileSelection = (files: FileList) => {
     // Temporarily disabled - return early
-    console.log('📎 File upload temporarily disabled');
+    log.info('File upload temporarily disabled');
     return;
   };
 
@@ -162,7 +164,7 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
       setIsRecording(true);
       playAudioFeedback('click');
     } catch (error) {
-      console.error('录音失败:', error);
+      log.error('Recording failed', error);
       playAudioFeedback('error');
       if (onError) {
         onError(new Error('无法访问麦克风，请检查权限设置'));
@@ -202,7 +204,7 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
       const scrollHeight = textarea.scrollHeight;
       const newHeight = Math.min(Math.max(scrollHeight, 40), 150); // Min 40px, max 150px
       textarea.style.height = newHeight + 'px';
-      console.log('Textarea resized:', { scrollHeight, newHeight });
+      log.debug('Textarea resized', { scrollHeight, newHeight });
     }, 0);
   };
 

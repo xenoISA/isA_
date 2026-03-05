@@ -10,7 +10,10 @@
  * - Native app context
  */
 import React, { useMemo } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ChatLayout, ChatLayoutProps } from '../chat/ChatLayout';
+
+const log = createLogger('ResponsiveChatLayout');
 import { ModernMobileChatLayout } from '../mobile/ModernMobileChatLayout';
 import { useDeviceType } from '../../../hooks/useDeviceType';
 
@@ -66,13 +69,13 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
 
     // Check for native app context
     if (isNativeApp) {
-      console.log('📱 Native app detected, using mobile layout');
+      log.info('Native app detected, using mobile layout');
       return 'mobile';
     }
 
     // Check screen width
     if (screenWidth <= mobileBreakpoint) {
-      console.log('📱 Screen width <= breakpoint, using mobile layout');
+      log.info('Screen width <= breakpoint, using mobile layout');
       return 'mobile';
     }
 
@@ -118,7 +121,7 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
       onNewChat();
     } else {
       // Default fallback - refresh the page to create new chat
-      console.log('📱 New chat requested - no onNewChat handler, refreshing');
+      log.info('New chat requested - no onNewChat handler, refreshing');
       window.location.reload();
     }
   }, [onNewChat]);

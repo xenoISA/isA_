@@ -21,7 +21,9 @@
  * - 不处理业务逻辑，只负责消息的视觉呈现
  */
 import React, { memo, useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { ChatMessage, ArtifactMessage } from '../../../types/chatTypes';
+const log = createLogger('MessageList');
 import { ArtifactComponent } from './ArtifactComponent';
 import { ArtifactMessageComponent } from './ArtifactMessageComponent';
 import { ContentType } from '../../../types/appTypes';
@@ -345,7 +347,7 @@ export const MessageList = memo<MessageListProps>(({
                 }}
                 onReopen={() => {
                   // Handle artifact reopening - could emit an event or callback
-                  console.log('Artifact reopened:', message.id);
+                  log.info('Artifact reopened', message.id);
                 }}
               />
             </div>

@@ -17,7 +17,10 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { useHILActions, useCurrentHILInterrupt } from '../../../stores/useChatStore';
+
+const log = createLogger('HILAuthorizationDialog');
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 
@@ -100,7 +103,7 @@ export const HILAuthorizationDialog: React.FC<HILAuthorizationDialogProps> = ({
       await resumeHILExecution(sessionId, resumeValue, authToken);
       onClose();
     } catch (error) {
-      console.error('❌ Authorization approval failed:', error);
+      log.error('Authorization approval failed:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -126,7 +129,7 @@ export const HILAuthorizationDialog: React.FC<HILAuthorizationDialogProps> = ({
       await resumeHILExecution(sessionId, resumeValue, authToken);
       onClose();
     } catch (error) {
-      console.error('❌ Authorization rejection failed:', error);
+      log.error('Authorization rejection failed:', error);
     } finally {
       setIsProcessing(false);
     }

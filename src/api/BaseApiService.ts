@@ -40,6 +40,9 @@ import axios, {
   AxiosError 
 } from 'axios';
 import { config } from '../config';
+import { createLogger, LogCategory } from '../utils/logger';
+
+const log = createLogger('BaseApiService', LogCategory.API_REQUEST);
 
 // ================================================================================
 // 类型定义
@@ -142,7 +145,7 @@ export class BaseApiService {
       (response: AxiosResponse) => {
         const endTime = Date.now();
         const startTime = (response.config as any).metadata?.startTime || endTime;
-        console.log(`API Request took ${endTime - startTime}ms`);
+        log.debug(`API Request took ${endTime - startTime}ms`);
         return response;
       },
       (error: AxiosError) => {
@@ -214,7 +217,7 @@ export class BaseApiService {
       try {
         authHeaders = await this.getAuthHeaders();
       } catch (error) {
-        console.warn('Failed to get auth headers:', error);
+        log.warn('Failed to get auth headers', error);
       }
     }
     
@@ -268,7 +271,7 @@ export class BaseApiService {
       try {
         authHeaders = await this.getAuthHeaders();
       } catch (error) {
-        console.warn('Failed to get auth headers:', error);
+        log.warn('Failed to get auth headers', error);
       }
     }
     
@@ -439,7 +442,7 @@ export class BaseApiService {
         if (retryCount < config.maxRetries!) {
           setTimeout(() => {
             retryCount++;
-            console.log(`SSE reconnect attempt ${retryCount}`);
+            log.info(`SSE reconnect attempt ${retryCount}`);
           }, config.retryInterval);
         }
         
@@ -483,7 +486,7 @@ export class BaseApiService {
         if (event.code !== 1000 && retryCount < config.maxRetries!) {
           setTimeout(() => {
             retryCount++;
-            console.log(`WebSocket reconnect attempt ${retryCount}`);
+            log.info(`WebSocket reconnect attempt ${retryCount}`);
             return this.createWebSocketConnection(endpoint, config);
           }, config.retryInterval);
         }
@@ -559,7 +562,7 @@ export class BaseApiService {
   }
 
   private handleRequestError(error: any): ApiResponse {
-    console.error('API Request Error:', error);
+    log.error('API Request Error', error);
     
     let errorMessage = 'Unknown error';
     let statusCode = 0;

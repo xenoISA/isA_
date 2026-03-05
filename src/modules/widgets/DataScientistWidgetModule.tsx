@@ -21,6 +21,8 @@ import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { DataScientistWidgetParams, DataScientistWidgetResult } from '../../types/widgetTypes';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useDataScientistState } from '../../stores/useWidgetStores';
+import { createLogger } from '../../utils/logger';
+const log = createLogger('DataScientistWidget');
 
 interface DataScientistWidgetModuleProps {
   triggeredInput?: string;
@@ -75,10 +77,7 @@ const prepareDataScientistTemplateParams = (params: DataScientistWidgetParams) =
     depth: analysisType === 'prescriptive' || analysisType === 'predictive' ? 'deep' : 'shallow'
   };
   
-  console.log('📊 DATA_SCIENTIST_MODULE: Prepared template params for analysis type', analysisType, ':', {
-    template_id: mapping.template_id,
-    prompt_args
-  });
+  log.debug('Prepared template params', { analysisType, template_id: mapping.template_id, prompt_args });
   
   return {
     template_id: mapping.template_id,
@@ -150,7 +149,7 @@ const dataScientistWidgetConfig = createWidgetConfig({
       label: 'Export CSV',
       icon: '📋',
       onClick: (content) => {
-        console.log('📋 Exporting analysis as CSV:', content);
+        log.info('Exporting analysis as CSV');
       }
     },
     {
@@ -158,7 +157,7 @@ const dataScientistWidgetConfig = createWidgetConfig({
       label: 'Chart',
       icon: '📈',
       onClick: (content) => {
-        console.log('📈 Opening chart view:', content);
+        log.info('Opening chart view');
       }
     },
     {
@@ -166,7 +165,7 @@ const dataScientistWidgetConfig = createWidgetConfig({
       label: 'Report',
       icon: '📄', 
       onClick: (content) => {
-        console.log('📄 Downloading analysis report:', content);
+        log.info('Downloading analysis report');
       }
     }
   ],
@@ -175,7 +174,7 @@ const dataScientistWidgetConfig = createWidgetConfig({
       id: 'upload_csv',
       label: 'Upload CSV',
       icon: '📂',
-      onClick: () => console.log('📂 CSV upload dialog'),
+      onClick: () => log.info('CSV upload dialog'),
       variant: 'primary' as const,
       disabled: false
     },
@@ -183,21 +182,21 @@ const dataScientistWidgetConfig = createWidgetConfig({
       id: 'data_sources',
       label: 'Data Sources',
       icon: '🗄️',
-      onClick: () => console.log('🗄️ Data sources manager'),
+      onClick: () => log.info('Data sources manager'),
       disabled: false
     },
     {
       id: 'ml_models',
       label: 'ML Models', 
       icon: '🤖',
-      onClick: () => console.log('🤖 ML models - coming soon'),
+      onClick: () => log.info('ML models - coming soon'),
       disabled: true
     },
     {
       id: 'notebooks',
       label: 'Notebooks',
       icon: '📓',
-      onClick: () => console.log('📓 Jupyter notebooks - coming soon'),
+      onClick: () => log.info('Jupyter notebooks - coming soon'),
       disabled: true
     }
   ]
@@ -234,7 +233,7 @@ export const DataScientistWidgetModule: React.FC<DataScientistWidgetModuleProps>
     }];
   }, [analysisResult, lastParams]);
   
-  console.log('📊 DATA_SCIENTIST_MODULE: Converting analysis result to output history:', {
+  log.debug('Converting analysis result to output history', {
     hasResult: !!analysisResult,
     outputHistoryCount: outputHistory.length,
     latestResult: outputHistory[0]?.title
@@ -269,12 +268,12 @@ export const DataScientistWidgetModule: React.FC<DataScientistWidgetModuleProps>
                 templateParams // Add template configuration
               };
               
-              console.log('📊 DATA_SCIENTIST_MODULE: Sending enriched params to store:', enrichedParams);
+              log.debug('Sending enriched params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
             },
             // Add clear analysis function
             onClearAnalysis: () => {
-              console.log('📊 DATA_SCIENTIST_MODULE: Clearing analysis');
+              log.info('Clearing analysis');
               moduleProps.onClearHistory();
             },
             // BaseWidget state with converted data

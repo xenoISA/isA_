@@ -17,8 +17,10 @@
  * - Content-specific actions (export, refine, share)
  */
 import React, { useState } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { OmniWidgetParams } from '../../../types/widgetTypes';
 import { BaseWidget, OutputHistoryItem, EditAction, ManagementAction, EmptyStateConfig } from './BaseWidget';
+const log = createLogger('OmniWidget');
 
 interface OmniWidgetProps {
   // Props provided by OmniWidgetModule via React.cloneElement (optional for typing)
@@ -177,7 +179,7 @@ const OmniInputArea: React.FC<OmniWidgetProps> = ({
 
   const handleGenerate = async () => {
     if (!args.subject.trim() || !onGenerateContent || isGenerating) {
-      console.log('⚡ OMNI: Aborting generation - invalid input');
+      log.info('Aborting generation - invalid input');
       return;
     }
 
@@ -197,10 +199,10 @@ const OmniInputArea: React.FC<OmniWidgetProps> = ({
         }
       };
       
-      console.log('⚡ OMNI: Sending request to handler:', params);
+      log.info('Sending request to handler', params);
       await onGenerateContent(params);
     } catch (error) {
-      console.error('Generation failed:', error);
+      log.error('Generation failed', error);
     }
   };
 
@@ -356,7 +358,7 @@ export const OmniWidget: React.FC<OmniWidgetProps> = ({
       icon: '✨',
       onClick: (content) => {
         // Trigger content refinement
-        console.log('Refining content:', content);
+        log.info('Refining content', content);
       }
     },
     {
@@ -382,7 +384,7 @@ export const OmniWidget: React.FC<OmniWidgetProps> = ({
       icon: '📈',
       onClick: (content) => {
         // Expand content with more details
-        console.log('Expanding content:', content);
+        log.info('Expanding content', content);
       }
     }
   ];

@@ -8,12 +8,14 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { createLogger } from '../../../../utils/logger';
 import { Button } from '../../../shared/ui/Button';
 import { GlassCard } from '../../../shared/ui/GlassCard';
 import { DataTable } from '../../../shared/ui/DataTable';
 import OCRResultViewer from '../../../shared/ui/OCRResultViewer';
 import ImageAnalysisViewer from '../../../shared/ui/ImageAnalysisViewer';
 import { AutomationTemplate } from './types';
+const log = createLogger('ResultsPanel');
 
 export interface ExecutionResult {
   id: string;
@@ -512,7 +514,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                       showConfidence={true}
                       onExport={(format) => {
                         // Handle OCR export
-                        console.log('Export OCR result as', format);
+                        log.info('Export OCR result as', format);
                       }}
                     />
                   )}
@@ -524,7 +526,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                       showHeatmap={false}
                       onExportReport={(format) => {
                         // Handle image analysis export
-                        console.log('Export image analysis as', format);
+                        log.info('Export image analysis as', format);
                       }}
                     />
                   )}

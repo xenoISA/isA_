@@ -8,7 +8,10 @@
  */
 
 import React, { useState } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { useUserModule, PRICING_PLANS, formatCredits } from '../../../modules/UserModule';
+
+const log = createLogger('UserPortal');
 import { useContextModule } from '../../../modules/ContextModule';
 import { useOrganizationModule } from '../../../modules/OrganizationModule';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -102,7 +105,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
         window.location.href = checkoutUrl;
       }
     } catch (error) {
-      console.error('Upgrade failed:', error);
+      log.error('Upgrade failed:', error);
     } finally {
       setUpgradingPlan(null);
     }
@@ -113,7 +116,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
     try {
       await userModule.refreshUser();
     } catch (error) {
-      console.error('Refresh failed:', error);
+      log.error('Refresh failed:', error);
     }
   };
 
@@ -141,13 +144,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({ isOpen, onClose }) => {
     
     try {
       const newOrganization = await organizationModule.createOrganization(data);
-      console.log('Organization created successfully:', newOrganization);
+      log.info('Organization created successfully:', newOrganization);
       
       setShowCreateOrgModal(false);
       await contextModule.refreshContext();
       
     } catch (error) {
-      console.error('Failed to create organization:', error);
+      log.error('Failed to create organization:', error);
       setCreateError(error instanceof Error ? error.message : 'Failed to create organization');
     } finally {
       setCreateLoading(false);

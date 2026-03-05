@@ -16,7 +16,10 @@
  */
 
 import React from 'react';
+import { createLogger } from '../../../utils/logger';
 import { useContextModule } from '../../../modules/ContextModule';
+
+const log = createLogger('PermissionGuard');
 
 export type PermissionLevel = 'owner' | 'admin' | 'member' | 'any';
 export type ContextRequirement = 'personal' | 'organization' | 'any';
@@ -149,7 +152,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     ];
 
     if (debugMode) {
-      console.log('PermissionGuard checks:', {
+      log.debug('PermissionGuard checks:', {
         requirements: {
           requiredRole,
           requiredPermission,

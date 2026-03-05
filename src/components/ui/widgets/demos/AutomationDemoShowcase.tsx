@@ -7,11 +7,13 @@
  */
 
 import React, { useState } from 'react';
+import { createLogger } from '../../../../utils/logger';
 import { BaseWidget } from '../BaseWidget';
 import { Button } from '../../../shared/ui/Button';
 import ClassicAutomationDemo from './CustomAutomationWidget_Classic';
 import ModernAutomationDemo from './CustomAutomationWidget_Modern';
 import MinimalAutomationDemo from './CustomAutomationWidget_Minimal';
+const log = createLogger('AutomationDemoShowcase');
 
 type DemoStyle = 'showcase' | 'classic' | 'modern' | 'minimal';
 
@@ -132,28 +134,28 @@ const AutomationDemoShowcase: React.FC = () => {
       id: 'compare',
       label: '功能对比',
       icon: '📊',
-      onClick: () => console.log('Compare features'),
+      onClick: () => log.info('Compare features'),
       variant: 'secondary' as const
     },
     {
       id: 'customize',
       label: '自定义风格',
       icon: '🎨',
-      onClick: () => console.log('Customize'),
+      onClick: () => log.info('Customize'),
       variant: 'secondary' as const
     },
     {
       id: 'export',
       label: '导出配置',
       icon: '📤',
-      onClick: () => console.log('Export'),
+      onClick: () => log.info('Export'),
       variant: 'secondary' as const
     },
     {
       id: 'docs',
       label: '开发文档',
       icon: '📚',
-      onClick: () => console.log('Docs'),
+      onClick: () => log.info('Docs'),
       variant: 'secondary' as const
     }
   ];

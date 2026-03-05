@@ -15,7 +15,8 @@
  */
 
 import { useDreamWidgetStore, useHuntWidgetStore, useOmniWidgetStore, useDataScientistWidgetStore, useKnowledgeWidgetStore, useCustomAutomationWidgetStore } from '../../stores/useWidgetStores';
-import { logger, LogCategory } from '../../utils/logger';
+import { logger, LogCategory, createLogger } from '../../utils/logger';
+const log = createLogger('WidgetHandler');
 import { OutputHistoryItem, EditAction, ManagementAction } from '../ui/widgets/BaseWidget';
 import { WidgetType } from '../../types/widgetTypes';
 
@@ -67,7 +68,7 @@ export class WidgetHandler {
   setPluginMode(eventEmitter: PluginEventEmitter) {
     this.mode = 'plugin';
     this.eventEmitter = eventEmitter;
-    console.log('🔌 WIDGET_HANDLER: Switched to Plugin mode');
+    log.info('Switched to Plugin mode');
   }
 
   /**
@@ -76,7 +77,7 @@ export class WidgetHandler {
   setIndependentMode() {
     this.mode = 'independent';
     this.eventEmitter = null;
-    console.log('🔧 WIDGET_HANDLER: Switched to Independent mode');
+    log.info('Switched to Independent mode');
   }
 
   /**
@@ -94,7 +95,7 @@ export class WidgetHandler {
     try {
       if (this.mode === 'plugin' && this.eventEmitter) {
         // 🔌 Plugin模式：发出事件给ChatModule处理并等待结果
-        console.log('🔌 WIDGET_HANDLER: Emitting plugin event for ChatModule:', request);
+        log.info('Emitting plugin event for ChatModule', request);
         
         const requestId = `${request.type}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         
@@ -102,17 +103,17 @@ export class WidgetHandler {
         return new Promise((resolve, reject) => {
           // 监听结果事件
           const resultHandler = (eventData: any) => {
-            console.log('🔌 WIDGET_HANDLER: Received widget:result event:', eventData);
+            log.info('Received widget:result event', eventData);
             if (eventData.requestId === requestId) {
               clearTimeout(timeout);
               // Clean up listener after use
               this.eventEmitter!.off('widget:result', resultHandler);
               
               if (eventData.success) {
-                console.log('✅ WIDGET_HANDLER: Widget request succeeded, resolving promise');
+                log.info('Widget request succeeded, resolving promise');
                 resolve(eventData.result);
               } else {
-                console.error('❌ WIDGET_HANDLER: Widget request failed:', eventData.error);
+                log.error('Widget request failed', eventData.error);
                 reject(new Error(eventData.error || 'Plugin execution failed'));
               }
             }
@@ -127,7 +128,7 @@ export class WidgetHandler {
           this.eventEmitter!.on('widget:result', resultHandler);
           
           // 发出请求事件
-          console.log('🔌 WIDGET_HANDLER: Emitting widget:request with requestId:', requestId);
+          log.info('Emitting widget:request with requestId', requestId);
           this.eventEmitter!.emit('widget:request', {
             widgetType: request.type,
             action: 'process',
@@ -141,7 +142,7 @@ export class WidgetHandler {
       }
 
       // 🔧 Independent模式：直接路由到store
-      console.log('🔧 WIDGET_HANDLER: Processing in Independent mode');
+      log.info('Processing in Independent mode');
       
       switch (request.type) {
         case 'dream':
@@ -307,7 +308,7 @@ export class WidgetHandler {
    * Process edit actions (copy, download, share, etc.)
    */
   private async processEditAction(request: WidgetUIActionRequest): Promise<void> {
-    console.log(`📝 ${request.type.toUpperCase()}: Processing edit action '${request.actionId}'`, request.content);
+    log.info(`${request.type.toUpperCase()}: Processing edit action '${request.actionId}'`, request.content);
     
     // Default edit actions that work across all widgets
     switch (request.actionId) {
@@ -323,7 +324,7 @@ export class WidgetHandler {
         break;
       default:
         // Widget-specific edit actions would be handled here
-        console.log(`🔧 ${request.type.toUpperCase()}: Custom edit action '${request.actionId}' - implement in widget-specific handler`);
+        log.info(`${request.type.toUpperCase()}: Custom edit action '${request.actionId}' - implement in widget-specific handler`);
     }
   }
 
@@ -331,7 +332,7 @@ export class WidgetHandler {
    * Process management actions (refresh, clear, custom actions)
    */
   private async processManagementAction(request: WidgetUIActionRequest): Promise<void> {
-    console.log(`⚙️ ${request.type.toUpperCase()}: Processing management action '${request.actionId}'`);
+    log.info(`${request.type.toUpperCase()}: Processing management action '${request.actionId}'`);
     
     switch (request.actionId) {
       case 'refresh':
@@ -348,7 +349,7 @@ export class WidgetHandler {
         break;
       default:
         // Widget-specific management actions would be handled here
-        console.log(`🔧 ${request.type.toUpperCase()}: Custom management action '${request.actionId}' - implement in widget-specific handler`);
+        log.info(`${request.type.toUpperCase()}: Custom management action '${request.actionId}' - implement in widget-specific handler`);
     }
   }
 
@@ -401,7 +402,7 @@ export class WidgetHandler {
           customAutomationStore.clearData?.();
           break;
         default:
-          console.log(`⚠️ Clear operation not implemented for widget type: ${type}`);
+          log.warn(`Clear operation not implemented for widget type: ${type}`);
       }
     } catch (error) {
       logger.error(LogCategory.ARTIFACT_CREATION, 'Failed to clear widget data', { type, error });
@@ -439,7 +440,7 @@ export class WidgetHandler {
       await navigator.share(shareData);
     } else {
       await navigator.clipboard.writeText(textContent);
-      console.log('📋 Content copied to clipboard (Web Share API not available)');
+      log.info('Content copied to clipboard (Web Share API not available)');
     }
   }
 }

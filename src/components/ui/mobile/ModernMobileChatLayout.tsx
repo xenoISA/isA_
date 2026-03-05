@@ -3,7 +3,10 @@
  * Following ChatGPT, Claude, Gemini, Grok mobile UX/UI patterns
  */
 import React, { useState, useCallback, useMemo } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { THEME_COLORS } from '../../../constants/theme';
+
+const log = createLogger('ModernMobileChatLayout');
 import { ChatMessage } from '../chat/ChatLayout';
 import { ModernMobileHeader } from './ModernMobileHeader';
 import { ModernMobileMessageList } from './ModernMobileMessageList';
@@ -51,22 +54,22 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
   const [isInitialLoad, setIsInitialLoad] = useState(false); // Temporarily disabled for debugging
 
   const handleMenuClick = useCallback(() => {
-    console.log('🔥🔥🔥 MODERNMOBILECHATLAYOUT - Menu button clicked! showMenu was:', showMenu);
+    log.debug('Menu button clicked! showMenu was:', showMenu);
     setShowMenu(prev => {
       const newValue = !prev;
-      console.log('🔥🔥🔥 MODERNMOBILECHATLAYOUT - Setting showMenu to:', newValue);
+      log.debug('Setting showMenu to:', newValue);
       return newValue;
     });
   }, [showMenu]);
 
   const handleNewChat = useCallback(() => {
-    console.log('🔥🔥🔥 MODERNMOBILECHATLAYOUT - New chat button clicked! onNewChat function:', onNewChat);
+    log.debug('New chat button clicked! onNewChat function:', onNewChat);
     onNewChat?.();
     setShowMenu(false);
   }, [onNewChat]);
 
   const handleUserClick = useCallback(() => {
-    console.log('🔥🔥🔥 MODERNMOBILECHATLAYOUT - User profile clicked!');
+    log.debug('User profile clicked!');
     setShowUserProfile(true);
   }, []);
 
@@ -228,7 +231,7 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
               {/* Chat History */}
               <button
                 onClick={() => {
-                  console.log('🔥 Chat History clicked');
+                  log.debug('Chat History clicked');
                   setShowMenu(false);
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 transition-all duration-200 backdrop-blur-sm rounded-lg mx-2"
@@ -244,7 +247,7 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
               {/* Settings */}
               <button
                 onClick={() => {
-                  console.log('🔥 Settings clicked');
+                  log.debug('Settings clicked');
                   setShowMenu(false);
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 transition-all duration-200 backdrop-blur-sm rounded-lg mx-2"
@@ -334,7 +337,7 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
               <div className="space-y-2">
                 <button
                   onClick={() => {
-                    console.log('🔥 Edit Profile clicked');
+                    log.debug('Edit Profile clicked');
                     setShowUserProfile(false);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 rounded-lg transition-all duration-200 backdrop-blur-sm"
@@ -347,7 +350,7 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
 
                 <button
                   onClick={() => {
-                    console.log('🔥 Account Settings clicked');
+                    log.debug('Account Settings clicked');
                     setShowUserProfile(false);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 rounded-lg transition-all duration-200 backdrop-blur-sm"
@@ -361,7 +364,7 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
 
                 <button
                   onClick={() => {
-                    console.log('🔥 Privacy clicked');
+                    log.debug('Privacy clicked');
                     setShowUserProfile(false);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 rounded-lg transition-all duration-200 backdrop-blur-sm"
@@ -375,7 +378,7 @@ export const ModernMobileChatLayout: React.FC<ModernMobileChatLayoutProps> = ({
                 <div className="border-t border-white/20 dark:border-white/10 pt-2 mt-2">
                   <button
                     onClick={() => {
-                      console.log('🔥 Sign Out clicked');
+                      log.debug('Sign Out clicked');
                       setShowUserProfile(false);
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-all duration-200 backdrop-blur-sm"

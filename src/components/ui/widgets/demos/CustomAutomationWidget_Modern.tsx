@@ -10,8 +10,10 @@
  */
 
 import React, { useState } from 'react';
+import { createLogger } from '../../../../utils/logger';
 import { BaseWidget } from '../BaseWidget';
 import { Button } from '../../../shared/ui/Button';
+const log = createLogger('ModernAutomationDemo');
 
 interface FlowStep {
   id: string;
@@ -138,21 +140,21 @@ const ModernAutomationDemo: React.FC = () => {
       id: 'customize',
       label: '自定义流程',
       icon: '⚙️',
-      onClick: () => console.log('Customize'),
+      onClick: () => log.info('Customize'),
       variant: 'secondary' as const
     },
     {
       id: 'templates',
       label: '模板库',
       icon: '📚',
-      onClick: () => console.log('Templates'),
+      onClick: () => log.info('Templates'),
       variant: 'secondary' as const
     },
     {
       id: 'monitor',
       label: '执行监控',
       icon: '📊',
-      onClick: () => console.log('Monitor'),
+      onClick: () => log.info('Monitor'),
       variant: 'secondary' as const
     }
   ];

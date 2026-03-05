@@ -17,8 +17,10 @@
  * - Search-specific actions (bookmark, share, analyze)
  */
 import React, { useState } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { HuntWidgetParams } from '../../../types/widgetTypes';
 import { BaseWidget, OutputHistoryItem, EditAction, ManagementAction, EmptyStateConfig } from './BaseWidget';
+const log = createLogger('HuntWidget');
 
 // AI Search Intelligence Service modes (based on admin categories)
 interface SearchMode {
@@ -143,7 +145,7 @@ const HuntInputArea: React.FC<{
       const bestMode = detectBestMode(query);
       if (bestMode.id !== selectedMode.id) {
         setRecommendedMode(bestMode);
-        console.log('🔍 Mode recommendation available:', bestMode.id);
+        log.debug('Mode recommendation available', bestMode.id);
       } else {
         setRecommendedMode(null);
       }
@@ -162,7 +164,7 @@ const HuntInputArea: React.FC<{
       return;
     }
 
-    console.log('🔍 Starting search processing with mode:', selectedMode.name);
+    log.info('Starting search processing with mode', selectedMode.name);
     
     try {
       const params: HuntWidgetParams = {
@@ -174,16 +176,16 @@ const HuntInputArea: React.FC<{
       
       // Use Module's onSearch - no fallback needed
       if (onSearch) {
-        console.log('🔍 HUNT_WIDGET: Using module onSearch function');
+        log.info('Using module onSearch function');
         await onSearch(params);
       } else {
-        console.error('🔍 HUNT_WIDGET: No onSearch prop provided - widget not properly configured');
+        log.error('No onSearch prop provided - widget not properly configured');
         return;
       }
       
-      console.log('🚀 Search processing request sent with mode:', selectedMode.name);
+      log.info('Search processing request sent with mode', selectedMode.name);
     } catch (error) {
-      console.error('Search processing failed:', error);
+      log.error('Search processing failed', error);
     }
   };
 
@@ -208,7 +210,7 @@ const HuntInputArea: React.FC<{
           onChange={(e) => {
             const newValue = e.target.value;
             if (newValue !== query) {
-              console.log('🔍 Search query changed');
+              log.debug('Search query changed');
             }
             setQuery(newValue);
           }}
@@ -231,7 +233,7 @@ const HuntInputArea: React.FC<{
             onClick={() => {
               setSelectedMode(recommendedMode);
               setRecommendedMode(null);
-              console.log('🔍 Accepted recommendation:', recommendedMode.name);
+              log.debug('Accepted recommendation', recommendedMode.name);
             }}
             className="px-2 py-1 bg-blue-500/20 text-white rounded text-xs hover:bg-blue-500/30"
           >
@@ -255,7 +257,7 @@ const HuntInputArea: React.FC<{
               key={mode.id}
               onClick={() => {
                 setSelectedMode(mode);
-                console.log('🔍 Mode selected:', mode.name);
+                log.debug('Mode selected', mode.name);
               }}
               className={`p-1.5 rounded border transition-all text-center cursor-pointer ${
                 selectedMode.id === mode.id
@@ -377,7 +379,7 @@ export const HuntWidget: React.FC<HuntWidgetProps> = ({
       id: 'search',
       label: 'Search',
       icon: '🔍',
-      onClick: () => console.log('🔍 Search mode active'),
+      onClick: () => log.info('Search mode active'),
       variant: 'primary' as const,
       disabled: false
     },
@@ -385,21 +387,21 @@ export const HuntWidget: React.FC<HuntWidgetProps> = ({
       id: 'crawler',
       label: 'Crawler',
       icon: '🕷️',
-      onClick: () => console.log('🕷️ Crawler mode - coming soon'),
+      onClick: () => log.info('Crawler mode - coming soon'),
       disabled: true
     },
     {
       id: 'automation',
       label: 'Automation', 
       icon: '🤖',
-      onClick: () => console.log('🤖 Automation mode - coming soon'),
+      onClick: () => log.info('Automation mode - coming soon'),
       disabled: true
     },
     {
       id: 'other',
       label: 'Other',
       icon: '⚙️',
-      onClick: () => console.log('⚙️ Other tools - coming soon'),
+      onClick: () => log.info('Other tools - coming soon'),
       disabled: true
     }
   ];

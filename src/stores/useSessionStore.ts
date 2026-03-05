@@ -39,7 +39,9 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { logger, LogCategory } from '../utils/logger';
+import { logger, LogCategory, createLogger } from '../utils/logger';
+
+const log = createLogger('SessionStore', LogCategory.CHAT_FLOW);
 import { createAuthenticatedSessionService } from '../api/sessionService';
 
 const STORAGE_SAVE_DEBOUNCE_MS = 500;
@@ -198,7 +200,7 @@ export const useSessionStore = create<SessionStore>()(
       
       // 防止重复设置相同的sessionId，避免无限循环
       if (currentState.currentSessionId === sessionId) {
-        console.log('🚫 SESSION_STORE: Session already selected, skipping', { sessionId });
+        log.debug('Session already selected, skipping', { sessionId });
         return;
       }
       
@@ -206,9 +208,9 @@ export const useSessionStore = create<SessionStore>()(
       localStorage.setItem('currentSessionId', sessionId);
       
       logger.debug(LogCategory.CHAT_FLOW, 'Session selected', { sessionId });
-      console.log('✅ SESSION_STORE: Session selected', { 
-        sessionId, 
-        previousSessionId: currentState.currentSessionId 
+      log.info('Session selected', {
+        sessionId,
+        previousSessionId: currentState.currentSessionId
       });
     },
     
@@ -436,7 +438,7 @@ export const useSessionStore = create<SessionStore>()(
             const firstSessionId = parsedSessions.length > 0 ? parsedSessions[0].id : 'default';
             set({ currentSessionId: firstSessionId });
             localStorage.setItem('currentSessionId', firstSessionId);
-            console.log('⚠️ SESSION_STORE: Saved session not found, using first session', {
+            log.warn('Saved session not found, using first session', {
               savedSessionId: savedCurrentSessionId,
               newSessionId: firstSessionId
             });
@@ -450,12 +452,12 @@ export const useSessionStore = create<SessionStore>()(
           const firstSessionId = parsedSessions[0].id;
           set({ currentSessionId: firstSessionId });
           localStorage.setItem('currentSessionId', firstSessionId);
-          console.log('🆕 SESSION_STORE: No saved session ID, using first session', {
+          log.info('No saved session ID, using first session', {
             firstSessionId,
             totalSessions: parsedSessions.length
           });
         } else {
-          console.log('❌ SESSION_STORE: No sessions available, cannot set current session');
+          log.warn('No sessions available, cannot set current session');
         }
         
         const finalCurrentSessionId = get().currentSessionId;

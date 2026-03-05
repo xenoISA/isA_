@@ -1,4 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('RudderstackSourceConfig');
 
 /**
  * RudderStack Source Configuration API
@@ -81,7 +84,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
     res.status(200).json(sourceConfig);
   } catch (error) {
-    console.error('Error serving source config:', error);
+    log.error('Error serving source config:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

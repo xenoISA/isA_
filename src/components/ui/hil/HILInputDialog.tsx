@@ -16,7 +16,10 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { createLogger } from '../../../utils/logger';
 import { useHILActions, useCurrentHILInterrupt } from '../../../stores/useChatStore';
+
+const log = createLogger('HILInputDialog');
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 
@@ -71,7 +74,7 @@ export const HILInputDialog: React.FC<HILInputDialogProps> = ({
       await resumeHILExecution(sessionId, resumeValue, authToken);
       onClose();
     } catch (error) {
-      console.error('❌ HIL input submission failed:', error);
+      log.error('HIL input submission failed:', error);
     } finally {
       setIsProcessing(false);
     }
