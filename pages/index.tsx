@@ -32,7 +32,7 @@ const IndexPage: React.FC<IndexPageProps> = ({ isMarketingSite, hostname }) => {
     // 如果不是营销站点，重定向到 /app 页面
     if (!isMarketingSite) {
       log.info('Redirecting to /app for main application');
-      // 保留URL参数（包括Auth0回调参数）
+      // 保留URL参数（包括auth回调参数）
       const redirectTarget = appendSearchParams(surfaceLinks.appEntry, window.location.search);
 
       if (isAbsoluteUrl(redirectTarget)) {

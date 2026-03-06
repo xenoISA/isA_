@@ -48,7 +48,7 @@ export interface UserHandlerInterface {
   
   // Auth Data
   isAuthenticated: boolean;
-  auth0User: any;
+  authUser: any;
   
   // Credits & Billing
   credits: number;
@@ -279,7 +279,7 @@ export const UserHandler: React.FC<{ children: React.ReactNode }> = ({ children 
     
     // Auth Data
     isAuthenticated: userModule.isAuthenticated,
-    auth0User: userModule.auth0User,
+    authUser: userModule.authUser,
     
     // Credits & Billing
     credits: userModule.credits,

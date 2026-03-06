@@ -160,13 +160,13 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
   // ================================================================================
 
   useEffect(() => {
-    if (userModule.isAuthenticated && userModule.auth0User && !currentContext) {
+    if (userModule.isAuthenticated && userModule.authUser && !currentContext) {
       // Initialize personal context when user is authenticated
       const personalContext: PersonalContext = {
         type: 'personal',
-        userId: userModule.auth0User.sub || '',
-        email: userModule.auth0User.email || '',
-        name: userModule.auth0User.name || ''
+        userId: userModule.authUser.sub || '',
+        email: userModule.authUser.email || '',
+        name: userModule.authUser.name || ''
       };
       
       setCurrentContext(personalContext);
@@ -178,7 +178,7 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
       setStoredOrgContextId(null);
       logger.info(LogCategory.USER_AUTH, 'Cleared context on user logout');
     }
-  }, [userModule.isAuthenticated, userModule.auth0User, currentContext]);
+  }, [userModule.isAuthenticated, userModule.authUser, currentContext]);
 
   useEffect(() => {
     if (!userModule.isAuthenticated || !currentContext || !pendingOrgContextId) {

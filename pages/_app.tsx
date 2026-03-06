@@ -17,9 +17,7 @@ export default function App({ Component, pageProps }: AppProps) {
     }
   }, [])
 
-  // 移除重复的 Auth0Provider 包装
-  // Auth0Provider 现在只在 src/app.tsx 中使用，避免双重包装
-  // Rendering with AnalyticsProvider
+  // Auth is handled by AuthProvider in src/app.tsx — not duplicated here
   
   return (
     <AnalyticsProvider>

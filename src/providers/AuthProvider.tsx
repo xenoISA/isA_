@@ -3,7 +3,7 @@
  * Auth Provider - Gateway-based authentication
  * ============================================================================
  *
- * Replaces Auth0Provider with custom gateway auth flow.
+ * Custom gateway auth flow using JWT tokens and HttpOnly refresh cookies.
  * Uses localStorage JWT tokens managed by gatewayConfig.
  */
 

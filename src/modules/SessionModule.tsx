@@ -86,7 +86,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   
-  const { auth0User, getAuthHeaders, isAuthenticated } = useAuth();
+  const { authUser, getAuthHeaders, isAuthenticated } = useAuth();
   const { currentApp, startNewChat, setTriggeredAppInput, closeApp } = useAppStore();
   const messages = useChatMessages();
   const { addMessage: addChatMessage, clearMessages } = useChatActions();
@@ -168,15 +168,15 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   
   // 同步会话到API
   const handleSyncSessionToAPI = useCallback(async (session: ChatSession) => {
-    if (!auth0User?.sub) return;
+    if (!authUser?.sub) return;
     
     // TODO: Implement API sync when needed
     // For now, just log that sync would happen
     logger.info(LogCategory.CHAT_FLOW, 'Session sync to API (simplified)', {
       sessionId: session.id,
-      userId: auth0User.sub
+      userId: authUser.sub
     });
-  }, [auth0User?.sub]);
+  }, [authUser?.sub]);
   
   // 更新当前会话数据
   const handleUpdateCurrentSession = useCallback(() => {
@@ -316,7 +316,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
     sessionStorageActions.saveToStorage();
     
     // 如果用户已认证，尝试同步到API
-    if (auth0User?.sub && !newSession.metadata?.api_session_id) {
+    if (authUser?.sub && !newSession.metadata?.api_session_id) {
       handleSyncSessionToAPI(newSession);
     }
     
@@ -325,7 +325,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
     
     // 重置创建状态锁
     setTimeout(() => setIsCreatingSession(false), 500);
-  }, [sessionCount, sessionCRUDActions, sessionStorageActions, auth0User?.sub, isCreatingSession, sessions, handleSyncSessionToAPI]);
+  }, [sessionCount, sessionCRUDActions, sessionStorageActions, authUser?.sub, isCreatingSession, sessions, handleSyncSessionToAPI]);
   
   const handleDeleteSession = useCallback((sessionId: string) => {
     // 使用store actions删除会话
@@ -418,14 +418,14 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   
   // 当用户认证状态变化时，初始化Session API认证
   useEffect(() => {
-    if (isAuthenticated && auth0User?.sub) {
+    if (isAuthenticated && authUser?.sub) {
       // TODO: Initialize API auth when needed
       // For now, just log authentication
       logger.info(LogCategory.CHAT_FLOW, 'Session store authenticated for user (simplified)', {
-        userId: auth0User.sub
+        userId: authUser.sub
       });
     }
-  }, [isAuthenticated, auth0User?.sub, getAuthHeaders]); // 移除sessionActions依赖
+  }, [isAuthenticated, authUser?.sub, getAuthHeaders]); // 移除sessionActions依赖
   
   // 移除：自动保存逻辑不再需要，因为useChatStore.addMessage已经自动同步到session了
   // 这个useEffect导致了无限循环，因为messages现在来自currentSession.messages

@@ -52,7 +52,7 @@ export interface UserModuleInterface {
   error: string | null;
   
   // User Data
-  auth0User: any;
+  authUser: any;
   externalUser: any;
   subscription: any;
   
@@ -118,11 +118,11 @@ const UserModuleContext = React.createContext<UserModuleInterface | null>(null);
 // ================================================================================
 
 export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Gateway Auth Integration (migrated from Auth0)
+  // Gateway Auth Integration
   const {
-    authUser: auth0User,
-    isLoading: auth0Loading,
-    error: auth0Error,
+    authUser,
+    isLoading: authLoading,
+    error: authError,
     isAuthenticated,
     login: gatewayLogin,
     logout: gatewayLogout,
@@ -185,11 +185,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const initializeUser = useCallback(async (): Promise<void> => {
     // 🔒 防护：检查认证状态
-    if (!auth0User?.sub || !auth0User?.email || !auth0User?.name || !isAuthenticated) {
+    if (!authUser?.sub || !authUser?.email || !authUser?.name || !isAuthenticated) {
       const missingData = {
-        sub: !auth0User?.sub,
-        email: !auth0User?.email,
-        name: !auth0User?.name,
+        sub: !authUser?.sub,
+        email: !authUser?.email,
+        name: !authUser?.name,
         authenticated: !isAuthenticated
       };
       throw new Error(`User initialization blocked - missing: ${Object.entries(missingData).filter(([, missing]) => missing).map(([key]) => key).join(', ')}`);
@@ -197,15 +197,15 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
 
     const startTime = Date.now();
     const userData: CreateExternalUserData = {
-      auth0_id: auth0User.sub,
-      email: auth0User.email,
-      name: auth0User.name
+      auth0_id: authUser.sub,
+      email: authUser.email,
+      name: authUser.name
     };
 
     try {
       log.info('Initializing user', {
-        auth0_id: auth0User.sub,
-        email: auth0User.email,
+        auth0_id: authUser.sub,
+        email: authUser.email,
         timestamp: new Date().toISOString()
       });
 
@@ -243,18 +243,18 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       const errorMessage = error instanceof Error ? error.message : String(error);
       log.error('User initialization failed', {
         error: errorMessage,
-        auth0_id: auth0User.sub,
+        auth0_id: authUser.sub,
         executionTime: Date.now() - startTime + 'ms'
       });
       
       logger.error(LogCategory.USER_AUTH, 'User initialization failed', { 
         error: errorMessage,
-        auth0_id: auth0User.sub 
+        auth0_id: authUser.sub 
       });
       
       throw error; // 重新抛出错误供调用者处理
     }
-  }, [auth0User?.sub, auth0User?.email, auth0User?.name, isAuthenticated, userService]);
+  }, [authUser?.sub, authUser?.email, authUser?.name, isAuthenticated, userService]);
 
   const refreshUser = useCallback(async () => {
     if (!isAuthenticated) {
@@ -266,8 +266,8 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       log.info('Starting user refresh process...');
       log.debug('Auth status', {
         isAuthenticated,
-        hasAuth0User: !!auth0User,
-        auth0UserSub: auth0User?.sub
+        hasAuth0User: !!authUser,
+        authUserSub: authUser?.sub
       });
       
       // Get access token with detailed logging
@@ -288,7 +288,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         if (error instanceof Error && error.message.includes('404')) {
           log.info('User not found (404), attempting to initialize user...');
 
-          if (auth0User?.sub && auth0User?.email && auth0User?.name) {
+          if (authUser?.sub && authUser?.email && authUser?.name) {
             log.info('Initializing user via ensureUserExists...');
             await initializeUser();
             log.info('User initialized, retrying fetchCurrentUser...');
@@ -325,7 +325,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to refresh user', { error });
       throw error;
     }
-  }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, auth0User, initializeUser]);
+  }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, authUser, initializeUser]);
 
   const logout = useCallback(() => {
     userHook.clearUser();
@@ -394,11 +394,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   
   // 统一的用户初始化Effect - 避免重复初始化
   useEffect(() => {
-    const currentUserId = auth0User?.sub;
-    const hasRequiredData = auth0User?.sub && auth0User?.email && auth0User?.name;
+    const currentUserId = authUser?.sub;
+    const hasRequiredData = authUser?.sub && authUser?.email && authUser?.name;
     
     log.debug('Auth state changed', {
-      auth0Loading,
+      authLoading,
       isAuthenticated,
       hasRequiredData,
       currentUserId,
@@ -407,8 +407,8 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     // 🔄 情况1：正在加载 - 等待
-    if (auth0Loading) {
-      log.debug('Auth0 still loading, waiting...');
+    if (authLoading) {
+      log.debug('Auth still loading, waiting...');
       return;
     }
 
@@ -455,11 +455,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         });
     }
   }, [
-    auth0Loading, 
+    authLoading, 
     isAuthenticated, 
-    auth0User?.sub, 
-    auth0User?.email, 
-    auth0User?.name,
+    authUser?.sub, 
+    authUser?.email, 
+    authUser?.name,
     initializationStatus,
     initializeUser, 
     userHook.clearUser
@@ -472,11 +472,11 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
   const moduleInterface: UserModuleInterface = useMemo(() => ({
     // Auth State
     isAuthenticated,
-    isLoading: auth0Loading || userHook.isLoading,
-    error: auth0Error || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
+    isLoading: authLoading || userHook.isLoading,
+    error: authError || userHook.userError || userHook.creditsError || userHook.subscriptionError || null,
     
     // User Data
-    auth0User,
+    authUser,
     externalUser,
     subscription,
     
@@ -499,13 +499,13 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     checkHealth
   }), [
     isAuthenticated,
-    auth0Loading,
+    authLoading,
     userHook.isLoading,
-    auth0Error,
+    authError,
     userHook.userError,
     userHook.creditsError,
     userHook.subscriptionError,
-    auth0User,
+    authUser,
     externalUser,
     subscription,
     credits,

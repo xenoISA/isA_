@@ -4,10 +4,10 @@ This document defines how `isA_` (app entry) and `isA_Console` share authenticat
 
 ## Auth and Session Model
 
-- Auth provider: shared Auth0 tenant/client across both surfaces.
-- Login behavior: each surface uses redirect-based Auth0 login with `appState.returnTo` so users return to their original route after authentication.
-- Logout behavior: both surfaces must call Auth0 logout and clear local session state. `isA_` uses `NEXT_PUBLIC_AUTH_LOGOUT_RETURN_TO` as the post-logout destination.
-- SSO expectation: when a user already has an active Auth0 session, navigation between app and console should not require re-entering credentials.
+- Auth provider: custom gateway auth (JWT tokens with HttpOnly refresh cookies).
+- Login behavior: each surface uses form-based login via `LoginScreen`. After authentication, users are returned to their original route.
+- Logout behavior: both surfaces must call gateway logout and clear local session state. `isA_` uses `NEXT_PUBLIC_AUTH_LOGOUT_RETURN_TO` as the post-logout destination.
+- SSO expectation: when a user already has an active session (valid refresh cookie), navigation between app and console should not require re-entering credentials.
 
 ## Organization Context Contract
 
@@ -21,15 +21,16 @@ When moving from app to console, `isA_` appends `currentOrgId` and `returnTo` so
 ## Security Expectations
 
 - Token storage:
-  - Auth0 SDK refresh/access token cache is client-side (`localstorage`) in `isA_`.
+  - Access tokens are held in memory (via `authTokenStore`), not in localStorage.
+  - Refresh tokens are stored as HttpOnly cookies, sent automatically on `/refresh` requests.
   - Organization scope (`isa_current_org_id`) is non-sensitive contextual metadata only.
 - Cookies/session:
-  - Auth0 session cookie must be configured with secure defaults (`Secure`, `HttpOnly`, `SameSite=Lax` or stricter depending on domain strategy).
+  - Refresh cookie must be configured with secure defaults (`Secure`, `HttpOnly`, `SameSite=Lax` or stricter depending on domain strategy).
 - Expiration and renewal:
-  - Access tokens are short-lived and renewed through Auth0 SDK refresh flow.
+  - Access tokens are short-lived and renewed via the `/auth/refresh` endpoint using the HttpOnly cookie.
   - Missing/invalid refresh token should trigger interactive login.
 - Invalidation:
-  - Logout must clear local session state and invoke Auth0 logout endpoint, invalidating cross-surface SSO session.
+  - Logout must clear in-memory tokens and invoke the gateway logout endpoint, invalidating cross-surface SSO session.
 
 ## Required Env Vars
 
