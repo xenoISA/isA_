@@ -3,13 +3,11 @@
  * Auth Hook (useAuth.ts) - Gateway Auth Wrapper
  * ============================================================================
  *
- * Migrated from Auth0 to gateway-based authentication.
- * Wraps useAuthContext from AuthProvider for backwards compatibility.
+ * Wraps useAuthContext from AuthProvider for a clean consumer interface.
  *
  * Architecture:
- * - Gateway auth via AuthProvider (JWT tokens in localStorage)
+ * - Gateway auth via AuthProvider (JWT tokens, HttpOnly refresh cookie)
  * - Login/signup handled by LoginScreen (form-based)
- * - This hook provides the same interface as the old Auth0 version
  */
 
 import { useCallback, useMemo } from 'react';
@@ -24,7 +22,7 @@ const log = createLogger('useAuth');
 
 export interface UseAuthReturn {
   // Auth State
-  auth0User: any;
+  authUser: any;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: any;
@@ -133,8 +131,8 @@ export const useAuth = (): UseAuthReturn => {
   // ================================================================================
 
   return {
-    // Auth State (auth0User name kept for backwards compatibility)
-    auth0User: ctx.authUser,
+    // Auth State
+    authUser: ctx.authUser,
     isAuthenticated: ctx.isAuthenticated,
     isLoading: ctx.isLoading,
     error: ctx.error,
@@ -170,7 +168,7 @@ export const useAuthLegacy = () => {
 
   return {
     ...auth,
-    user: auth.auth0User,
+    user: auth.authUser,
     creditsRemaining: 0,
     currentPlan: 'unknown',
     hasCredits: false,

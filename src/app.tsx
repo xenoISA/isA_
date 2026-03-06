@@ -14,7 +14,7 @@
  * 
  * Architecture:
  * - Uses proper provider layering with clear separation
- * - ErrorBoundary -> Auth0 -> Session -> AI -> Modules
+ * - ErrorBoundary -> Auth -> Session -> AI -> Modules
  * - Each provider has single responsibility
  * - Clean dependency flow without circular references
  */

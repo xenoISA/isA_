@@ -680,8 +680,7 @@ export const useChatStore = create<ChatStore>()(
 
         // 获取用户信息
         const userStore = useUserStore.getState();
-        // auth0_id is the legacy field name; fall back to user_id/id in case
-        // the gateway auth response uses a different field post-Auth0 migration.
+        // auth0_id is the backend API field name; fall back to other ID fields.
         const eu = userStore.externalUser as Record<string, any> | null;
         const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id || '';
         if (!userId) {

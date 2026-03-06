@@ -116,7 +116,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   const chatInterface = useChat();
   
   // Get authentication state
-  const { auth0User } = useAuth();
+  const { authUser } = useAuth();
   
   // Get session management
   const currentSession = useCurrentSession();
@@ -807,7 +807,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         options: params,
         context: {
           sessionId: activeSessionId,
-          userId: auth0User?.sub || 'anonymous',
+          userId: authUser?.sub || 'anonymous',
           messageId: userMessage.id,
           requestId
         }
@@ -971,7 +971,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       });
     }
     
-  }, [auth0User, currentSession, sessionActions, userModule, setShowUpgradeModal, mapPluginTypeToContentType]);
+  }, [authUser, currentSession, sessionActions, userModule, setShowUpgradeModal, mapPluginTypeToContentType]);
 
   // ================================================================================
   // 聊天控制业务逻辑 - New Chat and Session Management
@@ -1025,7 +1025,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     // Business logic: Enrich metadata with user and session info
     const enrichedMetadata = {
       ...metadata,
-      user_id: auth0User?.sub || (() => { throw new Error('User not authenticated') })(),
+      user_id: authUser?.sub || (() => { throw new Error('User not authenticated') })(),
       session_id: sessionId
     };
     
@@ -1077,7 +1077,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           options: pluginTrigger.extractedParams || {},
           context: {
             sessionId,
-            userId: auth0User?.sub || (() => { throw new Error('User not authenticated') })(),
+            userId: authUser?.sub || (() => { throw new Error('User not authenticated') })(),
             messageId: userMessage.id
           }
         };
@@ -1168,7 +1168,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       }
     }
     
-  }, [auth0User, currentSession, sessionActions, userModule, getChatService]);
+  }, [authUser, currentSession, sessionActions, userModule, getChatService]);
 
   // Business logic: Handle multimodal message sending
   const handleSendMultimodal = useCallback(async (content: string, files: File[], metadata?: Record<string, any>) => {
@@ -1208,7 +1208,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     // Business logic: Enrich metadata with user and session info
     const enrichedMetadata = {
       ...metadata,
-      user_id: auth0User?.sub || (() => { throw new Error('User not authenticated') })(),
+      user_id: authUser?.sub || (() => { throw new Error('User not authenticated') })(),
       session_id: metadata?.session_id || 'default',
       files: files.map(f => ({ name: f.name, type: f.type, size: f.size })) // Add file info to metadata
     };
@@ -1268,7 +1268,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       log.error('Failed to send multimodal message:', error);
       throw error;
     }
-  }, [auth0User, userModule, getChatService]);
+  }, [authUser, userModule, getChatService]);
 
   // 🆕 Note: triggeredAppInput is now managed by useAppStore globally
 

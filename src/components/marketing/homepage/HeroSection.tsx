@@ -11,7 +11,7 @@ interface HeroSectionProps {
 /**
  * 营销首页Hero区域组件
  * 独立样式避免与主应用冲突
- * 不依赖 Auth0，直接提供链接到主应用
+ * 不依赖认证状态，直接提供链接到主应用
  */
 export default function HeroSection({ currentTime, className = "" }: HeroSectionProps) {
   const [taglineIndex, setTaglineIndex] = useState(0)

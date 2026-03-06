@@ -36,17 +36,17 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
 
   // Transform user data for UI
   const userData: UserData | null = useMemo(() => {
-    if (!userModule.isAuthenticated || !userModule.auth0User) {
+    if (!userModule.isAuthenticated || !userModule.authUser) {
       return null;
     }
 
     return {
-      id: userModule.auth0User.sub || '',
-      name: userModule.auth0User.name || '',
-      email: userModule.auth0User.email || '',
-      avatar: userModule.auth0User.picture
+      id: userModule.authUser.sub || '',
+      name: userModule.authUser.name || '',
+      email: userModule.authUser.email || '',
+      avatar: userModule.authUser.picture
     };
-  }, [userModule.isAuthenticated, userModule.auth0User]);
+  }, [userModule.isAuthenticated, userModule.authUser]);
 
   // Transform organization data for UI
   const availableOrganizations: OrganizationData[] = useMemo(() => {
