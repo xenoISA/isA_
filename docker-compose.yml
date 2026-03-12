@@ -1,0 +1,36 @@
+# =============================================================================
+# isA_ Frontend — Local Development Stack
+# =============================================================================
+# Usage:
+#   docker compose up        # start the app
+#   docker compose up --build  # rebuild and start
+#   docker compose down      # stop and remove containers
+#
+# Prerequisites:
+#   Stage SDK packages before building:
+#     mkdir -p .sdk/core .sdk/transport
+#     cp -r ../isA_App_SDK/packages/core/* .sdk/core/
+#     cp -r ../isA_App_SDK/packages/transport/* .sdk/transport/
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_ENV: development
+        NEXT_PUBLIC_GATEWAY_URL: http://localhost:9080
+    ports:
+      - "3000:3000"
+    env_file:
+      - deployment/environments/dev.env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
