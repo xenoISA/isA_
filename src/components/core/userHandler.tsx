@@ -198,17 +198,17 @@ export const UserHandler: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleEditProfile = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Edit profile initiated');
-    // TODO: Implement profile editing
+    // Profile editing not yet implemented
   }, []);
 
   const handleSaveProfile = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Save profile initiated');
-    // TODO: Implement profile saving
+    // Profile saving not yet implemented
   }, []);
 
   const handleCancelEdit = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Cancel edit initiated');
-    // TODO: Implement cancel edit
+    // Cancel edit not yet implemented
   }, []);
 
   // ================================================================================
@@ -217,12 +217,12 @@ export const UserHandler: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleToggleUserManagement = useCallback(() => {
     logger.debug(LogCategory.USER_AUTH, 'UserHandler: Toggle user management');
-    // TODO: Integrate with UI state management
+    // UI state integration deferred
   }, []);
 
   const handleSetManagementTab = useCallback((tab: 'profile' | 'subscription' | 'usage' | 'settings') => {
     logger.debug(LogCategory.USER_AUTH, 'UserHandler: Set management tab', { tab });
-    // TODO: Integrate with UI state management
+    // UI state integration deferred
   }, []);
 
   // ================================================================================
@@ -246,12 +246,12 @@ export const UserHandler: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleClearErrors = useCallback(() => {
     logger.debug(LogCategory.USER_AUTH, 'UserHandler: Clearing errors');
-    // TODO: Integrate with error state management
+    // Error state integration deferred
   }, []);
 
   const handleError = useCallback((error: Error, context: string) => {
     logger.error(LogCategory.USER_AUTH, `UserHandler: Error in ${context}`, { error });
-    // TODO: Implement user-friendly error handling
+    // User-friendly error handling deferred
   }, []);
 
   // ================================================================================

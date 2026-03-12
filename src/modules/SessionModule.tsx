@@ -47,7 +47,8 @@ import { logger, LogCategory, createLogger } from '../utils/logger';
 const log = createLogger('SessionModule');
 import { useSessionHandler } from '../components/core/SessionHandler';
 // 直接使用useSessionStore，不再依赖SessionProvider
-import { ChatSession } from '../hooks/useSession'; // 只导入类型
+import { ChatSession } from '../hooks/useSession';
+import { ChatMessage } from '../types/chatTypes';
 import { 
   useCurrentSessionId,
   useCurrentSession, // 使用store版本
@@ -170,7 +171,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   const handleSyncSessionToAPI = useCallback(async (session: ChatSession) => {
     if (!authUser?.sub) return;
     
-    // TODO: Implement API sync when needed
+    // API sync deferred — currently using localStorage only
     // For now, just log that sync would happen
     logger.info(LogCategory.CHAT_FLOW, 'Session sync to API (simplified)', {
       sessionId: session.id,
@@ -186,14 +187,17 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
     if (currentApp) appsUsed.add(currentApp);
     
     // 优化消息存储 - 确保所有消息都标记为已处理
-    const optimizedMessages = messages.map(msg => ({
-      id: msg.id,
-      role: msg.role,
-      content: ('content' in msg && msg.content) ? (msg.content.length > 2000 ? msg.content.substring(0, 2000) + '...[truncated]' : msg.content) : '',
-      timestamp: msg.timestamp || new Date().toISOString(),
-      metadata: ('metadata' in msg) ? msg.metadata : undefined,
-      processed: true // 重要：确保保存到会话的消息都标记为已处理
-    }));
+    const optimizedMessages: ChatMessage[] = messages.map(msg => {
+      if (msg.type === 'artifact') {
+        return { ...msg, timestamp: msg.timestamp || new Date().toISOString() };
+      }
+      return {
+        ...msg,
+        content: msg.content.length > 2000 ? msg.content.substring(0, 2000) + '...[truncated]' : msg.content,
+        timestamp: msg.timestamp || new Date().toISOString(),
+        processed: true,
+      };
+    });
     
     // 只保留最近50条消息
     const recentMessages = optimizedMessages.slice(-50);
@@ -220,7 +224,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
       timestamp: new Date().toISOString(),
       messageCount: messages.length,
       artifacts: artifacts.map(a => a.id),
-      messages: recentMessages as any, // TODO: Fix type compatibility
+      messages: recentMessages,
       metadata: {
         ...currentSession.metadata,
         apps_used: Array.from(appsUsed),
@@ -419,7 +423,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   // 当用户认证状态变化时，初始化Session API认证
   useEffect(() => {
     if (isAuthenticated && authUser?.sub) {
-      // TODO: Initialize API auth when needed
+      // API auth initialization deferred — using localStorage for now
       // For now, just log authentication
       logger.info(LogCategory.CHAT_FLOW, 'Session store authenticated for user (simplified)', {
         userId: authUser.sub

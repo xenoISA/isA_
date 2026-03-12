@@ -21,6 +21,7 @@
 
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useUserModule } from './UserModule';
+import { useUserStore } from '../stores/useUserStore';
 import { logger, LogCategory } from '../utils/logger';
 import {
   consumeOrgContextFromCurrentUrl,
@@ -248,7 +249,7 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       logger.info(LogCategory.USER_AUTH, 'Switching to personal context');
       
-      // TODO: Call API to switch context
+      // API context switching deferred — client-side only for now
       // await organizationService.switchContext(currentContext.userId, null);
       
       const personalContext: PersonalContext = {
@@ -289,7 +290,7 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
         throw new Error(`Organization not found: ${organizationId}`);
       }
 
-      // TODO: Call API to switch context
+      // API context switching deferred — client-side only for now
       // await organizationService.switchContext(currentContext.userId, organizationId);
       
       const orgContext: OrganizationContext = {
@@ -323,11 +324,11 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       logger.info(LogCategory.USER_AUTH, 'Refreshing context');
       
-      // TODO: Fetch updated user organizations
+      // Organization list refresh deferred — using cached data
       // const organizations = await organizationService.getUserOrganizations(currentContext.userId);
       // setAvailableOrganizations(organizations);
       
-      // TODO: Refresh current context if in organization mode
+      // Context refresh deferred — using cached data
       if (currentContext?.type === 'organization') {
         // const updatedOrg = await organizationService.getOrganization(currentContext.organization.id);
         // Update current context with fresh data
@@ -506,8 +507,7 @@ export const getContextCredits = (context: UserContext | null): number => {
   if (!context) return 0;
   
   if (context.type === 'personal') {
-    // Credits from UserModule should be passed here
-    return 0; // TODO: Get from UserModule
+    return useUserStore.getState().externalUser?.credits ?? 0;
   }
   
   return context.organization.creditsPool;

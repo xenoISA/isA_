@@ -1,6 +1,7 @@
 import React from 'react';
 import { createLogger } from '../../../utils/logger';
 import { ChatSession } from '../../../hooks/useSession';
+import { getMessageContent } from '../../../types/chatTypes';
 
 const log = createLogger('SessionHistory');
 import { GlassButton } from '../../shared';
@@ -156,7 +157,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                             try {
                               if (session.messages && Array.isArray(session.messages) && session.messages.length > 0) {
                                 const lastMessage = session.messages[session.messages.length - 1];
-                                const content = lastMessage?.content || '';
+                                const content = lastMessage ? getMessageContent(lastMessage) : '';
                                 if (typeof content === 'string') {
                                   return content.length > 60 ? content.substring(0, 60) + '...' : content;
                                 }
