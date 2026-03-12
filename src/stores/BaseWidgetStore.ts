@@ -24,6 +24,7 @@ const log = createLogger('BaseWidgetStore', LogCategory.ARTIFACT_CREATION);
 import { chatService } from '../api/chatService';
 import { useAppStore } from './useAppStore';
 import { useSessionStore } from './useSessionStore';
+import { useUserStore } from './useUserStore';
 import {
   BaseWidgetConfig,
   BaseWidgetState,
@@ -246,9 +247,10 @@ function buildChatServiceOptions(
     };
   }
 
+  const currentUser = useUserStore.getState().externalUser;
   return {
     session_id: `${config.widgetType}_widget_${Date.now()}`,
-    user_id: 'user_123', // TODO: Get from auth store
+    user_id: currentUser?.auth0_id ?? 'anonymous',
     template_parameters: templateParams
   };
 }

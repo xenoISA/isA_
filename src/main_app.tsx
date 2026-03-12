@@ -45,6 +45,7 @@ import { useAI } from './providers/AIProvider';
 import { UserButton } from './components/ui/user/UserButton';
 import { LoginScreen } from './components/ui/LoginScreen';
 import { AppArtifact, AppId } from './types/appTypes';
+import { useUserStore } from './stores/useUserStore';
 import { logger, LogCategory, createLogger } from './utils/logger';
 
 const log = createLogger('MainApp');
@@ -94,15 +95,15 @@ const MainAppContent: React.FC = () => {
   const isExecutingPlan = useIsExecutingPlan();
   const messages = useChatMessages();
 
-  const dreamGeneratedImage = null; // TODO: Implement dream functionality
+  const dreamGeneratedImage = null;
 
   // Initialize component logging - 必须在条件渲染之前调用
   useEffect(() => {
     logger.info(LogCategory.COMPONENT_RENDER, 'MainApp component mounted', { 
       isAuthenticated, 
       userId: externalUser?.user_id,
-      credits: 0, // TODO: Get from UserModule
-      plan: 'unknown' // TODO: Get from UserModule
+      credits: useUserStore.getState().externalUser?.credits ?? 0,
+      plan: useUserStore.getState().externalUser?.plan ?? 'unknown'
     });
     return () => {
       logger.info(LogCategory.COMPONENT_RENDER, 'MainApp component unmounted');
@@ -144,8 +145,6 @@ const MainAppContent: React.FC = () => {
       }
     };
   }, [taskProgress, currentTasks]);
-
-  // TODO: Implement typing status management
 
   // 如果正在加载认证状态，显示加载界面
   if (authLoading) {
@@ -192,7 +191,7 @@ const MainAppContent: React.FC = () => {
         // 或者使用useTaskActions来暂停任务
         if (isExecutingPlan) {
           log.info('Current execution:', taskProgress?.toolName || 'Processing...');
-          // TODO: Implement pause logic via chat service or task handler
+          // Pause logic not yet wired to chat service (see #32)
         }
         break;
       case 'resume_all':
@@ -200,7 +199,7 @@ const MainAppContent: React.FC = () => {
         // 恢复任务执行
         if (currentTasks.some(task => task.status === 'pending')) {
           log.info('Resuming pending tasks', { count: currentTasks.filter(t => t.status === 'pending').length });
-          // TODO: Implement resume logic
+          // Resume logic not yet wired (see #32)
         }
         break;
       case 'show_details':
@@ -208,7 +207,7 @@ const MainAppContent: React.FC = () => {
         log.info('Current Tasks:', currentTasks.map(t => `${t.title} (${t.status})`));
         log.info('Progress:', taskProgress ? `${taskProgress.toolName}: ${taskProgress.description}` : 'No active progress');
         log.info('Execution Plan:', isExecutingPlan ? 'Active' : 'Idle');
-        // TODO: Open detailed task management UI
+        // Task management UI not yet implemented (see #32)
         break;
     }
   };
@@ -216,7 +215,7 @@ const MainAppContent: React.FC = () => {
   const sidebarContent = (
     <div className="p-6 h-full flex flex-col">
       <div className="flex-1">
-        {/* TODO: Implement session management UI */}
+        {/* Session management UI placeholder — handled by SessionModule */}
       </div>
       
       {/* User Management at Bottom */}
@@ -303,8 +302,7 @@ const MainAppContent: React.FC = () => {
       }
     };
     
-    // TODO: Implement artifact management
-    // Note: setDreamGeneratedImage already called by Dream sidebar
+    // Artifact management handled by ArtifactModule hook
     
     // Emit event to chat layer
     // client?.emit('artifact:created', artifact); // emit is private
@@ -313,7 +311,7 @@ const MainAppContent: React.FC = () => {
   // 🆕 新的Widget管理系统 - 不再是直接的右侧栏，而是通过弹窗和模式选择
   const legacyRightSidebarContent = (
     <div>
-      {/* TODO: Implement right sidebar content */}
+      {/* Legacy right sidebar — widget system now uses ChatModule */}
     </div>
   );
 
@@ -336,7 +334,7 @@ const MainAppContent: React.FC = () => {
   return (
     <>
       {/* Background handlers */}
-      {/* TODO: Implement streaming handler */}
+      {/* Streaming handled by useChatStore callbacks */}
       
       <div className="w-full h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
         <ChatInputHandler>
@@ -387,9 +385,7 @@ const MainAppContent: React.FC = () => {
         </ChatInputHandler>
       </div>
       
-      {/* TODO: Implement logging dashboard */}
-      
-      {/* TODO: Implement user management drawer */}
+      {/* Logging dashboard and user management drawer are future features */}
     </>
   );
 };

@@ -40,6 +40,16 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { logger, LogCategory, createLogger } from '../utils/logger';
+import {
+  ChatMessage,
+  ChatSession,
+  ArtifactMessage,
+  getMessageContent,
+} from '../types/chatTypes';
+
+// Re-export types for backward compatibility
+export type { ChatMessage, ChatSession, ArtifactMessage };
+export type { BaseMessage, RegularMessage } from '../types/chatTypes';
 
 const log = createLogger('SessionStore', LogCategory.CHAT_FLOW);
 import { createAuthenticatedSessionService } from '../api/sessionService';
@@ -48,65 +58,6 @@ const STORAGE_SAVE_DEBOUNCE_MS = 500;
 // Module-level timer handle — not in Zustand state to avoid triggering re-renders.
 // Safe because this store is client-only (guarded by typeof window checks).
 let _saveToStorageTimer: ReturnType<typeof setTimeout> | null = null;
-
-// 基础消息接口
-export interface BaseMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-// 普通消息
-export interface RegularMessage extends BaseMessage {
-  type: 'regular';
-  metadata?: {
-    sender?: string;
-    [key: string]: any;
-  };
-}
-
-// Artifact 消息 (Widget 产出)
-export interface ArtifactMessage extends BaseMessage {
-  type: 'artifact';
-  userPrompt: string; // 用户的原始请求
-  artifact: {
-    id: string;
-    widgetType: string; // 'dream' | 'hunt' | etc.
-    widgetName: string; // 'Dream Image Generator'
-    version: number;
-    contentType: 'image' | 'text' | 'data' | 'analysis' | 'knowledge';
-    content: any; // URL, text, or data
-    thumbnail?: string;
-    metadata?: {
-      processingTime?: number;
-      tokenUsage?: number;
-      [key: string]: any;
-    };
-  };
-}
-
-// 统一消息类型
-export type ChatMessage = RegularMessage | ArtifactMessage;
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  lastMessage: string;
-  timestamp: string;
-  messageCount: number;
-  artifacts: string[]; // 保持兼容性，后续可能移除
-  // 🆕 支持新的消息类型
-  messages: ChatMessage[];
-  metadata?: {
-    apps_used?: string[];
-    total_messages?: number;
-    last_activity?: string;
-    user_id?: string;
-    api_session_id?: string;
-    [key: string]: any;
-  };
-}
 
 interface SessionState {
   // Session data
@@ -255,13 +206,14 @@ export const useSessionStore = create<SessionStore>()(
         sessions: state.sessions.map(session => {
           if (session.id === sessionId) {
             const updatedMessages = [...session.messages, message];
+            const displayContent = getMessageContent(message);
             return {
               ...session,
               messages: updatedMessages,
               messageCount: updatedMessages.length,
-              lastMessage: message.content.length > 100 
-                ? message.content.substring(0, 100) + '...' 
-                : message.content,
+              lastMessage: displayContent.length > 100
+                ? displayContent.substring(0, 100) + '...'
+                : displayContent,
               timestamp: new Date().toISOString(),
               metadata: {
                 ...session.metadata,

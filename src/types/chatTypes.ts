@@ -93,8 +93,19 @@ export interface ChatSession {
     apps_used?: string[];
     total_messages?: number;
     last_activity?: string;
+    user_id?: string;
+    api_session_id?: string;
     [key: string]: unknown;
   };
+}
+
+// Helper to extract display content from any message type
+export function getMessageContent(message: ChatMessage): string {
+  if (message.type === 'regular') {
+    return message.content;
+  }
+  // ArtifactMessage — use the artifact widget name as display text
+  return `Generated ${message.artifact.widgetName ?? message.artifact.widgetType} content`;
 }
 
 // 流式消息状态枚举

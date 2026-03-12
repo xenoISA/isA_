@@ -176,14 +176,14 @@ export const useChatStore = create<ChatStore>()(
         if (currentSession) {
           // 添加标记防止循环调用
           const messageWithFlag = { ...message, metadata: { ...('metadata' in message ? message.metadata : {}), _skipSessionSync: true } };
-          sessionStore.addMessage(currentSession.id, messageWithFlag as any); // TODO: Fix type compatibility
+          sessionStore.addMessage(currentSession.id, messageWithFlag);
         }
       }
-      
-      logger.info(LogCategory.CHAT_FLOW, 'Message added/updated in chat store and session', { 
-        messageId: message.id, 
-        role: message.role, 
-        contentLength: ('content' in message && message.content) ? message.content.length : 0 
+
+      logger.info(LogCategory.CHAT_FLOW, 'Message added/updated in chat store and session', {
+        messageId: message.id,
+        role: message.role,
+        contentLength: ('content' in message && message.content) ? message.content.length : 0
       });
     },
 
@@ -218,7 +218,7 @@ export const useChatStore = create<ChatStore>()(
           ...msg,
           metadata: { ...('metadata' in msg ? msg.metadata : {}), _skipSessionSync: true }
         }));
-        set({ messages: messagesWithFlag as any }); // TODO: Fix complex type compatibility
+        set({ messages: messagesWithFlag as ChatMessage[] });
         logger.info(LogCategory.CHAT_FLOW, 'Messages loaded from session to chat store', {
           sessionId: session.id,
           messageCount: session.messages.length
@@ -548,7 +548,7 @@ export const useChatStore = create<ChatStore>()(
             } as ChatMessage;
           }
           
-          sessionStore.addMessage(currentSession.id, messageWithFlag as any); // TODO: Fix type compatibility
+          sessionStore.addMessage(currentSession.id, messageWithFlag);
           logger.debug(LogCategory.CHAT_FLOW, 'Finished streaming message synced to session', {
             messageId: finishedMessage.id,
             sessionId: currentSession.id

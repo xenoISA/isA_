@@ -23,7 +23,7 @@ import { useChat } from '../hooks/useChat';
 import { useAppStore } from '../stores/useAppStore';
 import { useSessionStore } from '../stores/useSessionStore';
 import { ChatMessage, ArtifactMessage } from '../types/chatTypes';
-import { AppArtifact } from '../types/appTypes';
+import { AppArtifact, AppId } from '../types/appTypes';
 import { createLogger } from '../utils/logger';
 const log = createLogger('ArtifactModule');
 
@@ -62,9 +62,8 @@ export const useArtifactLogic = () => {
     const artifactMessage = artifactMessages.find(am => am.artifact.id === artifactId);
     if (artifactMessage) {
       log.info('Reopening artifact from message', { widgetType: artifactMessage.artifact.widgetType });
-      // Map widget type to app ID
-      const appId = artifactMessage.artifact.widgetType; // 'dream', 'hunt', etc.
-      setCurrentApp(appId as any); // TODO: Fix type casting
+      const appId = artifactMessage.artifact.widgetType as AppId;
+      setCurrentApp(appId);
       setShowRightSidebar(true);
     }
   }, [legacyArtifacts, artifactMessages, setCurrentApp, setShowRightSidebar]);

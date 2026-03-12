@@ -463,8 +463,7 @@ export class ChatService {
       fileCount: files?.length || 0
     });
     
-    // TODO: 实现多模态文件上传逻辑
-    // 目前复用text chat逻辑
+    // Multimodal file upload not yet implemented — falls back to text chat
     return this.sendMessage(message, metadata, token, callbacks);
   }
   

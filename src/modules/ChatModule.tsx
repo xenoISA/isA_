@@ -1410,7 +1410,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     <>
       <ResponsiveChatLayout
         {...otherProps}
-        messages={chatInterface.messages as any} // TODO: Fix type mismatch
+        messages={chatInterface.messages as any} // ChatLayout uses a simplified ChatMessage type (see #28)
         isLoading={chatInterface.isLoading}
         isTyping={chatInterface.isTyping}
         currentTasks={currentTasks}

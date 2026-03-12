@@ -156,8 +156,8 @@ export const useUser = (): UseUserReturn => {
       
       logger.info(LogCategory.USER_AUTH, 'Ensuring external user exists', { email: userData.email });
       
-      // TODO: This function is deprecated, UserModule now handles user initialization
-      throw new Error('This function is deprecated, UserModule handles user initialization automatically');
+      /** @deprecated UserModule now handles user initialization */
+      throw new Error('ensureUser is deprecated — UserModule handles user initialization automatically');
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to ensure user';

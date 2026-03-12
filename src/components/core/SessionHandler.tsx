@@ -205,9 +205,8 @@ export class SessionHandler {
       return;
     }
 
-    // TODO: 这里需要 Store 提供搜索 action
-    // this.sessionActions.searchSessions(event.query, event.filters);
-    logger.debug(LogCategory.CHAT_FLOW, 'Session search - TODO: implement store action');
+    // Session search not yet implemented in store
+    logger.debug(LogCategory.CHAT_FLOW, 'Session search not yet implemented');
   }
 
   // ================================================================================
@@ -223,9 +222,8 @@ export class SessionHandler {
       messageId: event.message?.id
     });
 
-    // TODO: 这里需要 Store 提供消息保存 action
-    // this.sessionActions.addMessageToSession(event.sessionId, event.message);
-    logger.debug(LogCategory.CHAT_FLOW, 'Session save message - TODO: implement store action');
+    // Message saving handled directly by useSessionStore.addMessage
+    logger.debug(LogCategory.CHAT_FLOW, 'Session save message — use useSessionStore.addMessage directly');
   }
 
   /**
@@ -236,9 +234,8 @@ export class SessionHandler {
       sessionId
     });
 
-    // TODO: 这里需要 Store 提供清空消息 action
-    // this.sessionActions.clearSessionMessages(sessionId);
-    logger.debug(LogCategory.CHAT_FLOW, 'Session clear messages - TODO: implement store action');
+    // Message clearing handled directly by useSessionStore.clearMessages
+    logger.debug(LogCategory.CHAT_FLOW, 'Session clear messages — use useSessionStore.clearMessages directly');
   }
 
   /**
@@ -249,9 +246,8 @@ export class SessionHandler {
       sessionId: event.sessionId
     });
 
-    // TODO: 这里需要 Store 提供上下文更新 action
-    // this.sessionActions.updateSessionContext(event.sessionId, event.context);
-    logger.debug(LogCategory.CHAT_FLOW, 'Session update context - TODO: implement store action');
+    // Context update not yet implemented in session store
+    logger.debug(LogCategory.CHAT_FLOW, 'Session context update not yet implemented');
   }
 
   // ================================================================================

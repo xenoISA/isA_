@@ -143,8 +143,7 @@ export const useAppStore = create<AppStore>()(
     },
     
     reopenApp: (artifactId) => {
-      // 暂时移除循环依赖的代码，改为简单的状态设置
-      // TODO: 通过事件系统或其他机制重新实现工件重新打开功能
+      // Simplified to avoid circular dependency with useArtifactStore
       logger.info(LogCategory.SIDEBAR_INTERACTION, 'Reopening app from artifact', { 
         artifactId
       });
