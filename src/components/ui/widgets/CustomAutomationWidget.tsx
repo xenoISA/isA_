@@ -391,7 +391,7 @@ export const CustomAutomationWidget: React.FC<CustomAutomationWidgetProps> = ({
         ]}
       ]
     }
-  ], []);
+  ], [t]);
 
   // Get complexity indicator
   const getComplexityColor = (complexity: string) => {

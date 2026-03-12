@@ -267,7 +267,7 @@ export const RightSidebarLayout: React.FC<RightSidebarLayoutProps> = ({
         logger.warn(LogCategory.COMPONENT_RENDER, 'Unknown widget type', { currentApp });
         return <div className="p-4 text-gray-400">Unknown widget: {currentApp}</div>;
     }
-  }, [currentApp, triggeredAppInput]); // Only recreate when currentApp or triggeredAppInput changes
+  }, [currentApp, triggeredAppInput, onBackToList, onCloseApp, onToggleMode]); // Recreate when app, input, or parent callbacks change
   
   // Simple widget configs (no hooks needed)
   const getWidgetInfo = (appId: string) => {

@@ -78,7 +78,7 @@ export const useChat = (): ChatHookState => {
     return allMessages.sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
-  }, [chatStoreMessages, currentSession?.messages]);
+  }, [chatStoreMessages, currentSession?.messages, currentSession?.id]);
   
   // 2. 聊天状态 - 从useChatStore获取（这些状态是实时的）
   const isLoading = useChatLoading();

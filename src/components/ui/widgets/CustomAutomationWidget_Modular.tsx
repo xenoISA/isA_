@@ -195,7 +195,7 @@ export const CustomAutomationWidget_Modular: React.FC<CustomAutomationWidgetProp
       onClick: onClearData,
       variant: 'secondary'
     }
-  ], [t, handleMenuChange, onClearData]);
+  ], [handleMenuChange, onClearData]);
 
   // Edit Actions
   const editActions: EditAction[] = useMemo(() => [
@@ -206,7 +206,7 @@ export const CustomAutomationWidget_Modular: React.FC<CustomAutomationWidgetProp
       onClick: () => setViewMode(viewMode === 'modern' ? 'classic' : 'modern'),
       variant: 'secondary'
     }
-  ], [viewMode, t]);
+  ], [viewMode]);
 
   // Dynamic Title
   const getWidgetTitle = () => {

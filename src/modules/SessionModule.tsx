@@ -362,7 +362,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
     
     // 通过SessionHandler处理删除事件（可选，用于其他监听器）
     sessionHandler.handleSessionDelete({ sessionId });
-  }, [sessionHandler, sessionCRUDActions, sessionStorageActions, currentSessionId, sessions, handleNewSession]);
+  }, [sessionHandler, sessionCRUDActions, sessionStorageActions, currentSessionId, rawSessions, handleNewSession]);
   
   const handleRenameSession = useCallback((sessionId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
@@ -418,7 +418,8 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
     // setTimeout(() => {
     //   sessionStorageActions.saveToStorage();
     // }, 100);
-  }, []); // 空依赖数组，只在挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: load from storage once on mount; sessionStorageActions is stable from Zustand
+  }, []);
   
   // 当用户认证状态变化时，初始化Session API认证
   useEffect(() => {
@@ -456,7 +457,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
         loadMessagesFromSession(currentSession.id);
       }, 0);
     }
-  }, [isLoading, currentSession?.id]);
+  }, [isLoading, currentSession, sessions.length]);
   
   // 移除：不再需要复杂的消息加载逻辑，因为现在使用统一的loadMessagesFromSession
   
@@ -477,7 +478,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
         }, 0);
       }
     }
-  }, [isLoading, sessions.length, currentSession, sessionCRUDActions]);
+  }, [isLoading, sessions, currentSession, sessionCRUDActions]);
   
   // 移除自动保存逻辑，改为手动保存
   // 这样可以避免频繁的重渲染和循环依赖

@@ -325,12 +325,12 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to refresh user', { error });
       throw error;
     }
-  }, [isAuthenticated, userHook.fetchCurrentUser, getAccessToken, authUser, initializeUser]);
+  }, [isAuthenticated, userHook, getAccessToken, authUser, initializeUser]);
 
   const logout = useCallback(() => {
     userHook.clearUser();
     gatewayLogout();
-  }, [userHook.clearUser, gatewayLogout]);
+  }, [userHook, gatewayLogout]);
 
   // ================================================================================
   // Business Logic Methods
@@ -350,7 +350,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to consume credits', { error, consumption });
       throw error;
     }
-  }, [externalUser, isAuthenticated, userHook.consumeCredits, getAccessToken]);
+  }, [externalUser, isAuthenticated, userHook, getAccessToken]);
 
   const createCheckout = useCallback(async (planType: PlanType): Promise<string> => {
     const eu = externalUser as Record<string, any> | null;
@@ -373,7 +373,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       logger.error(LogCategory.USER_AUTH, 'Failed to create checkout', { error, planType });
       throw error;
     }
-  }, [isAuthenticated, externalUser, userHook.createCheckout, getAccessToken]);
+  }, [isAuthenticated, externalUser, userHook, getAccessToken]);
 
   const checkHealth = useCallback(async () => {
     try {
@@ -461,8 +461,8 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     authUser?.email, 
     authUser?.name,
     initializationStatus,
-    initializeUser, 
-    userHook.clearUser
+    initializeUser,
+    userHook
   ]);
 
   // ================================================================================

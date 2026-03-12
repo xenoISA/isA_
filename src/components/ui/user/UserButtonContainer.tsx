@@ -86,7 +86,7 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
     } catch (error) {
       logger.error(LogCategory.USER_AUTH, 'Failed to initiate login', { error });
     }
-  }, [userModule.login]);
+  }, [userModule]);
 
   const handleSwitchToPersonal = useCallback(async () => {
     try {
@@ -96,22 +96,22 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
       logger.error(LogCategory.USER_AUTH, 'Failed to switch to personal context', { error });
       // Could show toast notification here
     }
-  }, [contextModule.switchToPersonal]);
+  }, [contextModule]);
 
   const handleSwitchToOrganization = useCallback(async (organizationId: string) => {
     try {
-      logger.info(LogCategory.USER_AUTH, 'Switching to organization context from UserButton', { 
-        organizationId 
+      logger.info(LogCategory.USER_AUTH, 'Switching to organization context from UserButton', {
+        organizationId
       });
       await contextModule.switchToOrganization(organizationId);
     } catch (error) {
-      logger.error(LogCategory.USER_AUTH, 'Failed to switch to organization context', { 
-        error, 
-        organizationId 
+      logger.error(LogCategory.USER_AUTH, 'Failed to switch to organization context', {
+        error,
+        organizationId
       });
       // Could show toast notification here
     }
-  }, [contextModule.switchToOrganization]);
+  }, [contextModule]);
 
   // ================================================================================
   // Effects
@@ -138,10 +138,10 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
 
     initializeUserContext();
   }, [
-    userModule.isAuthenticated, 
-    userData, 
-    organizationModule.fetchUserOrganizations, 
-    contextModule.refreshContext
+    userModule.isAuthenticated,
+    userData,
+    organizationModule,
+    contextModule
   ]);
 
   // ================================================================================

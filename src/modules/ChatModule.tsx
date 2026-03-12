@@ -122,9 +122,6 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   const currentSession = useCurrentSession();
   const sessionActions = useSessionActions();
   
-  // Get direct store access for state updates
-  const chatStore = useChatStore.getState();
-  
   // Get ChatService for direct API calls
   const getChatService = useCallback(async () => {
     const { getChatServiceInstance } = await import('../hooks/useChatService');
@@ -243,6 +240,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         (window as any).__CHAT_MODULE_EVENT_EMITTER__ = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: handleWidgetRequest is stable via useCallback and only needs to bind once
   }, []);
 
   // 🆕 HIL事件处理和监控初始化
@@ -339,6 +337,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       // 停止所有监控以避免内存泄漏
       executionControlService.stopAllMonitoring();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: HIL system initializes once; handleHILInterrupt/handleHILStatusChange are stable via useCallback
   }, []);
 
   // 🆕 当有活跃会话时启动HIL监控 (with cleanup optimization)
@@ -399,6 +398,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         executionControlService.stopMonitoring(currentSession.id);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omitting handleHILInterrupt/handleHILStatusChange to avoid restarting monitoring on callback changes; currentSession?.id change triggers cleanup via return
   }, [currentSession, hilMonitoringActive]);
 
   // 🆕 HIL事件处理函数
@@ -420,7 +420,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     
     // 🆕 关键：停止当前的SSE流，让HIL接管
     log.info('Stopping current chat stream due to HIL interrupt');
-    chatStore.finishStreamingMessage(); // 完成当前流式消息，防止卡在processing状态
+    useChatStore.getState().finishStreamingMessage(); // 完成当前流式消息，防止卡在processing状态
     
     // 🆕 中断当前的聊天服务流
     try {
@@ -435,12 +435,13 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     }
     
     // 更新聊天状态显示
-    chatStore.updateStreamingStatus(`⏸️ Human intervention required: ${interrupt.title}`);
+    useChatStore.getState().updateStreamingStatus(`⏸️ Human intervention required: ${interrupt.title}`);
     
     logger.info(LogCategory.CHAT_FLOW, 'HIL interrupt detected and modal opened', {
       interruptId: interrupt.id,
       type: interrupt.type
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chatStore accessed via useChatStore.getState() is always current; currentSession?.id used for thread_id fallback is intentionally stale-safe
   }, []);
 
   const handleHILCheckpoint = useCallback((checkpoint: HILCheckpointData) => {
@@ -449,12 +450,13 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     setHilCheckpoints(prev => [checkpoint, ...prev.slice(0, 19)]); // 保留最近20个检查点
     
     // 更新聊天状态显示
-    chatStore.updateStreamingStatus(`📍 Checkpoint saved: ${checkpoint.node}`);
+    useChatStore.getState().updateStreamingStatus(`📍 Checkpoint saved: ${checkpoint.node}`);
     
     logger.debug(LogCategory.CHAT_FLOW, 'HIL checkpoint created', {
       checkpointId: checkpoint.checkpoint_id,
       node: checkpoint.node
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chatStore via useChatStore.getState() is always current
   }, []);
 
   const handleHILStatusChange = useCallback((status: HILExecutionStatusData) => {
@@ -490,17 +492,17 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   const handleExecutionStarted = useCallback((event: any) => {
     log.info('Execution started:', event);
-    chatStore.updateStreamingStatus('🚀 Execution started...');
+    useChatStore.getState().updateStreamingStatus('🚀 Execution started...');
   }, []);
 
   const handleExecutionFinished = useCallback((event: any) => {
     log.info('Execution finished:', event);
-    chatStore.updateStreamingStatus('🎉 Execution completed');
+    useChatStore.getState().updateStreamingStatus('🎉 Execution completed');
   }, []);
 
   const handleExecutionError = useCallback((event: any) => {
     log.info('Execution error:', event);
-    chatStore.updateStreamingStatus(`❌ Execution error: ${event.error?.message || 'Unknown error'}`);
+    useChatStore.getState().updateStreamingStatus(`❌ Execution error: ${event.error?.message || 'Unknown error'}`);
   }, []);
 
   // 🆕 HIL操作处理函数
@@ -529,12 +531,12 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       
       // 重新启动流式消息处理，将HIL恢复流作为新的AI回复
       const resumeMessageId = `resume-${Date.now()}`;
-      chatStore.startStreamingMessage(resumeMessageId, '🔄 Resuming execution...');
+      useChatStore.getState().startStreamingMessage(resumeMessageId, '🔄 Resuming execution...');
       
       await executionControlService.resumeExecutionStream(resumeRequest, {
         onResumeStart: (data) => {
           log.info('Resume started:', data);
-          chatStore.updateStreamingStatus('🔄 Processing your input...');
+          useChatStore.getState().updateStreamingStatus('🔄 Processing your input...');
         },
         onMessageStream: (data) => {
           log.info('Message stream event:', data);
@@ -552,20 +554,20 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
               
               // 只有当有实际内容时才添加到流式消息
               if (messageContent && messageContent.trim() && !messageContent.includes('tool_calls')) {
-                chatStore.appendToStreamingMessage(messageContent);
+                useChatStore.getState().appendToStreamingMessage(messageContent);
               }
             }
           }
         },
         onResumeEnd: (data) => {
           log.info('Resume completed:', data);
-          chatStore.updateStreamingStatus('✅ Response completed');
-          chatStore.finishStreamingMessage(); // 完成流式消息
+          useChatStore.getState().updateStreamingStatus('✅ Response completed');
+          useChatStore.getState().finishStreamingMessage(); // 完成流式消息
         },
         onError: (error) => {
           log.error('Resume failed:', error);
-          chatStore.updateStreamingStatus(`❌ Failed to resume: ${error.message}`);
-          chatStore.finishStreamingMessage(); // 即使出错也要完成流式消息
+          useChatStore.getState().updateStreamingStatus(`❌ Failed to resume: ${error.message}`);
+          useChatStore.getState().finishStreamingMessage(); // 即使出错也要完成流式消息
         }
       });
       
@@ -576,11 +578,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       
     } catch (error) {
       log.error('Failed to approve HIL action:', error);
-      chatStore.updateStreamingStatus(`❌ Failed to approve action: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      useChatStore.getState().updateStreamingStatus(`❌ Failed to approve action: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessingHilAction(false);
     }
-  }, [currentSession, executionControlService]);
+  }, [currentSession]);
 
   const handleHILReject = useCallback(async (interruptId: string, reason?: string) => {
     if (!currentSession) return;
@@ -603,7 +605,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       const result = await executionControlService.resumeExecution(resumeRequest);
       
       if (result.success) {
-        chatStore.updateStreamingStatus('❌ Action rejected by user');
+        useChatStore.getState().updateStreamingStatus('❌ Action rejected by user');
         setShowInterruptModal(false);
         setCurrentInterrupt(null);
         
@@ -614,11 +616,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       
     } catch (error) {
       log.error('Failed to reject HIL action:', error);
-      chatStore.updateStreamingStatus(`❌ Failed to reject action: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      useChatStore.getState().updateStreamingStatus(`❌ Failed to reject action: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessingHilAction(false);
     }
-  }, [currentSession, executionControlService]);
+  }, [currentSession]);
 
   const handleHILEdit = useCallback(async (interruptId: string, editedContent: any) => {
     // Edit操作实际上是approve with modifications
@@ -639,7 +641,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       const result = await executionControlService.rollbackToCheckpoint(currentSession.id, checkpointId);
       
       if (result.success) {
-        chatStore.updateStreamingStatus(`🔄 Rolled back to: ${result.restored_state.node}`);
+        useChatStore.getState().updateStreamingStatus(`🔄 Rolled back to: ${result.restored_state.node}`);
         
         // 更新状态
         await executionControlService.getExecutionStatus(currentSession.id)
@@ -659,9 +661,9 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       
     } catch (error) {
       log.error('Failed to rollback:', error);
-      chatStore.updateStreamingStatus(`❌ Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      useChatStore.getState().updateStreamingStatus(`❌ Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [currentSession, executionControlService]);
+  }, [currentSession]);
 
   const handleHILPauseExecution = useCallback(async () => {
     if (!currentSession) return;
@@ -669,7 +671,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     try {
       // HIL暂停通常通过中断机制实现
       log.info('Pausing execution for thread:', currentSession.id);
-      chatStore.updateStreamingStatus('⏸️ Execution paused by user');
+      useChatStore.getState().updateStreamingStatus('⏸️ Execution paused by user');
       
     } catch (error) {
       log.error('Failed to pause execution:', error);
@@ -694,16 +696,16 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       const result = await executionControlService.resumeExecution(resumeRequest);
       
       if (result.success) {
-        chatStore.updateStreamingStatus('▶️ Execution resumed');
+        useChatStore.getState().updateStreamingStatus('▶️ Execution resumed');
       } else {
         throw new Error(result.message || 'Resume failed');
       }
       
     } catch (error) {
       log.error('Failed to resume execution:', error);
-      chatStore.updateStreamingStatus(`❌ Resume failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      useChatStore.getState().updateStreamingStatus(`❌ Resume failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [currentSession, executionControlService]);
+  }, [currentSession]);
 
   const handleViewInterrupt = useCallback((interrupt: HILInterruptData) => {
     setCurrentInterrupt(interrupt);
@@ -730,7 +732,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     const { widgetType, params, requestId } = eventData;
     
     // 🆕 设置Chat loading状态
-    chatStore.setChatLoading(true);
+    useChatStore.getState().setChatLoading(true);
     
     // CRITICAL: Check user credits before processing widget request
     log.info('Credit check details:', {
@@ -792,7 +794,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     };
     
     log.info('Adding widget user message to chat');
-    chatStore.addMessage(userMessage);
+    useChatStore.getState().addMessage(userMessage);
     
     // 通过PluginManager处理Widget请求
     try {
@@ -919,10 +921,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           }
         };
         
-        chatStore.addMessage(artifactMessage);
+        useChatStore.getState().addMessage(artifactMessage);
         
         // 🆕 清除Chat loading状态
-        chatStore.setChatLoading(false);
+        useChatStore.getState().setChatLoading(false);
         
         // 🆕 将结果通过事件系统返回给Widget UI
         log.info('Emitting widget:result event:', {
@@ -945,7 +947,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         log.error('Widget plugin execution failed:', pluginResult.error);
         
         // 🆕 清除Chat loading状态
-        chatStore.setChatLoading(false);
+        useChatStore.getState().setChatLoading(false);
         
         // 🆕 发出错误事件
         eventEmitterRef.current.emit('widget:result', {
@@ -960,7 +962,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       log.error('Widget request processing failed:', error);
       
       // 🆕 清除Chat loading状态
-      chatStore.setChatLoading(false);
+      useChatStore.getState().setChatLoading(false);
       
       // 🆕 发出错误事件
       eventEmitterRef.current.emit('widget:result', {
@@ -990,7 +992,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       sessionId: newSession.id,
       title: newSessionTitle
     });
-  }, [sessionActions, logger]);
+  }, [sessionActions]);
 
   // ================================================================================
   // 消息发送业务逻辑 - 原有的消息发送处理
@@ -1042,7 +1044,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     };
     
     // Adding user message to store
-    chatStore.addMessage(userMessage);
+    useChatStore.getState().addMessage(userMessage);
     
     // ✅ STEP 2: Check if message triggers a plugin
     const pluginTrigger = detectPluginTrigger(content);
@@ -1069,7 +1071,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
           }
         };
         
-        chatStore.addMessage(processingMessage);
+        useChatStore.getState().addMessage(processingMessage);
         
         // Execute plugin
         const pluginInput = {
@@ -1100,7 +1102,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
             }
           };
           
-          chatStore.addMessage(completedMessage);
+          useChatStore.getState().addMessage(completedMessage);
           log.info('Plugin execution completed successfully');
           
         } else {
@@ -1116,7 +1118,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
             }
           };
           
-          chatStore.addMessage(errorMessage);
+          useChatStore.getState().addMessage(errorMessage);
           log.error('Plugin execution failed:', pluginResult.error);
         }
         
@@ -1136,27 +1138,27 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         // 直接调用 ChatService 并处理回调
         await chatService.sendMessage(content, enrichedMetadata, token, {
           onStreamStart: (messageId: string, status?: string) => {
-            chatStore.startStreamingMessage(messageId, status);
-            chatStore.setExecutingPlan(true);
+            useChatStore.getState().startStreamingMessage(messageId, status);
+            useChatStore.getState().setExecutingPlan(true);
           },
           onStreamContent: (contentChunk: string) => {
-            chatStore.appendToStreamingMessage(contentChunk);
+            useChatStore.getState().appendToStreamingMessage(contentChunk);
           },
           onStreamStatus: (status: string) => {
-            chatStore.updateStreamingStatus(status);
+            useChatStore.getState().updateStreamingStatus(status);
           },
           onStreamComplete: () => {
-            chatStore.finishStreamingMessage();
-            chatStore.setChatLoading(false);
-            chatStore.setIsTyping(false);
-            chatStore.setExecutingPlan(false);
+            useChatStore.getState().finishStreamingMessage();
+            useChatStore.getState().setChatLoading(false);
+            useChatStore.getState().setIsTyping(false);
+            useChatStore.getState().setExecutingPlan(false);
             logger.info(LogCategory.CHAT_FLOW, 'Message sending completed successfully');
           },
           onError: (error: Error) => {
             logger.error(LogCategory.CHAT_FLOW, 'Message sending failed', { error: error.message });
-            chatStore.setChatLoading(false);
-            chatStore.setIsTyping(false);
-            chatStore.setExecutingPlan(false);
+            useChatStore.getState().setChatLoading(false);
+            useChatStore.getState().setIsTyping(false);
+            useChatStore.getState().setExecutingPlan(false);
           }
         });
         
@@ -1226,7 +1228,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     };
     
     log.info('Adding multimodal user message to store');
-    chatStore.addMessage(userMessage);
+    useChatStore.getState().addMessage(userMessage);
     
     // 直接调用 sendMessage API (multimodal is handled by metadata)
     log.info('Calling sendMessage API for multimodal content');
@@ -1240,27 +1242,27 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
       // 直接调用 ChatService multimodal 方法
       await chatService.sendMultimodalMessage(content, enrichedMetadata, token, {
         onStreamStart: (messageId: string, status?: string) => {
-          chatStore.startStreamingMessage(messageId, status);
-          chatStore.setExecutingPlan(true);
+          useChatStore.getState().startStreamingMessage(messageId, status);
+          useChatStore.getState().setExecutingPlan(true);
         },
         onStreamContent: (contentChunk: string) => {
-          chatStore.appendToStreamingMessage(contentChunk);
+          useChatStore.getState().appendToStreamingMessage(contentChunk);
         },
         onStreamStatus: (status: string) => {
-          chatStore.updateStreamingStatus(status);
+          useChatStore.getState().updateStreamingStatus(status);
         },
         onStreamComplete: () => {
-          chatStore.finishStreamingMessage();
-          chatStore.setChatLoading(false);
-          chatStore.setIsTyping(false);
-          chatStore.setExecutingPlan(false);
+          useChatStore.getState().finishStreamingMessage();
+          useChatStore.getState().setChatLoading(false);
+          useChatStore.getState().setIsTyping(false);
+          useChatStore.getState().setExecutingPlan(false);
           logger.info(LogCategory.CHAT_FLOW, 'Multimodal message sending completed successfully');
         },
         onError: (error: Error) => {
           logger.error(LogCategory.CHAT_FLOW, 'Multimodal message sending failed', { error: error.message });
-          chatStore.setChatLoading(false);
-          chatStore.setIsTyping(false);
-          chatStore.setExecutingPlan(false);
+          useChatStore.getState().setChatLoading(false);
+          useChatStore.getState().setIsTyping(false);
+          useChatStore.getState().setExecutingPlan(false);
         }
       }, files);
       log.info('Multimodal message sent successfully via direct ChatService call');
@@ -1319,7 +1321,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         log.warn('Unknown widget type for navigation:', widgetType);
       }
     }
-  }, [setCurrentApp, setShowRightSidebar, setTriggeredAppInput, setHuntSearchResults]);
+  }, [setCurrentApp, setShowRightSidebar, setHuntSearchResults]);
 
 
   // Handle upgrade modal actions

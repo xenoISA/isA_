@@ -573,7 +573,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
       
       setIsProcessing(false);
     }
-  }, [config, addToHistory, updateCurrentOutput, onResultGenerated]);
+  }, [config, addToHistory, updateCurrentOutput]);
   
   // Handle triggered input processing
   useEffect(() => {
@@ -697,7 +697,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
         logger.info(LogCategory.ARTIFACT_CREATION, `${config.type} real processing completed, parent notified`);
       }
     }
-  }, [widgetState, widgetData?.generatedImage, widgetData?.searchResults, widgetData?.generatedContent, widgetData?.analysisResult, config.type, widget.currentApp]);
+  }, [widgetState, widgetData, config, widget.currentApp, onResultGenerated]);
   
   // Clear output history
   const handleClearHistory = useCallback(() => {

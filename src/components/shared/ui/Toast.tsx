@@ -253,11 +253,6 @@ const ToastItem: React.FC<ToastProps & {
     return () => clearTimeout(timer);
   }, [type, accessibilityProps.announceOnShow]);
 
-  // 自动关闭
-  const handleAutoClose = useCallback(() => {
-    handleClose();
-  }, []);
-
   // 关闭处理
   const handleClose = useCallback(() => {
     setIsVisible(false);
@@ -363,7 +358,7 @@ const ToastItem: React.FC<ToastProps & {
           duration={duration}
           paused={isPaused}
           color={config.progressColor}
-          onComplete={handleAutoClose}
+          onComplete={handleClose}
         />
       )}
     </div>

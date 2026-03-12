@@ -11,7 +11,7 @@
  * - 点击外部关闭
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 // ================================================================================
 // 类型定义
@@ -88,7 +88,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   // 键盘导航
   useEffect(() => {
@@ -101,13 +101,13 @@ export const Dropdown: React.FC<DropdownProps> = ({
           break;
         case 'ArrowDown':
           event.preventDefault();
-          setFocusedIndex(prev => 
+          setFocusedIndex(prev =>
             prev < filteredOptions.length - 1 ? prev + 1 : 0
           );
           break;
         case 'ArrowUp':
           event.preventDefault();
-          setFocusedIndex(prev => 
+          setFocusedIndex(prev =>
             prev > 0 ? prev - 1 : filteredOptions.length - 1
           );
           break;
@@ -124,7 +124,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, focusedIndex, filteredOptions]);
+  }, [isOpen, focusedIndex, filteredOptions, handleClose, handleSelect]);
 
   // 搜索框聚焦
   useEffect(() => {
@@ -148,20 +148,20 @@ export const Dropdown: React.FC<DropdownProps> = ({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsOpen(false);
     setSearchTerm("");
     setFocusedIndex(-1);
     onClose?.();
-  };
+  }, [onClose]);
 
-  const handleSelect = (optionId: string) => {
+  const handleSelect = useCallback((optionId: string) => {
     const option = options.find(opt => opt.id === optionId);
     if (option && !option.disabled) {
       onChange(optionId);
       handleClose();
     }
-  };
+  }, [options, onChange, handleClose]);
 
   // 默认触发器渲染
   const renderDefaultTrigger = () => (

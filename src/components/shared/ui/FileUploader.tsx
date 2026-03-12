@@ -76,34 +76,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle file validation
-  const validateFile = (file: File): string | null => {
-    // Check file size
-    if (file.size > maxSize) {
-      return `File size ${(file.size / 1024 / 1024).toFixed(2)}MB exceeds maximum ${(maxSize / 1024 / 1024).toFixed(2)}MB`;
-    }
-    
-    // Check file type if specified
-    if (accept !== "*/*") {
-      const allowedTypes = accept.split(',').map(type => type.trim());
-      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-      const mimeType = file.type;
-      
-      const isAllowed = allowedTypes.some(type => {
-        if (type.startsWith('.')) {
-          return fileExtension === type.toLowerCase();
-        }
-        return mimeType.includes(type.replace('*', ''));
-      });
-      
-      if (!isAllowed) {
-        return `File type not supported. Allowed: ${accept}`;
-      }
-    }
-    
-    return null;
-  };
-
   // Generate file preview
   const generatePreview = useCallback(async (file: File): Promise<string | undefined> => {
     if (file.type.startsWith('image/')) {
@@ -159,17 +131,39 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   // Handle files selection
   const handleFiles = useCallback(async (fileList: FileList) => {
+    // File validation (moved inside useCallback to avoid stale closure)
+    const validateFile = (file: File): string | null => {
+      if (file.size > maxSize) {
+        return `File size ${(file.size / 1024 / 1024).toFixed(2)}MB exceeds maximum ${(maxSize / 1024 / 1024).toFixed(2)}MB`;
+      }
+      if (accept !== "*/*") {
+        const allowedTypes = accept.split(',').map(type => type.trim());
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+        const mimeType = file.type;
+        const isAllowed = allowedTypes.some(type => {
+          if (type.startsWith('.')) {
+            return fileExtension === type.toLowerCase();
+          }
+          return mimeType.includes(type.replace('*', ''));
+        });
+        if (!isAllowed) {
+          return `File type not supported. Allowed: ${accept}`;
+        }
+      }
+      return null;
+    };
+
     const newFiles: FileUploadResult[] = [...files];
-    
+
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
-      
+
       // Check if we've reached max files limit
       if (newFiles.length >= maxFiles) {
         onError?.(`Maximum ${maxFiles} files allowed`);
         break;
       }
-      
+
       // Validate file
       const validationError = validateFile(file);
       if (validationError) {
@@ -199,7 +193,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     }
     
     onFilesChange?.(newFiles);
-  }, [files, maxFiles, validateFile, processFile, onFilesChange, onError]);
+  }, [files, maxFiles, maxSize, accept, processFile, onFilesChange, onError]);
 
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {

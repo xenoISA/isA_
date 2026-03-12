@@ -18,7 +18,7 @@
  * - 不包含任何UI组件或JSX渲染
  * - 使用React hooks进行状态管理和性能优化
  */
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useChat } from '../hooks/useChat';
 import { useAppStore } from '../stores/useAppStore';
 import { useSessionStore } from '../stores/useSessionStore';
@@ -41,9 +41,12 @@ export const useArtifactLogic = () => {
   // New artifact message system
   const { getCurrentSession, getArtifactMessages } = useSessionStore();
   
-  // Get current session's artifact messages
+  // Get current session's artifact messages (memoized to avoid changing deps on every render)
   const currentSession = getCurrentSession();
-  const artifactMessages = currentSession ? getArtifactMessages(currentSession.id) : [];
+  const artifactMessages = useMemo(
+    () => currentSession ? getArtifactMessages(currentSession.id) : [],
+    [currentSession, getArtifactMessages]
+  );
   
   // Artifact state management - no debug logging needed
 

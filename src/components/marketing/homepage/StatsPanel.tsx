@@ -39,8 +39,8 @@ export default function StatsPanel({ className = "" }: StatsPanelProps) {
       setStatIndex((prev) => (prev + 1) % stats.length)
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
-  
+  }, [stats.length])
+
   const currentStat = stats[statIndex]
 
   return (
