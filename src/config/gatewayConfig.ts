@@ -171,6 +171,19 @@ export const GATEWAY_ENDPOINTS = {
     HEALTH: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/health'),
   },
   
+  // ==== 通知服务端点 ====
+  NOTIFICATION: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION),
+    LIST: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications'),
+    GET: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/{notificationId}'),
+    MARK_READ: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/mark-read'),
+    DISMISS: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/dismiss'),
+    COUNT: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/count'),
+    PREFERENCES: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/preferences'),
+    SUBSCRIBE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/subscribe'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/health'),
+  },
+
   // ==== 支付服务端点 ====
   PAYMENT: {
     BASE: buildEndpoint(GATEWAY_SERVICES.PAYMENT),
