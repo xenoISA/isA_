@@ -60,7 +60,7 @@ export const useGestures = (
     if (preventScroll) {
       e.preventDefault();
     }
-  }, [handlers.onLongPress, longPressDelay, preventScroll]);
+  }, [handlers, longPressDelay, preventScroll]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -153,13 +153,7 @@ export const useGestures = (
     pullThreshold,
     doubleTapDelay,
     preventScroll,
-    handlers.onSwipeLeft,
-    handlers.onSwipeRight,
-    handlers.onSwipeUp,
-    handlers.onSwipeDown,
-    handlers.onPullDown,
-    handlers.onTap,
-    handlers.onDoubleTap
+    handlers
   ]);
 
   // Pinch gesture handling
@@ -178,7 +172,7 @@ export const useGestures = (
       // and calculate the scale factor
       handlers.onPinch(distance / 100);
     }
-  }, [handlers.onPinch]);
+  }, [handlers]);
 
   // Return event handlers for the element
   return {

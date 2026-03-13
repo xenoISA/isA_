@@ -132,7 +132,7 @@ const OmniInputArea: React.FC<OmniWidgetProps> = ({
         template: topicConfigs[detectedTopic]?.templates.find(t => t.default)?.id || defaultTemplate
       }));
     }
-  }, [triggeredInput, topicConfigs, defaultTopic, defaultTemplate]);
+  }, [triggeredInput, topicConfigs, defaultTopic, defaultTemplate, args.subject]);
 
   // Configuration validation and fallbacks
   const safeTopicConfigs = topicConfigs || {};

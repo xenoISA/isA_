@@ -211,7 +211,7 @@ const DreamInputArea: React.FC<DreamWidgetProps> = ({
         log.debug('Mode recommendation updated', bestMode.id);
       }
     }
-  }, [prompt, uploadedImage, selectedMode.id]);
+  }, [prompt, uploadedImage, selectedMode.id, imageModes]);
 
   // Handle image processing (adapted from dream_sidebar.tsx)
   const handleImageProcessing = async () => {

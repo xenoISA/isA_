@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 import { useAnalytics } from '../src/hooks/useAnalytics'
 import MarketingHeader from '../src/components/marketing/MarketingHeader'
@@ -20,44 +20,44 @@ export default function MarketingHome() {
   const [currentTime, setCurrentTime] = useState('')
   const { trackMarketingPageView, trackContentEngagement, trackCTAClick } = useAnalytics()
 
-  const demos = [
-    { 
-      user: "Sarah", 
-      action: "Automated entire workflow setup", 
-      time: "2s ago", 
+  const demos = useMemo(() => [
+    {
+      user: "Sarah",
+      action: "Automated entire workflow setup",
+      time: "2s ago",
       color: "from-pink-400 to-rose-400",
       metric: "80% time saved",
       category: "Automation",
       icon: "⚡"
     },
-    { 
-      user: "Mike", 
-      action: "AI remembered project context", 
-      time: "5s ago", 
+    {
+      user: "Mike",
+      action: "AI remembered project context",
+      time: "5s ago",
       color: "from-blue-400 to-cyan-400",
       metric: "100% accuracy",
       category: "Memory",
       icon: "🧠"
     },
-    { 
-      user: "Anna", 
-      action: "Agents collaborated on strategy", 
-      time: "8s ago", 
+    {
+      user: "Anna",
+      action: "Agents collaborated on strategy",
+      time: "8s ago",
       color: "from-green-400 to-emerald-400",
       metric: "3x faster delivery",
       category: "Adaptive",
       icon: "👥"
     },
-    { 
-      user: "Alex", 
-      action: "Proactive task completion", 
-      time: "12s ago", 
+    {
+      user: "Alex",
+      action: "Proactive task completion",
+      time: "12s ago",
       color: "from-purple-400 to-violet-400",
       metric: "15 tasks auto-done",
       category: "Proactive",
       icon: "⏱️"
     },
-  ]
+  ], [])
 
   useEffect(() => {
     const updateTime = () => {

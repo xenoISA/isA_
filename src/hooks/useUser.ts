@@ -167,7 +167,7 @@ export const useUser = (): UseUserReturn => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setUserError, setExternalUser]);
+  }, [setLoading, setUserError]);
 
   const fetchCurrentUser = useCallback(async (accessToken: string) => {
     const startTime = Date.now();

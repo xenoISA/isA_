@@ -100,7 +100,6 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
     mobileBreakpoint,
     isTablet,
     touchSupport,
-    adaptiveThreshold,
     isMobile,
     isPortrait
   ]);

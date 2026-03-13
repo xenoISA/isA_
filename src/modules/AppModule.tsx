@@ -251,6 +251,7 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
     currentApp,
     showRightSidebar,
     triggeredAppInput,
+    availableApps,
     handleCloseApp,
     handleAppSelect,
     handleToggleSidebar,
