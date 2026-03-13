@@ -1,0 +1,73 @@
+# =============================================================================
+# isA_ Docker Ignore
+# =============================================================================
+
+# Dependencies (re-installed in container)
+node_modules
+.pnp
+.pnp.js
+
+# Build output (rebuilt in container)
+.next
+out
+build
+
+# Version control
+.git
+.gitignore
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (secrets — inject at runtime)
+.env
+.env.*
+!.env.example
+
+# Test / dev artifacts
+coverage
+tests
+**/__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+vitest.config.ts
+vitest.setup.ts
+
+# Documentation
+docs
+*.md
+How_to
+plan
+MIGRATION_GUIDE.md
+PRODUCTION_READY_CHECKLIST.md
+STEP*_*.md
+ArchitectureAnalysisReport.md
+
+# Legacy / non-production files
+.storybook
+.vercel
+vercel.json
+debug-env.js
+test_*.js
+test_*.html
+marketing_analytics_schema.sql
+supabase_analytics_schema.sql
+docker-compose.rudderstack.yml
+emoFrame
+rudderstack
+
+# Claude / AI tooling
+.claude
+
+# Deployment docs (not needed in image)
+deployment/progressive-rollout-strategy.md
+deployment/README.md
