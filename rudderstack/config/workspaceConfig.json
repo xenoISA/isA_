@@ -14,7 +14,7 @@
           "enabled": true,
           "destinationDefinitionId": "1aL6wZM906ftQHKnADhWStPKh2h",
           "config": {
-            "webhookUrl": "http://host.docker.internal:5173/api/analytics/webhook",
+            "webhookUrl": "http://host.docker.internal:4100/api/analytics/webhook",
             "webhookMethod": "POST",
             "headers": {}
           },

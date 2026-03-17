@@ -12,15 +12,57 @@ The application is built on Next.js 14 and branded as **iapro.ai**.
 
 ## Architecture
 
+### Multi-Zone Entry Point
+
+isA_ serves as the unified entry point via **Next.js Multi-Zone routing** through the APISIX gateway. Each surface is an independent Next.js app served under a single domain via path-based routing.
+
 ```
-iapro.ai (isA_)
-  ├── Marketing: Landing page, pricing, onboarding
-  ├── App (Mate): AI chat, widgets, task automation
-  ├── Console: → isA_Console (admin, agents, settings)
-  └── Docs: → isA_Docs (guides, API reference, tutorials)
+iapro.ai (single domain)
+  │
+  APISIX Gateway (:9080)
+  ├── /*           → isA_        (:4100)  — Marketing + Agentic chat app
+  ├── /console/*   → isA_Console (:4200)  — Management interface
+  └── /docs/*      → isA_Docs    (:4300)  — Documentation portal
 ```
 
-Backend connectivity via APISIX gateway to microservices (agents, accounts, sessions, auth, payment, etc.)
+### Surface Responsibilities
+
+| Surface | App | Port | Audience | Purpose |
+|---------|-----|------|----------|---------|
+| `/` | isA_ | 4100 | All | Marketing pages (home, pricing, enterprise, demo) |
+| `/app` | isA_ | 4100 | Customers | Agentic chat app (isA_Mate backend) |
+| `/console` | isA_Console | 4200 | Developers | Agent management, API keys, admin tools |
+| `/docs` | isA_Docs | 4300 | Developers | Guides, API reference, tutorials |
+
+### Backend Connectivity
+
+All surfaces share a single APISIX gateway for backend microservices:
+
+```
+Frontend Zones → APISIX Gateway (:9080) → Backend Services
+                                            ├── isA_Mate   (:18789) — Agentic chat backend
+                                            ├── isA_Agent  (:8080)  — Agent management
+                                            ├── isA_Model  (:8082)  — Model routing/inference
+                                            ├── isA_MCP    (:8081)  — Tool server
+                                            ├── isA_user   (:8201+) — Auth, accounts, billing
+                                            └── isA_Data   (:8084)  — Storage, data services
+```
+
+### Shared Platform Shell
+
+All zones share:
+- **`<PlatformNav>`** — shared navigation component from `@isa/ui-web` (isA_App_SDK)
+- **SSO auth** — JWT + HttpOnly refresh cookie on root domain (`.iapro.ai`)
+- **Surface config** — relative path links (`/console`, `/docs`) instead of absolute URLs
+
+### Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Multi-Zone vs Monolith | Multi-Zone | Apps use different Next.js versions (14, 16) and frameworks (Nextra). Multi-Zone avoids version conflicts |
+| Port range | 4100-4300 | Avoids conflicts with infra (3000 Grafana, 5432 PG), services (8080-8230), and agents (18789+) |
+| Surface switching | Full page load | Acceptable trade-off — surface switches are infrequent. Avoids micro-frontend complexity |
+| Shared nav delivery | npm package (@isa/ui-web) | Already exists in isA_App_SDK. All 3 apps already depend on it |
 
 ## Epics
 
@@ -53,9 +95,36 @@ Foundational work required before multi-app integration (Epic #5/#9) can ship to
 
 See GitHub Issue #5. Covers routing, SSO, agent lifecycle, docs integration.
 
-### Epic: Platform Entry Point (Existing — Epic #9)
+### Epic: Platform Entry Point (Epic #9) — Multi-Zone Implementation
 
-See GitHub Issue #9. Covers navigation shell, auth handoff, marketing pages, deep linking.
+**Priority**: P1-High
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for design → implementation planned
+
+Implementation via Multi-Zone gateway routing (see Architecture section above).
+
+#### Phase 1 — Foundation (P0)
+1. Configure frontend dev ports: isA_ → 4100, isA_Console → 4200, isA_Docs → 4300
+2. Add APISIX gateway routes for `/console/*` → :4200, `/docs/*` → :4300
+3. Set `basePath: '/console'` in isA_Console `next.config.ts`
+4. Set `basePath: '/docs'` in isA_Docs Nextra config
+
+#### Phase 2 — Unified Experience (P1)
+5. Build shared `<PlatformNav>` in `@isa/ui-web` (isA_App_SDK)
+6. Integrate `<PlatformNav>` into isA_, isA_Console, isA_Docs
+7. Unify auth cookie domain to `.iapro.ai` for cross-zone SSO
+8. Update `surfaceConfig.ts` to use zone-relative URLs
+
+#### Phase 3 — Integration & Polish (P2)
+9. Integrate isA_Mate as chat backend (replaces isA_Agent consumer flow)
+10. Build landing page surface switcher (customer vs developer CTAs)
+11. Add gateway health aggregation for frontend upstreams
+12. Update deployment configs (Docker, CI, env templates)
+
+#### Out of Scope
+- Merging Console/Docs code into isA_ (Multi-Zone keeps them separate)
+- Micro-frontend module federation (unnecessary complexity)
+- Client-side cross-zone navigation (full page loads are acceptable)
 
 ### isA Mate Integration
 

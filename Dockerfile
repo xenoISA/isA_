@@ -13,7 +13,7 @@
 #
 # Usage:
 #   docker build -t isa-app .
-#   docker run -p 3000:3000 --env-file deployment/environments/production.env isa-app
+#   docker run -p 4100:4100 --env-file deployment/environments/production.env isa-app
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -91,9 +91,9 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 4100
 
-ENV PORT=3000
+ENV PORT=4100
 ENV HOSTNAME="0.0.0.0"
 
 # Use dumb-init to handle PID 1 and signal forwarding
