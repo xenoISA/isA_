@@ -7,7 +7,10 @@
 
 const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 
-const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+const trimTrailingSlash = (value: string): string => {
+  const trimmed = value.replace(/\/+$/, '');
+  return trimmed || '/';
+};
 
 const normalizeHost = (host: string): string => host.split(':')[0].trim().toLowerCase();
 
@@ -53,14 +56,19 @@ export const isMarketingHostname = (hostname: string): boolean => marketingHostS
 
 export const getMarketingHostnames = (): string[] => Array.from(marketingHostSet);
 
+/**
+ * Surface URLs default to relative paths for Multi-Zone routing (same domain).
+ * In production, all zones are served under one domain via APISIX gateway.
+ * In development, override with absolute URLs via env vars (.env.local).
+ */
 export const surfaceUrls = Object.freeze({
-  marketing: trimTrailingSlash(getEnv('NEXT_PUBLIC_MARKETING_URL', 'http://localhost:4100')),
-  app: trimTrailingSlash(getEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:4100/app')),
+  marketing: trimTrailingSlash(getEnv('NEXT_PUBLIC_MARKETING_URL', '/')),
+  app: trimTrailingSlash(getEnv('NEXT_PUBLIC_APP_URL', '/app')),
   appDashboard: trimTrailingSlash(
-    getEnv('NEXT_PUBLIC_APP_DASHBOARD_URL', getEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:4100/app'))
+    getEnv('NEXT_PUBLIC_APP_DASHBOARD_URL', getEnv('NEXT_PUBLIC_APP_URL', '/app'))
   ),
-  console: trimTrailingSlash(getEnv('NEXT_PUBLIC_CONSOLE_URL', 'http://localhost:4200/console')),
-  docs: trimTrailingSlash(getEnv('NEXT_PUBLIC_DOCS_URL', 'http://localhost:4300/docs')),
+  console: trimTrailingSlash(getEnv('NEXT_PUBLIC_CONSOLE_URL', '/console')),
+  docs: trimTrailingSlash(getEnv('NEXT_PUBLIC_DOCS_URL', '/docs')),
 });
 
 const appendPath = (base: string, path: string): string => {

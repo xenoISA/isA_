@@ -30,8 +30,11 @@
  */
 
 import React from 'react';
+import { PlatformNav } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
 import { useDeviceType } from '../hooks/useDeviceType';
+import { useAuthContext } from '../providers/AuthProvider';
+import { surfaceUrls } from '../config/surfaceConfig';
 import { THEME_COLORS } from '../constants/theme';
 
 export interface AppLayoutProps {
@@ -68,7 +71,8 @@ export interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
   // Get device type to determine whether to show desktop header
   const { isMobile } = useDeviceType();
-  
+  const { authUser, isAuthenticated, logout } = useAuthContext();
+
   // Get rendered modules and data from AppModule via render props
   const moduleData = children?.();
   
@@ -96,10 +100,24 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
         <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-3/4 left-3/4 w-48 h-48 bg-purple-500/8 rounded-full blur-3xl opacity-50 animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
+      {/* Platform Navigation - Surface switcher for authenticated users */}
+      {isAuthenticated && (
+        <PlatformNav
+          activeSurface="app"
+          user={authUser ? { name: authUser.name, email: authUser.email } : null}
+          urls={{
+            app: surfaceUrls.app,
+            console: surfaceUrls.console,
+            docs: surfaceUrls.docs,
+            marketing: surfaceUrls.marketing,
+          }}
+          onLogout={logout}
+        />
+      )}
       {/* Application Header - Only show on desktop, hidden on mobile */}
       {!isMobile && (
         <div className="h-16 flex-shrink-0 p-2">
-          <AppHeader 
+          <AppHeader
             currentApp={appData.currentApp}
             availableApps={appData.availableApps}
           />

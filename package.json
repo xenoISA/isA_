@@ -15,6 +15,7 @@
   "dependencies": {
     "@isa/core": "file:../isA_App_SDK/packages/core",
     "@isa/transport": "file:../isA_App_SDK/packages/transport",
+    "@isa/ui-web": "file:../isA_App_SDK/packages/ui-web",
     "@rudderstack/analytics-js": "^3.23.2",
     "@supabase/supabase-js": "^2.57.2",
     "@types/node": "^20.0.0",
