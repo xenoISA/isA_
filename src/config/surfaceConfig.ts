@@ -54,13 +54,13 @@ export const isMarketingHostname = (hostname: string): boolean => marketingHostS
 export const getMarketingHostnames = (): string[] => Array.from(marketingHostSet);
 
 export const surfaceUrls = Object.freeze({
-  marketing: trimTrailingSlash(getEnv('NEXT_PUBLIC_MARKETING_URL', 'http://localhost:5173')),
-  app: trimTrailingSlash(getEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:5173/app')),
+  marketing: trimTrailingSlash(getEnv('NEXT_PUBLIC_MARKETING_URL', 'http://localhost:4100')),
+  app: trimTrailingSlash(getEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:4100/app')),
   appDashboard: trimTrailingSlash(
-    getEnv('NEXT_PUBLIC_APP_DASHBOARD_URL', getEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:5173/app'))
+    getEnv('NEXT_PUBLIC_APP_DASHBOARD_URL', getEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:4100/app'))
   ),
-  console: trimTrailingSlash(getEnv('NEXT_PUBLIC_CONSOLE_URL', 'http://localhost:5174')),
-  docs: trimTrailingSlash(getEnv('NEXT_PUBLIC_DOCS_URL', 'http://localhost:3001')),
+  console: trimTrailingSlash(getEnv('NEXT_PUBLIC_CONSOLE_URL', 'http://localhost:4200/console')),
+  docs: trimTrailingSlash(getEnv('NEXT_PUBLIC_DOCS_URL', 'http://localhost:4300/docs')),
 });
 
 const appendPath = (base: string, path: string): string => {

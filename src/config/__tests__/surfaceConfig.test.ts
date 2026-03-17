@@ -56,7 +56,7 @@ describe('surfaceUrls', () => {
 
 describe('appendSearchParams', () => {
   test('appends params to absolute URL', () => {
-    const result = appendSearchParams('http://localhost:5173/app', 'foo=bar');
+    const result = appendSearchParams('http://localhost:4100/app', 'foo=bar');
     expect(result).toContain('foo=bar');
   });
 
