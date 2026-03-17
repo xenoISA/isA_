@@ -47,9 +47,11 @@ describe('surfaceUrls', () => {
     expect(typeof surfaceUrls.docs).toBe('string');
   });
 
-  test('no trailing slashes', () => {
+  test('no trailing slashes (except root path)', () => {
     Object.values(surfaceUrls).forEach((url) => {
-      expect(url).not.toMatch(/\/$/);
+      if (url !== '/') {
+        expect(url).not.toMatch(/\/$/);
+      }
     });
   });
 });
