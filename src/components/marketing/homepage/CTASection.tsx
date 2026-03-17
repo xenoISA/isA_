@@ -73,16 +73,28 @@ export default function CTASection({ className = "" }: CTASectionProps) {
           </div>
         </div>
         
-        <div className="flex flex-col space-y-2">
-          <a 
-            href={surfaceLinks.appEntry}
-            className="cta-button bg-white text-purple-600 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transform hover:scale-105 transition-all shadow-xl duration-300 text-sm whitespace-nowrap no-underline"
-          >
-            Try Free Now
-            <span className="inline ml-1">→</span>
-          </a>
-          <div className="text-xs text-purple-200 text-center">
-            No credit card required
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col items-center space-y-1">
+            <a
+              href={surfaceLinks.appEntry}
+              className="cta-button bg-white text-purple-600 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transform hover:scale-105 transition-all shadow-xl duration-300 text-sm whitespace-nowrap no-underline"
+            >
+              Try Free Now →
+            </a>
+            <div className="text-xs text-purple-200">
+              No credit card required
+            </div>
+          </div>
+          <div className="flex flex-col items-center space-y-1">
+            <a
+              href={surfaceLinks.consoleHome}
+              className="cta-button bg-white/20 text-white border border-white/40 px-6 py-3 rounded-full font-bold hover:bg-white/30 transform hover:scale-105 transition-all duration-300 text-sm whitespace-nowrap no-underline"
+            >
+              Build with isA →
+            </a>
+            <div className="text-xs text-purple-200">
+              Console + API + Docs
+            </div>
           </div>
         </div>
       </div>

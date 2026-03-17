@@ -283,13 +283,22 @@ export default function PricingPage() {
               <p className="text-xl text-purple-100 mb-8 leading-relaxed">
                 Join 2.5M+ users already using AI automation to scale their productivity
               </p>
-              <a 
-                href="/"
-                className="pricing-cta bg-white text-purple-600 font-bold py-4 px-8 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105 inline-flex items-center space-x-2 no-underline"
-              >
-                <span>Start Free Trial</span>
-                <span>→</span>
-              </a>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <a
+                  href="/app"
+                  className="pricing-cta bg-white text-purple-600 font-bold py-4 px-8 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105 inline-flex items-center space-x-2 no-underline"
+                >
+                  <span>Start Free Trial</span>
+                  <span>→</span>
+                </a>
+                <a
+                  href="/docs"
+                  className="pricing-cta bg-white/20 text-white border border-white/40 font-bold py-4 px-8 rounded-full hover:bg-white/30 transition-all duration-300 hover:scale-105 inline-flex items-center space-x-2 no-underline"
+                >
+                  <span>Developer Docs</span>
+                  <span>→</span>
+                </a>
+              </div>
             </div>
           </section>
         </main>
