@@ -55,6 +55,7 @@ export const GATEWAY_CONFIG = {
 export const GATEWAY_SERVICES = {
   // 核心AI服务
   AGENTS: 'agents',           // Agent聊天服务 (8080)
+  MATE: 'mate',               // isA Mate聊天服务 (18789)
   MCP: 'mcp',                 // MCP工具服务 (8081)
   
   // 用户相关服务  
@@ -116,6 +117,21 @@ export const GATEWAY_ENDPOINTS = {
     }
   },
   
+  // ==== Mate服务端点 (isA Mate agentic chat) ====
+  MATE: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.MATE),
+    CHAT: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/chat'),
+    QUERY: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/query'),
+    TOOLS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/tools'),
+    SKILLS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/skills'),
+    TEAMS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/teams'),
+    MEMORY: {
+      SESSIONS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/memory/sessions'),
+      TURNS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/memory/turns'),
+    },
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.MATE, '/health'),
+  },
+
   // ==== MCP服务端点 (工具调用) ====
   MCP: {
     BASE: buildEndpoint(GATEWAY_SERVICES.MCP),
@@ -330,19 +346,21 @@ export const requiresAuth = (url: string): boolean => {
 
 export const SSE_CONFIG = {
   // SSE支持的服务
-  SSE_SERVICES: ['agents', 'mcp'],
-  
+  SSE_SERVICES: ['agents', 'mate', 'mcp'],
+
   // SSE端点
   SSE_ENDPOINTS: {
     CHAT: GATEWAY_ENDPOINTS.AGENTS.CHAT,
+    MATE_CHAT: GATEWAY_ENDPOINTS.MATE.CHAT,
     EXECUTION_RESUME: GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM,
     MCP_TOOLS: GATEWAY_ENDPOINTS.MCP.TOOLS_CALL,
   },
-  
+
   // 检查是否为SSE端点 (reference GATEWAY_ENDPOINTS directly to avoid self-reference)
   isSSEEndpoint: (url: string): boolean => {
     return [
       GATEWAY_ENDPOINTS.AGENTS.CHAT,
+      GATEWAY_ENDPOINTS.MATE.CHAT,
       GATEWAY_ENDPOINTS.AGENTS.EXECUTION.RESUME_STREAM,
       GATEWAY_ENDPOINTS.MCP.TOOLS_CALL,
     ].some(endpoint => url.startsWith(endpoint));
