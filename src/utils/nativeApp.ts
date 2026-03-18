@@ -113,7 +113,7 @@ export const detectNativeApp = (): NativeAppInfo => {
       fileSystem: false,
     };
 
-    if (typeof navigator !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       caps.camera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
       caps.microphone = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
       caps.location = !!navigator.geolocation;
