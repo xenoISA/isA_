@@ -1135,8 +1135,14 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         const token = await userModule.getAccessToken();
         const chatService = await getChatService();
         
-        // 直接调用 ChatService 并处理回调
-        await chatService.sendMessage(content, enrichedMetadata, token, {
+        // Select backend: Mate or Agent based on feature flag
+        const { getChatBackend } = await import('../config/runtimeEnv');
+        const useMate = getChatBackend() === 'mate';
+        const sendFn = useMate
+          ? chatService.sendMessageViaMate.bind(chatService, content, { session_id: enrichedMetadata.session_id }, token)
+          : chatService.sendMessage.bind(chatService, content, enrichedMetadata, token);
+
+        await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
             useChatStore.getState().startStreamingMessage(messageId, status);
             useChatStore.getState().setExecutingPlan(true);

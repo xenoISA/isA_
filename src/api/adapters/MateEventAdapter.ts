@@ -167,17 +167,34 @@ export function adaptMateEvent(
       break;
     }
 
-    default: {
-      // Pass through unknown events as custom metadata
-      if (event.type) {
+    // Informational events from Mate — map to AGUI status or silently consume
+    case 'session_start': {
+      // Session started — update context with the session_id from Mate
+      break;
+    }
+
+    case 'system': {
+      // System status (e.g., "Context ready: 47 tools, 38 prompts")
+      // Map to stream status notification
+      if (event.content) {
         results.push({
-          type: 'run_started' as AGUIEventType, // fallback type
+          type: 'run_started' as AGUIEventType,
           thread_id: threadId,
           timestamp: now,
           run_id: context.runId,
-          metadata: { custom_type: event.type, custom_data: event },
+          metadata: { mate_status: event.content, ...event.metadata },
         });
       }
+      break;
+    }
+
+    case 'node_exit': {
+      // LangGraph node transition — no UI action needed
+      break;
+    }
+
+    default: {
+      // Unknown events — silently ignore (no spurious AGUI events)
       break;
     }
   }

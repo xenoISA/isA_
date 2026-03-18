@@ -33,3 +33,12 @@ export const getGatewayUrl = (): string => {
 
   throw new Error('Missing required environment variable: NEXT_PUBLIC_GATEWAY_URL');
 };
+
+/**
+ * Chat backend selector: 'mate' uses isA_Mate, 'agent' uses isA_Agent (default).
+ * Set NEXT_PUBLIC_CHAT_BACKEND=mate to enable Mate integration.
+ */
+export const getChatBackend = (): 'mate' | 'agent' => {
+  const value = process.env.NEXT_PUBLIC_CHAT_BACKEND;
+  return value === 'mate' ? 'mate' : 'agent';
+};

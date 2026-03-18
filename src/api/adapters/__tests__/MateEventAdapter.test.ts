@@ -167,6 +167,39 @@ describe('adaptMateEvent — lifecycle events', () => {
   });
 });
 
+describe('adaptMateEvent — informational events', () => {
+  const ctx = { runId: 'run_1', sessionId: 'sess_1', currentMessageId: null };
+
+  test('session_start emits no events', () => {
+    const event: MateSSEEvent = { type: 'session_start', content: 'Session started', session_id: 'mate_abc' };
+    const { events } = adaptMateEvent(event, ctx);
+    expect(events).toHaveLength(0);
+  });
+
+  test('system event emits status metadata', () => {
+    const event: MateSSEEvent = {
+      type: 'system',
+      content: 'Context ready: 47 tools',
+      metadata: { tools_count: 47 },
+    };
+    const { events } = adaptMateEvent(event, ctx);
+    expect(events).toHaveLength(1);
+    expect(events[0].metadata?.mate_status).toBe('Context ready: 47 tools');
+  });
+
+  test('node_exit emits no events', () => {
+    const event: MateSSEEvent = { type: 'node_exit', content: 'Exiting sense', metadata: { node: 'sense' } };
+    const { events } = adaptMateEvent(event, ctx);
+    expect(events).toHaveLength(0);
+  });
+
+  test('unknown event type emits no events', () => {
+    const event: MateSSEEvent = { type: 'some_future_event', content: 'data' };
+    const { events } = adaptMateEvent(event, ctx);
+    expect(events).toHaveLength(0);
+  });
+});
+
 describe('adaptMateEvent — context propagation', () => {
   test('session_id from event overrides context', () => {
     const ctx = { runId: 'run_1', sessionId: 'sess_1', currentMessageId: null };
