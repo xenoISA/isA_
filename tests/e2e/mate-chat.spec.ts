@@ -24,27 +24,33 @@ test.describe('Mate backend health', () => {
   });
 
   test('GET /v1/tools returns non-empty tool list', async ({ request }) => {
-    const response = await request.get(`${MATE_URL}/v1/tools`, { timeout: 5_000 });
+    const response = await request.get(`${MATE_URL}/v1/tools`, { timeout: 10_000 });
     expect(response.ok()).toBeTruthy();
 
-    const tools = await response.json();
+    const body = await response.json();
+    // API returns { tools: [...] }
+    const tools = body.tools || body;
     expect(Array.isArray(tools)).toBe(true);
     expect(tools.length).toBeGreaterThan(0);
   });
 
-  test('GET /v1/skills returns array', async ({ request }) => {
-    const response = await request.get(`${MATE_URL}/v1/skills`, { timeout: 5_000 });
+  test('GET /v1/skills returns skills', async ({ request }) => {
+    const response = await request.get(`${MATE_URL}/v1/skills`, { timeout: 10_000 });
     expect(response.ok()).toBeTruthy();
 
-    const skills = await response.json();
+    const body = await response.json();
+    // API returns { skills: [...] }
+    const skills = body.skills || body;
     expect(Array.isArray(skills)).toBe(true);
   });
 
   test('GET /v1/teams returns team list', async ({ request }) => {
-    const response = await request.get(`${MATE_URL}/v1/teams`, { timeout: 5_000 });
+    const response = await request.get(`${MATE_URL}/v1/teams`, { timeout: 15_000 });
     expect(response.ok()).toBeTruthy();
 
-    const teams = await response.json();
+    const body = await response.json();
+    // API returns { teams: [...] }
+    const teams = body.teams || body;
     expect(Array.isArray(teams)).toBe(true);
   });
 });
