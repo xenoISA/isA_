@@ -118,19 +118,25 @@ export const GATEWAY_ENDPOINTS = {
   },
   
   // ==== Mate服务端点 (isA Mate agentic chat) ====
-  MATE: {
-    BASE: buildEndpoint(GATEWAY_SERVICES.MATE),
-    CHAT: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/chat'),
-    QUERY: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/query'),
-    TOOLS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/tools'),
-    SKILLS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/skills'),
-    TEAMS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/teams'),
-    MEMORY: {
-      SESSIONS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/memory/sessions'),
-      TURNS: buildEndpoint(GATEWAY_SERVICES.MATE, '/v1/memory/turns'),
-    },
-    HEALTH: buildEndpoint(GATEWAY_SERVICES.MATE, '/health'),
-  },
+  // Supports direct URL via NEXT_PUBLIC_MATE_URL env var for local dev
+  // without gateway routing. Falls back to gateway path.
+  MATE: (() => {
+    const mateBase = process.env.NEXT_PUBLIC_MATE_URL || buildEndpoint(GATEWAY_SERVICES.MATE);
+    const buildMateEndpoint = (path: string) => `${mateBase}${path}`;
+    return {
+      BASE: mateBase,
+      CHAT: buildMateEndpoint('/v1/chat'),
+      QUERY: buildMateEndpoint('/v1/query'),
+      TOOLS: buildMateEndpoint('/v1/tools'),
+      SKILLS: buildMateEndpoint('/v1/skills'),
+      TEAMS: buildMateEndpoint('/v1/teams'),
+      MEMORY: {
+        SESSIONS: buildMateEndpoint('/v1/memory/sessions'),
+        TURNS: buildMateEndpoint('/v1/memory/turns'),
+      },
+      HEALTH: buildMateEndpoint('/health'),
+    };
+  })(),
 
   // ==== MCP服务端点 (工具调用) ====
   MCP: {
