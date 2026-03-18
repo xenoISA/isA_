@@ -84,4 +84,55 @@ test.describe('Mate chat endpoint', () => {
     // Should have session_start event
     expect(text).toContain('session_start');
   });
+
+  test('SSE stream contains complete lifecycle events', async ({ request }) => {
+    test.skip(!mateAvailable, 'isA_Mate not running');
+
+    const response = await request.post(`${MATE_URL}/v1/chat`, {
+      data: { prompt: 'Say hi' },
+      headers: { Accept: 'text/event-stream' },
+      timeout: 60_000,
+    });
+    const text = await response.text();
+
+    // Full lifecycle: session_start → text/result → session_end → done
+    expect(text).toContain('session_start');
+    expect(text).toContain('session_end');
+    expect(text).toContain('event: done');
+  });
+
+  test('SSE stream includes session_id in events', async ({ request }) => {
+    test.skip(!mateAvailable, 'isA_Mate not running');
+
+    const response = await request.post(`${MATE_URL}/v1/chat`, {
+      data: { prompt: 'Say ok' },
+      headers: { Accept: 'text/event-stream' },
+      timeout: 60_000,
+    });
+    const text = await response.text();
+
+    // Every data line should contain a session_id
+    expect(text).toContain('"session_id"');
+    expect(text).toMatch(/mate_[a-f0-9]+/);
+  });
+});
+
+test.describe('Mate skills & teams', () => {
+  test('GET /v1/skills returns array', async ({ request }) => {
+    test.skip(!mateAvailable, 'isA_Mate not running');
+
+    const response = await request.get(`${MATE_URL}/v1/skills`);
+    expect(response.ok()).toBeTruthy();
+    const skills = await response.json();
+    expect(Array.isArray(skills)).toBe(true);
+  });
+
+  test('GET /v1/teams returns team list', async ({ request }) => {
+    test.skip(!mateAvailable, 'isA_Mate not running');
+
+    const response = await request.get(`${MATE_URL}/v1/teams`);
+    expect(response.ok()).toBeTruthy();
+    const teams = await response.json();
+    expect(Array.isArray(teams)).toBe(true);
+  });
 });
