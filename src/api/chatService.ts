@@ -19,6 +19,8 @@ import { createSSETransport } from './transport/SSETransport';
 import { createAGUIEventParser } from './parsing/AGUIEventParser';
 import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { createLogger, LogCategory } from '../utils/logger';
+import { adaptMateEvent, createMateStreamContext, buildMateRequest } from './adapters/MateEventAdapter';
+import type { MateSSEEvent } from './adapters/MateEventAdapter';
 
 const log = createLogger('ChatService', LogCategory.CHAT_FLOW);
 
@@ -439,6 +441,121 @@ export class ChatService {
     }
   }
   
+  /**
+   * Send message via isA_Mate backend (streaming SSE).
+   * Uses MateEventAdapter to convert Mate events to AGUI format,
+   * so all downstream callbacks, stores, and UI remain unchanged.
+   */
+  async sendMessageViaMate(
+    message: string,
+    metadata: { session_id: string },
+    token: string,
+    callbacks: ChatServiceCallbacks
+  ): Promise<void> {
+    log.info('Sending message via Mate backend');
+
+    try {
+      const payload = buildMateRequest(message, metadata.session_id);
+      const endpoint = GATEWAY_ENDPOINTS.MATE.CHAT;
+
+      const transport = createSSETransport({
+        url: endpoint,
+        timeout: 300000,
+        retryConfig: { maxRetries: 3, retryDelay: 1000 },
+      });
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const connection = await transport.connect(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      return new Promise<void>((resolve, reject) => {
+        let streamEnded = false;
+        const { startEvent, context } = createMateStreamContext(metadata.session_id);
+        let adaptCtx = context;
+
+        // Emit synthetic run_started
+        this.handleAGUIEvent(startEvent, callbacks);
+
+        const handleComplete = async (finalContent?: string) => {
+          if (!streamEnded) {
+            streamEnded = true;
+            await connection.close();
+            callbacks.onStreamComplete?.(finalContent);
+            resolve();
+          }
+        };
+
+        const handleError = async (error: Error) => {
+          if (!streamEnded) {
+            streamEnded = true;
+            await connection.close();
+            callbacks.onError?.(error);
+            reject(error);
+          }
+        };
+
+        const processData = async () => {
+          try {
+            for await (const rawData of connection.stream()) {
+              const lines = rawData.split('\n');
+              for (const line of lines) {
+                // Handle SSE "event: done" format
+                if (line.trim() === 'event: done' || line.trim() === 'data: [DONE]') {
+                  await handleComplete();
+                  return;
+                }
+
+                if (line.startsWith('data: ')) {
+                  const dataContent = line.slice(6).trim();
+                  if (dataContent === '[DONE]') {
+                    await handleComplete();
+                    return;
+                  }
+
+                  try {
+                    const mateEvent: MateSSEEvent = JSON.parse(dataContent);
+                    const { events, updatedContext } = adaptMateEvent(mateEvent, adaptCtx);
+                    adaptCtx = updatedContext;
+
+                    for (const aguiEvent of events) {
+                      this.handleAGUIEvent(aguiEvent, callbacks);
+                    }
+                  } catch (parseError) {
+                    log.warn('Failed to parse Mate event', parseError);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+              log.debug('Mate stream aborted normally');
+            } else {
+              log.error('Mate stream error', error);
+              await handleError(error instanceof Error ? error : new Error(String(error)));
+            }
+          }
+        };
+
+        processData();
+      });
+    } catch (error) {
+      log.error('Failed to connect to Mate', error);
+      callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
+  }
+
   /**
    * 发送多模态消息
    */
