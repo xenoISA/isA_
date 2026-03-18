@@ -46,7 +46,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
   };
 
   const getVariantStyles = () => {
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
     
     switch (variant) {
       case 'primary':
