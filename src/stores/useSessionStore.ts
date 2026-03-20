@@ -64,6 +64,9 @@ interface SessionState {
   sessions: ChatSession[];
   currentSessionId: string;
 
+  // Search state
+  searchQuery: string;
+
   // Loading state
   isLoading: boolean;
   error: string | null;
@@ -86,6 +89,9 @@ interface SessionActions {
   getArtifactById: (artifactId: string, sessionId?: string) => ArtifactMessage | null;
   getArtifactVersions: (artifactId: string, sessionId?: string) => ArtifactMessage[];
   
+  // Search operations
+  setSearchQuery: (query: string) => void;
+
   // Session state management
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -109,6 +115,7 @@ export const useSessionStore = create<SessionStore>()(
     // Initial state
     sessions: [],
     currentSessionId: 'default',
+    searchQuery: '',
     isLoading: false,
     error: null,
     
@@ -295,6 +302,11 @@ export const useSessionStore = create<SessionStore>()(
         .sort((a, b) => a.artifact.version - b.artifact.version); // 按版本升序
     },
     
+    // Search operations
+    setSearchQuery: (query) => {
+      set({ searchQuery: query });
+    },
+
     // Session state management
     setLoading: (loading) => {
       set({ isLoading: loading });
@@ -568,6 +580,7 @@ if (typeof window !== 'undefined') {
 export const useSessions = () => useSessionStore(state => state.sessions);
 export const useCurrentSessionId = () => useSessionStore(state => state.currentSessionId);
 export const useCurrentSession = () => useSessionStore(state => state.getCurrentSession());
+export const useSessionSearchQuery = () => useSessionStore(state => state.searchQuery);
 export const useSessionLoading = () => useSessionStore(state => state.isLoading);
 export const useSessionError = () => useSessionStore(state => state.error);
 
@@ -603,7 +616,8 @@ export const useSessionAPIActions = () => useSessionStore(state => ({
 
 export const useSessionStateActions = () => useSessionStore(state => ({
   setLoading: state.setLoading,
-  setError: state.setError
+  setError: state.setError,
+  setSearchQuery: state.setSearchQuery
 }));
 
 // Composite action hook for backward compatibility
@@ -616,6 +630,7 @@ export const useSessionActions = () => useSessionStore(state => ({
   clearMessages: state.clearMessages,
   setLoading: state.setLoading,
   setError: state.setError,
+  setSearchQuery: state.setSearchQuery,
   saveToStorage: state.saveToStorage,
   loadFromStorage: state.loadFromStorage,
   loadFromAPI: state.loadFromAPI,

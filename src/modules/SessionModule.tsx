@@ -49,7 +49,7 @@ import { useSessionHandler } from '../components/core/SessionHandler';
 // 直接使用useSessionStore，不再依赖SessionProvider
 import { ChatSession } from '../hooks/useSession';
 import { ChatMessage } from '../types/chatTypes';
-import { 
+import {
   useCurrentSessionId,
   useCurrentSession, // 使用store版本
   useSessions, // 使用store版本
@@ -58,12 +58,14 @@ import {
   useIsSyncingToAPI,
   useSyncStatus,
   useLastSyncError,
+  useSessionSearchQuery,
   useSessionCRUDActions,
   useSessionStorageActions,
-  useSessionAPIActions
+  useSessionAPIActions,
+  useSessionStateActions
 } from '../stores/useSessionStore';
 
-interface SessionModuleProps extends Omit<LeftSidebarLayoutProps, 'sessions' | 'currentSessionId' | 'onSessionSelect' | 'onNewSession' | 'onDeleteSession' | 'onRenameSession'> {
+interface SessionModuleProps extends Omit<LeftSidebarLayoutProps, 'sessions' | 'currentSessionId' | 'onSessionSelect' | 'onNewSession' | 'onDeleteSession' | 'onRenameSession' | 'searchQuery' | 'onSearchChange'> {
   // All LeftSidebarLayout props except the data and callback props that we'll provide from business logic
   // Include userContent to be passed through to LeftSidebarLayout
 }
@@ -135,11 +137,13 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   }, [rawSessions, currentSessionId]);
   const syncStatus = useSyncStatus();
   const lastSyncError = useLastSyncError();
-  
+  const searchQuery = useSessionSearchQuery();
+
   // Use selective action hooks for better performance
   const sessionCRUDActions = useSessionCRUDActions();
   const sessionStorageActions = useSessionStorageActions();
   const sessionAPIActions = useSessionAPIActions();
+  const sessionStateActions = useSessionStateActions();
   
   // ================================================================================
   // 业务逻辑方法
@@ -402,7 +406,11 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   const handleEditingTitleChange = useCallback((title: string) => {
     setEditingTitle(title);
   }, []);
-  
+
+  const handleSearchChange = useCallback((query: string) => {
+    sessionStateActions.setSearchQuery(query);
+  }, [sessionStateActions]);
+
   // ================================================================================
   // 生命周期管理 - 修复无限循环问题
   // ================================================================================
@@ -501,6 +509,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
       isLoadingSession={isLoading || isCreatingSession}
       editingSessionId={editingSessionId}
       editingTitle={editingTitle}
+      searchQuery={searchQuery}
       onSessionSelect={handleSessionSelect}
       onNewSession={handleNewSession}
       onDeleteSession={handleDeleteSession}
@@ -508,6 +517,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
       onStartRename={handleStartRename}
       onCancelRename={handleCancelRename}
       onEditingTitleChange={handleEditingTitleChange}
+      onSearchChange={handleSearchChange}
       userContent={props.userContent}
     />
   );

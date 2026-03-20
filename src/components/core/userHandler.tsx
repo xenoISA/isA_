@@ -32,7 +32,7 @@
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import { useUserModule } from '../../modules/UserModule';
 import { useAuth } from '../../hooks/useAuth';
-import { PlanType, CreditConsumption } from '../../types/userTypes';
+import { PlanType, CreditConsumption, UpdateProfileData } from '../../types/userTypes';
 import { logger, LogCategory } from '../../utils/logger';
 import { surfaceLinks } from '../../config/surfaceConfig';
 
@@ -74,7 +74,7 @@ export interface UserHandlerInterface {
   
   // Profile Actions
   handleEditProfile: () => void;
-  handleSaveProfile: () => void;
+  handleSaveProfile: (data: UpdateProfileData) => Promise<void>;
   handleCancelEdit: () => void;
   
   // UI Actions
@@ -193,22 +193,26 @@ export const UserHandler: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // ================================================================================
-  // Profile Actions (placeholder for future implementation)
+  // Profile Actions
   // ================================================================================
 
   const handleEditProfile = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Edit profile initiated');
-    // Profile editing not yet implemented
   }, []);
 
-  const handleSaveProfile = useCallback(() => {
-    logger.info(LogCategory.USER_AUTH, 'UserHandler: Save profile initiated');
-    // Profile saving not yet implemented
-  }, []);
+  const handleSaveProfile = useCallback(async (data: UpdateProfileData) => {
+    try {
+      logger.info(LogCategory.USER_AUTH, 'UserHandler: Saving profile', { fields: Object.keys(data) });
+      await userModule.updateProfile(data);
+      logger.info(LogCategory.USER_AUTH, 'UserHandler: Profile saved successfully');
+    } catch (error) {
+      logger.error(LogCategory.USER_AUTH, 'UserHandler: Failed to save profile', { error });
+      throw error;
+    }
+  }, [userModule]);
 
   const handleCancelEdit = useCallback(() => {
     logger.info(LogCategory.USER_AUTH, 'UserHandler: Cancel edit initiated');
-    // Cancel edit not yet implemented
   }, []);
 
   // ================================================================================

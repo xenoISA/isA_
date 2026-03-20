@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { createLogger } from '../../../utils/logger';
 import { ChatSession } from '../../../hooks/useSession';
 import { getMessageContent } from '../../../types/chatTypes';
@@ -14,7 +14,8 @@ export interface SessionHistoryProps {
   isLoading?: boolean;
   editingSessionId?: string | null;
   editingTitle?: string;
-  
+  searchQuery?: string;
+
   // Event callbacks - handled by parent
   onSessionSelect?: (sessionId: string) => void;
   onNewSession?: () => void;
@@ -23,7 +24,8 @@ export interface SessionHistoryProps {
   onStartRename?: (sessionId: string, currentTitle: string) => void;
   onCancelRename?: () => void;
   onEditingTitleChange?: (title: string) => void;
-  
+  onSearchChange?: (query: string) => void;
+
   // UI props
   showCreateButton?: boolean;
   className?: string;
@@ -42,7 +44,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   isLoading = false,
   editingSessionId,
   editingTitle = '',
-  
+  searchQuery = '',
+
   // Event callbacks
   onSessionSelect,
   onNewSession,
@@ -51,13 +54,24 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   onStartRename,
   onCancelRename,
   onEditingTitleChange,
-  
+  onSearchChange,
+
   // UI props
   showCreateButton = true,
   className = ''
 }) => {
   const { t } = useTranslation();
-  
+
+  // Client-side filtering by search query
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return sessions;
+    const q = searchQuery.toLowerCase();
+    return sessions.filter((session) => {
+      const title = (session.title || '').toLowerCase();
+      const lastMsg = (session.lastMessage || '').toLowerCase();
+      return title.includes(q) || lastMsg.includes(q);
+    });
+  }, [sessions, searchQuery]);
 
   return (
     <div className={`session-history ${className} flex flex-col h-full`}>
@@ -91,9 +105,43 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         )}
       </div>
 
+      {/* Search Input */}
+      <div className="mb-3 relative">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+        >
+          <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+          <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange?.(e.target.value)}
+          placeholder={t('sessions.searchPlaceholder')}
+          className="
+            w-full pl-9 pr-8 py-2 rounded-xl text-sm
+            bg-white/5 hover:bg-white/8 focus:bg-white/10
+            border border-white/10 focus:border-white/25
+            text-white/90 placeholder-white/35
+            outline-none transition-all duration-200
+          "
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange?.('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
       {/* Sessions List - Fixed scrolling */}
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-1 pr-1" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-        {!Array.isArray(sessions) || sessions.length === 0 ? (
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-1 pr-1" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+        {!Array.isArray(filteredSessions) || filteredSessions.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center p-8">
               <div className="text-white/70 text-sm font-medium">{t('sessions.noSessions')}</div>
@@ -101,7 +149,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             </div>
           </div>
         ) : (
-          sessions.filter(session => session && typeof session === 'object' && session.id).map((session) => {
+          filteredSessions.filter(session => session && typeof session === 'object' && session.id).map((session) => {
             const isActive = session.id === currentSessionId;
             
             return (

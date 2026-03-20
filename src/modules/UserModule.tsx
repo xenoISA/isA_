@@ -37,7 +37,7 @@ import { useUserStore } from '../stores/useUserStore';
 import { UserService } from '../api/userService';
 import { logger, LogCategory, createLogger } from '../utils/logger';
 const log = createLogger('UserModule');
-import { PlanType, CreateExternalUserData, CreditConsumption } from '../types/userTypes';
+import { PlanType, CreateExternalUserData, UpdateProfileData, CreditConsumption } from '../types/userTypes';
 import { useUser } from '../hooks/useUser';
 import '../utils/creditMonitor'; // 🎯 初始化信用监控系统
 
@@ -67,6 +67,7 @@ export interface UserModuleInterface {
   signup: () => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  updateProfile: (data: UpdateProfileData) => Promise<void>;
   consumeUserCredits: (consumption: CreditConsumption) => Promise<void>;
   createCheckout: (planType: PlanType) => Promise<string>;
   
@@ -352,6 +353,20 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [externalUser, isAuthenticated, userHook, getAccessToken]);
 
+  const updateProfile = useCallback(async (data: UpdateProfileData) => {
+    if (!isAuthenticated) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const token = await getAccessToken();
+      await userHook.updateProfile(data, token);
+    } catch (error) {
+      logger.error(LogCategory.USER_AUTH, 'Failed to update profile', { error });
+      throw error;
+    }
+  }, [isAuthenticated, userHook, getAccessToken]);
+
   const createCheckout = useCallback(async (planType: PlanType): Promise<string> => {
     const eu = externalUser as Record<string, any> | null;
     const userId = eu?.auth0_id || eu?.sub || eu?.user_id || eu?.id;
@@ -491,6 +506,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     signup,
     logout,
     refreshUser,
+    updateProfile,
     consumeUserCredits,
     createCheckout,
     
@@ -516,6 +532,7 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     signup,
     logout,
     refreshUser,
+    updateProfile,
     consumeUserCredits,
     createCheckout,
     getAccessToken,

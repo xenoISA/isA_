@@ -36,6 +36,19 @@ vi.mock('../../config/gatewayConfig', () => ({
       CHAT: 'http://localhost:9080/mate/v1/chat',
     },
   },
+  getAuthHeaders: vi.fn(() => ({})),
+}));
+
+const mockUploadFile = vi.fn().mockResolvedValue({
+  file_id: 'uploaded-file-1',
+  file_name: 'test.png',
+  file_size: 7,
+});
+
+vi.mock('../storageService', () => ({
+  getStorageService: vi.fn(() => ({
+    uploadFile: (...args: any[]) => mockUploadFile(...args),
+  })),
 }));
 
 vi.mock('../../utils/logger', () => ({
@@ -546,7 +559,7 @@ describe('ChatService', () => {
   // ==========================================================================
 
   describe('sendMultimodalMessage', () => {
-    test('falls back to sendMessage', async () => {
+    test('uploads files then sends message with file references', async () => {
       mockConnection.stream.mockReturnValue(
         createAsyncIterable(['data: [DONE]'])
       );
@@ -559,11 +572,14 @@ describe('ChatService', () => {
         [new File(['content'], 'test.png', { type: 'image/png' })]
       );
 
-      // Should use AGENTS.CHAT, same as sendMessage
+      // Files should have been uploaded first
+      expect(mockUploadFile).toHaveBeenCalledTimes(1);
+
+      // Should use AGENTS.CHAT with file_attachments in prompt_args
       expect(mockTransport.connect).toHaveBeenCalledWith(
         'http://localhost:9080/agents/chat',
         expect.objectContaining({
-          body: expect.stringContaining('"message":"Look at this"'),
+          body: expect.stringContaining('"file_attachments"'),
         })
       );
       expect(callbacks.onStreamComplete).toHaveBeenCalled();

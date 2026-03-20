@@ -25,6 +25,7 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useUserStore } from '../stores/useUserStore';
 import { logger, LogCategory } from '../utils/logger';
+import { organizationService } from '../api/organizationService';
 
 // ================================================================================
 // Organization Types
@@ -165,20 +166,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Creating organization', { name: data.name });
-      
-      // Mock implementation — API integration tracked separately
-      const organization: Organization = {
-        id: `org_${Date.now()}`,
-        name: data.name,
-        domain: data.domain,
-        plan: data.plan,
-        billingEmail: data.billingEmail,
-        status: 'active',
-        settings: data.settings || {},
-        creditsPool: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+
+      const organization = await organizationService.createOrganization(data);
 
       setUserOrganizations(prev => [...prev, organization]);
       
@@ -203,12 +192,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Updating organization', { organizationId: id });
-      
-      // Mock — API integration tracked separately
-      // const organization = await organizationService.updateOrganization(id, updates);
-      
-      // Mock implementation
-      const updatedOrg = { ...currentOrganization, ...updates, updatedAt: new Date().toISOString() } as Organization;
+
+      const updatedOrg = await organizationService.updateOrganization(id, updates);
       
       setCurrentOrganization(updatedOrg);
       setUserOrganizations(prev => prev.map(org => org.id === id ? updatedOrg : org));
@@ -232,9 +217,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Deleting organization', { organizationId: id });
-      
-      // Mock — API integration tracked separately
-      // await organizationService.deleteOrganization(id);
+
+      await organizationService.deleteOrganization(id);
       
       setUserOrganizations(prev => prev.filter(org => org.id !== id));
       if (currentOrganization?.id === id) {
@@ -261,30 +245,13 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
     setMembersError(null);
 
     try {
-      logger.info(LogCategory.USER_AUTH, 'Inviting member to organization', { 
-        organizationId, 
-        email: data.email, 
-        role: data.role 
-      });
-      
-      // Mock — API integration tracked separately with email service integration
-      // const invitation = await organizationService.inviteMember(organizationId, data);
-      
-      // Mock implementation
-      const invitation: OrganizationInvitation = {
-        id: `inv_${Date.now()}`,
+      logger.info(LogCategory.USER_AUTH, 'Inviting member to organization', {
         organizationId,
         email: data.email,
-        role: data.role,
-        permissions: data.permissions || [],
-        invitedBy: useUserStore.getState().externalUser?.auth0_id ?? 'unknown',
-        invitedByName: useUserStore.getState().externalUser?.name ?? 'Unknown User',
-        message: data.message,
-        token: `token_${Date.now()}`,
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-        createdAt: new Date().toISOString()
-      };
+        role: data.role
+      });
+
+      const invitation = await organizationService.inviteMember(organizationId, data);
 
       setInvitations(prev => [...prev, invitation]);
       
@@ -310,13 +277,11 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Accepting invitation', { invitationToken });
-      
-      // Mock — API integration tracked separately
-      // await organizationService.acceptInvitation(invitationToken);
-      
-      // Update invitation status
-      setInvitations(prev => prev.map(inv => 
-        inv.token === invitationToken 
+
+      await organizationService.acceptInvitation(invitationToken);
+
+      setInvitations(prev => prev.map(inv =>
+        inv.token === invitationToken
           ? { ...inv, status: 'accepted' as const }
           : inv
       ));
@@ -338,12 +303,14 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Cancelling invitation', { invitationId });
-      
-      // Mock — API integration tracked separately
-      // await organizationService.cancelInvitation(invitationId);
-      
-      setInvitations(prev => prev.map(inv => 
-        inv.id === invitationId 
+
+      // Find the invitation to get the organizationId
+      const targetInv = invitations.find(inv => inv.id === invitationId);
+      const orgId = targetInv?.organizationId || currentOrganization?.id || '';
+      await organizationService.cancelInvitation(orgId, invitationId);
+
+      setInvitations(prev => prev.map(inv =>
+        inv.id === invitationId
           ? { ...inv, status: 'cancelled' as const }
           : inv
       ));
@@ -357,7 +324,7 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
     } finally {
       setMembersLoading(false);
     }
-  }, []);
+  }, [invitations, currentOrganization]);
 
   const resendInvitation = useCallback(async (invitationId: string): Promise<void> => {
     setMembersLoading(true);
@@ -365,9 +332,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Resending invitation', { invitationId });
-      
-      // Mock — API integration tracked separately with email service
-      // await organizationService.resendInvitation(invitationId);
+
+      await organizationService.resendInvitation(invitationId);
       
       logger.info(LogCategory.USER_AUTH, 'Invitation resent successfully');
     } catch (error) {
@@ -386,12 +352,11 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Updating member role', { organizationId, userId, role });
-      
-      // Mock — API integration tracked separately
-      // await organizationService.updateMemberRole(organizationId, userId, role, permissions);
-      
-      setMembers(prev => prev.map(member => 
-        member.userId === userId 
+
+      await organizationService.updateMemberRole(organizationId, userId, role, permissions);
+
+      setMembers(prev => prev.map(member =>
+        member.userId === userId
           ? { ...member, role: role as any, permissions: permissions || member.permissions }
           : member
       ));
@@ -413,10 +378,9 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Removing member from organization', { organizationId, userId });
-      
-      // Mock — API integration tracked separately
-      // await organizationService.removeMember(organizationId, userId);
-      
+
+      await organizationService.removeMember(organizationId, userId);
+
       setMembers(prev => prev.filter(member => member.userId !== userId));
       
       logger.info(LogCategory.USER_AUTH, 'Member removed successfully');
@@ -440,12 +404,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Fetching user organizations');
-      
-      // Mock — API integration tracked separately
-      // const organizations = await organizationService.getUserOrganizations();
-      
-      // Mock implementation
-      const organizations: Organization[] = [];
+
+      const organizations = await organizationService.getUserOrganizations();
       
       setUserOrganizations(organizations);
       
@@ -470,15 +430,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Fetching organization', { organizationId: id });
-      
-      // Mock — API integration tracked separately
-      // const organization = await organizationService.getOrganization(id);
-      
-      // Mock implementation
-      const organization = userOrganizations.find(org => org.id === id);
-      if (!organization) {
-        throw new Error('Organization not found');
-      }
+
+      const organization = await organizationService.getOrganization(id);
       
       setCurrentOrganization(organization);
       
@@ -493,7 +446,7 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
     } finally {
       setIsLoading(false);
     }
-  }, [userOrganizations]);
+  }, []);
 
   const fetchOrganizationMembers = useCallback(async (id: string): Promise<OrganizationMember[]> => {
     setMembersLoading(true);
@@ -501,21 +454,17 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Fetching organization members', { organizationId: id });
+
+      const fetchedMembers = await organizationService.getOrganizationMembers(id);
+
+      setMembers(fetchedMembers);
       
-      // Mock — API integration tracked separately
-      // const members = await organizationService.getOrganizationMembers(id);
-      
-      // Mock implementation
-      const members: OrganizationMember[] = [];
-      
-      setMembers(members);
-      
-      logger.info(LogCategory.USER_AUTH, 'Organization members fetched successfully', { 
+      logger.info(LogCategory.USER_AUTH, 'Organization members fetched successfully', {
         organizationId: id,
-        count: members.length 
+        count: fetchedMembers.length
       });
-      
-      return members;
+
+      return fetchedMembers;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch members';
       setMembersError(errorMessage);
@@ -532,21 +481,17 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Fetching organization invitations', { organizationId: id });
-      
-      // Mock — API integration tracked separately
-      // const invitations = await organizationService.getOrganizationInvitations(id);
-      
-      // Mock implementation
-      const invitations: OrganizationInvitation[] = [];
-      
-      setInvitations(invitations);
-      
-      logger.info(LogCategory.USER_AUTH, 'Organization invitations fetched successfully', { 
+
+      const fetchedInvitations = await organizationService.getOrganizationInvitations(id);
+
+      setInvitations(fetchedInvitations);
+
+      logger.info(LogCategory.USER_AUTH, 'Organization invitations fetched successfully', {
         organizationId: id,
-        count: invitations.length 
+        count: fetchedInvitations.length
       });
-      
-      return invitations;
+
+      return fetchedInvitations;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch invitations';
       setMembersError(errorMessage);
@@ -560,19 +505,8 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
   const fetchOrganizationStats = useCallback(async (id: string): Promise<OrganizationStats> => {
     try {
       logger.info(LogCategory.USER_AUTH, 'Fetching organization stats', { organizationId: id });
-      
-      // Mock — API integration tracked separately
-      // const stats = await organizationService.getOrganizationStats(id);
-      
-      // Mock implementation
-      const stats: OrganizationStats = {
-        totalMembers: members.length,
-        activeMembers: members.filter(m => m.status === 'active').length,
-        pendingInvitations: invitations.filter(i => i.status === 'pending').length,
-        totalCreditsUsed: 0,
-        monthlyCreditsUsed: 0,
-        createdAt: currentOrganization?.createdAt || new Date().toISOString()
-      };
+
+      const stats = await organizationService.getOrganizationStats(id);
       
       logger.info(LogCategory.USER_AUTH, 'Organization stats fetched successfully', { organizationId: id });
       
@@ -581,7 +515,7 @@ export const OrganizationModule: React.FC<{ children: React.ReactNode }> = ({ ch
       logger.error(LogCategory.USER_AUTH, 'Failed to fetch organization stats', { error, organizationId: id });
       throw error;
     }
-  }, [members, invitations, currentOrganization]);
+  }, []);
 
   // ================================================================================
   // Utilities
