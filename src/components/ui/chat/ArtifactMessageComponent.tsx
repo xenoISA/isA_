@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { ArtifactMessage } from '../../../types/chatTypes';
 import { ContentRenderer, StatusRenderer, Button } from '../../shared';
 
@@ -16,7 +16,26 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
   onReopen 
 }) => {
   const { artifact } = artifactMessage;
-  
+  const [copiedContent, setCopiedContent] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyContent = useCallback(async () => {
+    if (!artifact.content) return;
+    const text = typeof artifact.content === 'string'
+      ? artifact.content
+      : JSON.stringify(artifact.content, null, 2);
+    await navigator.clipboard.writeText(text);
+    setCopiedContent(true);
+    setTimeout(() => setCopiedContent(false), 2000);
+  }, [artifact.content]);
+
+  const handleCopyLink = useCallback(async () => {
+    const url = `${window.location.origin}${window.location.pathname}?artifact=${artifact.id}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  }, [artifact.id]);
+
   return (
     <div className="my-4 max-w-sm">
       {/* Compact Header */}
@@ -42,20 +61,46 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
             </p>
           </div>
         </div>
-        <Button
-          onClick={onReopen}
-          variant="secondary"
-          size="xs"
-          icon="↗️"
-          style={{
-            background: 'var(--glass-secondary)',
-            color: 'var(--accent-soft)',
-            border: 'none'
-          }}
-          className="hover:shadow-lg"
-        >
-          Open
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={handleCopyContent}
+            variant="ghost"
+            size="xs"
+            icon={copiedContent ? '✅' : '📋'}
+            style={{
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              border: 'none'
+            }}
+            title="Copy content"
+          />
+          <Button
+            onClick={handleCopyLink}
+            variant="ghost"
+            size="xs"
+            icon={copiedLink ? '✅' : '🔗'}
+            style={{
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              border: 'none'
+            }}
+            title="Copy share link"
+          />
+          <Button
+            onClick={onReopen}
+            variant="secondary"
+            size="xs"
+            icon="↗️"
+            style={{
+              background: 'var(--glass-secondary)',
+              color: 'var(--accent-soft)',
+              border: 'none'
+            }}
+            className="hover:shadow-lg"
+          >
+            Open
+          </Button>
+        </div>
       </div>
       
       {/* Content Area */}
@@ -139,10 +184,10 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
             {/* Quick Actions for Text */}
             <div className="flex gap-1">
               <Button
-                onClick={() => navigator.clipboard.writeText(artifact.content)}
+                onClick={handleCopyContent}
                 variant="secondary"
                 size="xs"
-                icon="📋"
+                icon={copiedContent ? '✅' : '📋'}
                 className="flex-1"
                 style={{
                   background: 'var(--glass-secondary)',
@@ -150,23 +195,20 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
                   border: 'none'
                 }}
               >
-                Copy
+                {copiedContent ? 'Copied!' : 'Copy'}
               </Button>
               <Button
-                onClick={() => {
-                  const words = artifact.content.split(/\s+/).length;
-                  alert(`Word count: ${words} words`);
-                }}
+                onClick={handleCopyLink}
                 variant="ghost"
                 size="xs"
-                icon="📊"
+                icon={copiedLink ? '✅' : '🔗'}
                 style={{
                   background: 'var(--glass-primary)',
                   color: 'var(--text-muted)',
                   border: 'none'
                 }}
               >
-                Stats
+                {copiedLink ? 'Copied!' : 'Share'}
               </Button>
             </div>
           </div>

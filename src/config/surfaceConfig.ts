@@ -100,6 +100,18 @@ export const appendSearchParams = (url: string, search: string): string => {
   return absoluteUrl.toString();
 };
 
+export const docsLinks = Object.freeze({
+  home: surfaceUrls.docs,
+  gettingStarted: appendPath(surfaceUrls.docs, '/getting-started'),
+  agentSDK: appendPath(surfaceUrls.docs, '/agent-sdk'),
+  mcpTools: appendPath(surfaceUrls.docs, '/mcp'),
+  modelRouting: appendPath(surfaceUrls.docs, '/model'),
+  apiReference: appendPath(surfaceUrls.docs, '/agent-sdk/api-reference'),
+  deployment: appendPath(surfaceUrls.docs, '/agent-sdk/deployment-guide'),
+  quickstarts: appendPath(surfaceUrls.docs, '/quickstarts'),
+  cookbook: appendPath(surfaceUrls.docs, '/cookbook'),
+});
+
 export const surfaceLinks = Object.freeze({
   marketingHome: appendPath(surfaceUrls.marketing, '/home'),
   marketingPricing: appendPath(surfaceUrls.marketing, '/pricing'),

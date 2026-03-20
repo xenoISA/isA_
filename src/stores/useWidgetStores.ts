@@ -550,6 +550,152 @@ export const useCustomAutomationWidgetStore = createBaseWidgetStore(
 export type CustomAutomationWidgetStore = AutomationSpecificState & AutomationSpecificActions;
 
 // ============================================================================
+// DigitalHub Widget State (File Organization & Storage)
+// ============================================================================
+
+interface DigitalHubSpecificState {
+  files: any[];
+  currentPath: string;
+  lastQuery: string;
+}
+
+interface DigitalHubSpecificActions {
+  setDigitalHubFiles: (files: any[]) => void;
+  setDigitalHubCurrentPath: (path: string) => void;
+  setDigitalHubLastQuery: (query: string) => void;
+}
+
+// Create DigitalHub store using BaseWidgetStore factory
+export const useDigitalHubWidgetStore = createBaseWidgetStore(
+  // Widget configuration
+  {
+    widgetType: 'digitalhub',
+    logEmoji: '📂',
+    defaultTemplateName: 'storage_list_prompt'
+  },
+
+  // Specific initial state
+  {
+    files: [],
+    currentPath: '/',
+    lastQuery: ''
+  },
+
+  // Specific actions factory
+  (set: any, get: any, helpers: any) => ({
+    setDigitalHubFiles: (files: any[]) => {
+      set((state: any) => ({ ...state, files }));
+      helpers.logger.debug('ARTIFACT_CREATION', `${helpers.config.logEmoji} DigitalHub files updated`, {
+        fileCount: files.length
+      });
+    },
+    setDigitalHubCurrentPath: (path: string) => {
+      set((state: any) => ({ ...state, currentPath: path }));
+      helpers.logger.debug('ARTIFACT_CREATION', `${helpers.config.logEmoji} DigitalHub path updated`, { path });
+    },
+    setDigitalHubLastQuery: (query: string) => {
+      set((state: any) => ({ ...state, lastQuery: query }));
+      helpers.logger.debug('ARTIFACT_CREATION', `${helpers.config.logEmoji} DigitalHub query updated`, { query });
+    }
+  }),
+
+  // Custom result handlers
+  {
+    onMessageComplete: (completeMessage?: string, params?: any, helpers?: any, get?: any) => {
+      const store = get();
+      if (completeMessage && helpers) {
+        // TODO: Parse file listing results from message
+        extractTextFromMessage(completeMessage, () => {}, helpers);
+      }
+    },
+    onArtifactCreated: (artifact: any, params: any, helpers: any, get: any) => {
+      const store = get();
+      if (artifact.content && artifact.type === 'data') {
+        try {
+          const data = JSON.parse(artifact.content);
+          if (data.files) {
+            store.setDigitalHubFiles(data.files);
+          }
+        } catch (e) {
+          // Not JSON data
+        }
+        helpers.markWithArtifacts();
+      }
+    }
+  }
+);
+
+export type DigitalHubWidgetStore = DigitalHubSpecificState & DigitalHubSpecificActions;
+
+// ============================================================================
+// Doc Widget State (Document Processing)
+// ============================================================================
+
+interface DocSpecificState {
+  currentDocument: any | null;
+  generatedContent: string | null;
+}
+
+interface DocSpecificActions {
+  setDocCurrentDocument: (document: any | null) => void;
+  setDocGeneratedContent: (content: string | null) => void;
+}
+
+// Create Doc store using BaseWidgetStore factory
+export const useDocWidgetStore = createBaseWidgetStore(
+  // Widget configuration
+  {
+    widgetType: 'doc',
+    logEmoji: '📝',
+    defaultTemplateName: 'doc_create_prompt'
+  },
+
+  // Specific initial state
+  {
+    currentDocument: null,
+    generatedContent: null
+  },
+
+  // Specific actions factory
+  (set: any, get: any, helpers: any) => ({
+    setDocCurrentDocument: (document: any | null) => {
+      set((state: any) => ({ ...state, currentDocument: document }));
+      helpers.logger.debug('ARTIFACT_CREATION', `${helpers.config.logEmoji} Doc document updated`, {
+        hasDocument: !!document
+      });
+    },
+    setDocGeneratedContent: (content: string | null) => {
+      set((state: any) => ({ ...state, generatedContent: content }));
+      helpers.logger.debug('ARTIFACT_CREATION', `${helpers.config.logEmoji} Doc content updated`, {
+        contentLength: content?.length
+      });
+    }
+  }),
+
+  // Custom result handlers
+  {
+    buildTemplateParams: templateBuilders.contentGeneration,
+    onMessageComplete: (completeMessage?: string, params?: any, helpers?: any, get?: any) => {
+      const store = get();
+      const setDocGeneratedContent = store.setDocGeneratedContent;
+      if (completeMessage && helpers) {
+        extractTextFromMessage(completeMessage, setDocGeneratedContent, helpers);
+      }
+    },
+    onArtifactCreated: (artifact: any, params: any, helpers: any, get: any) => {
+      const store = get();
+      const setDocGeneratedContent = store.setDocGeneratedContent;
+      if (artifact.content && !store.generatedContent) {
+        setDocGeneratedContent(artifact.content);
+        helpers.markWithArtifacts();
+      }
+    }
+  }
+);
+
+export type DocWidgetStore = DocSpecificState & DocSpecificActions;
+
+// ============================================================================
 // 选择性订阅 Widget Hooks - 避免流数据重复处理
 // ============================================================================
 
@@ -655,6 +801,64 @@ export const useKnowledgeActions = () => useKnowledgeWidgetStore((state: any) =>
   triggerKnowledgeAnalysis: state.triggerAction
 }));
 
+// DigitalHub Widget - selective subscriptions
+export const useDigitalHubFiles = () => useDigitalHubWidgetStore((state: any) => state.files);
+export const useDigitalHubCurrentPath = () => useDigitalHubWidgetStore((state: any) => state.currentPath);
+export const useDigitalHubIsProcessing = () => useDigitalHubWidgetStore((state: any) => state.isProcessing);
+export const useDigitalHubLastQuery = () => useDigitalHubWidgetStore((state: any) => state.lastQuery);
+
+export const useDigitalHubState = () => {
+  const files = useDigitalHubFiles();
+  const currentPath = useDigitalHubCurrentPath();
+  const isProcessing = useDigitalHubIsProcessing();
+  const lastQuery = useDigitalHubLastQuery();
+
+  return {
+    files,
+    currentPath,
+    isProcessing,
+    lastQuery
+  };
+};
+
+export const useDigitalHubActions = () => useDigitalHubWidgetStore((state: any) => ({
+  setDigitalHubFiles: state.setDigitalHubFiles,
+  setDigitalHubCurrentPath: state.setDigitalHubCurrentPath,
+  setDigitalHubLastQuery: state.setDigitalHubLastQuery,
+  setDigitalHubProcessing: state.setProcessing,
+  clearDigitalHubData: state.clearData,
+  triggerDigitalHubAction: state.triggerAction
+}));
+
+// Doc Widget - selective subscriptions
+export const useDocCurrentDocument = () => useDocWidgetStore((state: any) => state.currentDocument);
+export const useDocGeneratedContent = () => useDocWidgetStore((state: any) => state.generatedContent);
+export const useDocIsProcessing = () => useDocWidgetStore((state: any) => state.isProcessing);
+export const useDocLastParams = () => useDocWidgetStore((state: any) => state.lastParams);
+
+export const useDocState = () => {
+  const currentDocument = useDocCurrentDocument();
+  const generatedContent = useDocGeneratedContent();
+  const isProcessing = useDocIsProcessing();
+  const lastParams = useDocLastParams();
+
+  return {
+    currentDocument,
+    generatedContent,
+    isProcessing,
+    lastParams
+  };
+};
+
+export const useDocActions = () => useDocWidgetStore((state: any) => ({
+  setDocCurrentDocument: state.setDocCurrentDocument,
+  setDocGeneratedContent: state.setDocGeneratedContent,
+  setDocProcessing: state.setProcessing,
+  setDocParams: state.setParams,
+  clearDocData: state.clearData,
+  triggerDocAction: state.triggerAction
+}));
+
 // 统一的Widget清理操作
 export const clearAllWidgetData = () => {
   useDreamWidgetStore.getState().clearData();
@@ -663,6 +867,8 @@ export const clearAllWidgetData = () => {
   useDataScientistWidgetStore.getState().clearData();
   useKnowledgeWidgetStore.getState().clearData();
   useCustomAutomationWidgetStore.getState().clearData();
+  useDigitalHubWidgetStore.getState().clearData();
+  useDocWidgetStore.getState().clearData();
   logger.debug(LogCategory.ARTIFACT_CREATION, 'All widget data cleared');
 };
 

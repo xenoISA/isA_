@@ -209,6 +209,30 @@ export function createWidgetHandlers(deps: WidgetHandlerDeps) {
             displayContent = 'Automation process completed';
             artifactContent = automationContent;
           }
+        } else if (widgetType === 'digitalhub') {
+          const digitalHubContent = pluginResult.output.content;
+          if (typeof digitalHubContent === 'object' && digitalHubContent.files) {
+            displayContent = `File Operation: ${digitalHubContent.files.length} file(s) found`;
+            artifactContent = digitalHubContent;
+          } else if (typeof digitalHubContent === 'string') {
+            displayContent = `File Operation: ${digitalHubContent.substring(0, 150)}...`;
+            artifactContent = digitalHubContent;
+          } else {
+            displayContent = 'File operation completed';
+            artifactContent = digitalHubContent;
+          }
+        } else if (widgetType === 'doc') {
+          const docContent = pluginResult.output.content;
+          if (typeof docContent === 'object' && docContent.document) {
+            displayContent = `Document: ${docContent.document.title || 'Untitled'} - ${(docContent.document.content || '').substring(0, 100)}...`;
+            artifactContent = docContent;
+          } else if (typeof docContent === 'string') {
+            displayContent = `Document: ${docContent.substring(0, 150)}...`;
+            artifactContent = docContent;
+          } else {
+            displayContent = 'Document operation completed';
+            artifactContent = docContent;
+          }
         } else {
           displayContent = typeof pluginResult.output.content === 'string'
             ? pluginResult.output.content

@@ -23,6 +23,29 @@
  */
 
 // ================================================================================
+// Role-Based Access Control Types
+// ================================================================================
+
+export type UserRole = 'user' | 'developer' | 'admin';
+
+export type Permission =
+  | 'app.chat'
+  | 'app.widgets'
+  | 'console.view'
+  | 'console.manage'
+  | 'console.api_keys'
+  | 'docs.view'
+  | 'admin.users'
+  | 'admin.billing'
+  | 'admin.orgs';
+
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  user: ['app.chat', 'app.widgets', 'docs.view'],
+  developer: ['app.chat', 'app.widgets', 'console.view', 'console.manage', 'console.api_keys', 'docs.view'],
+  admin: ['app.chat', 'app.widgets', 'console.view', 'console.manage', 'console.api_keys', 'docs.view', 'admin.users', 'admin.billing', 'admin.orgs'],
+};
+
+// ================================================================================
 // Basic User Data Types
 // ================================================================================
 

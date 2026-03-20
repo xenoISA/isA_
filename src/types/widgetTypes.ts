@@ -24,7 +24,7 @@
 import { AppId } from './appTypes';
 
 // 统一的Widget类型定义 - 与AppId保持一致
-export type WidgetType = 'dream' | 'hunt' | 'omni' | 'knowledge' | 'data_scientist' | 'custom_automation';
+export type WidgetType = 'dream' | 'hunt' | 'omni' | 'knowledge' | 'data_scientist' | 'custom_automation' | 'digitalhub' | 'doc';
 
 // 小部件配置接口
 export interface WidgetConfig {

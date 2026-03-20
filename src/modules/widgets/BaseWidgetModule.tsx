@@ -408,7 +408,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
             if (typeof automationContent === 'object' && automationContent.summary) {
               formattedContent = automationContent.summary;
               displayTitle = `Automation Results`;
-              
+
               // Add to history with automation type
               addToHistory({
                 type: 'analysis',
@@ -423,7 +423,7 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
             } else if (typeof automationContent === 'string') {
               formattedContent = automationContent;
               displayTitle = `Automation Results`;
-              
+
               // Add to history with automation type
               addToHistory({
                 type: 'analysis',
@@ -437,6 +437,74 @@ export const BaseWidgetModule = <TParams extends BaseWidgetParams, TResult exten
             } else {
               formattedContent = 'Automation process completed';
               displayTitle = 'Custom Automation completed';
+            }
+          } else if (config.type === 'digitalhub') {
+            // Handle DigitalHub widget results
+            const digitalHubContent = result.content;
+            if (typeof digitalHubContent === 'object' && digitalHubContent.files) {
+              formattedContent = `${digitalHubContent.files.length} file(s) found`;
+              displayTitle = `File Operation Results`;
+
+              addToHistory({
+                type: 'text',
+                title: `File Operation Results`,
+                content: JSON.stringify(digitalHubContent, null, 2),
+                params: {
+                  prompt: result.metadata?.prompt,
+                  originalType: 'file_operation',
+                  fileCount: digitalHubContent.files.length
+                }
+              });
+            } else if (typeof digitalHubContent === 'string') {
+              formattedContent = digitalHubContent;
+              displayTitle = `File Operation Results`;
+
+              addToHistory({
+                type: 'text',
+                title: `File Operation Results`,
+                content: digitalHubContent,
+                params: {
+                  prompt: result.metadata?.prompt,
+                  originalType: 'file_operation'
+                }
+              });
+            } else {
+              formattedContent = 'File operation completed';
+              displayTitle = 'DigitalHub completed';
+            }
+          } else if (config.type === 'doc') {
+            // Handle Doc widget results
+            const docContent = result.content;
+            if (typeof docContent === 'object' && docContent.document) {
+              formattedContent = docContent.document.content || 'Document ready';
+              displayTitle = docContent.document.title || 'Document Created';
+
+              addToHistory({
+                type: 'text',
+                title: docContent.document.title || 'Document Created',
+                content: docContent.document.content || '',
+                params: {
+                  prompt: result.metadata?.prompt,
+                  originalType: 'document',
+                  format: docContent.document.format
+                }
+              });
+            } else if (typeof docContent === 'string' && docContent.length > 0) {
+              formattedContent = docContent;
+              displayTitle = `Document Generated`;
+
+              addToHistory({
+                type: 'text',
+                title: `Document Generated`,
+                content: docContent,
+                params: {
+                  prompt: result.metadata?.prompt,
+                  originalType: 'document'
+                }
+              });
+            } else {
+              formattedContent = 'Document operation completed';
+              displayTitle = 'Doc completed';
             }
           } else {
             // Default handling for other widget types

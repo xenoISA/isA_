@@ -14,7 +14,7 @@
  * API Response → chatService → stores → hooks → modules → UI
  */
 
-import { useDreamWidgetStore, useHuntWidgetStore, useOmniWidgetStore, useDataScientistWidgetStore, useKnowledgeWidgetStore, useCustomAutomationWidgetStore } from '../../stores/useWidgetStores';
+import { useDreamWidgetStore, useHuntWidgetStore, useOmniWidgetStore, useDataScientistWidgetStore, useKnowledgeWidgetStore, useCustomAutomationWidgetStore, useDigitalHubWidgetStore, useDocWidgetStore } from '../../stores/useWidgetStores';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 const log = createLogger('WidgetHandler');
 import { OutputHistoryItem, EditAction, ManagementAction } from '../ui/widgets/BaseWidget';
@@ -163,6 +163,12 @@ export class WidgetHandler {
         case 'custom_automation':
           await this.processCustomAutomationRequest(request.params, request.sessionId, request.userId);
           break;
+        case 'digitalhub':
+          await this.processDigitalHubRequest(request.params, request.sessionId, request.userId);
+          break;
+        case 'doc':
+          await this.processDocRequest(request.params, request.sessionId, request.userId);
+          break;
         default:
           throw new Error(`Unsupported widget type: ${request.type}`);
       }
@@ -269,6 +275,38 @@ export class WidgetHandler {
     
     // Trigger custom automation via store's chatService integration
     await customAutomationStore.triggerAction(params);
+  }
+
+  /**
+   * Process DigitalHub widget request - Route to DigitalHub store
+   */
+  private async processDigitalHubRequest(params: any, sessionId?: string, userId?: string): Promise<void> {
+    const digitalHubStore = useDigitalHubWidgetStore.getState();
+
+    logger.debug(LogCategory.ARTIFACT_CREATION, 'DigitalHub request routed to store', {
+      params,
+      sessionId,
+      userId
+    });
+
+    // Trigger digitalhub action via store's chatService integration
+    await digitalHubStore.triggerAction(params);
+  }
+
+  /**
+   * Process Doc widget request - Route to Doc store
+   */
+  private async processDocRequest(params: any, sessionId?: string, userId?: string): Promise<void> {
+    const docStore = useDocWidgetStore.getState();
+
+    logger.debug(LogCategory.ARTIFACT_CREATION, 'Doc request routed to store', {
+      params,
+      sessionId,
+      userId
+    });
+
+    // Trigger doc action via store's chatService integration
+    await docStore.triggerAction(params);
   }
 
   /**
@@ -401,6 +439,14 @@ export class WidgetHandler {
           const customAutomationStore = useCustomAutomationWidgetStore.getState();
           customAutomationStore.clearData?.();
           break;
+        case 'digitalhub':
+          const digitalHubStore = useDigitalHubWidgetStore.getState();
+          digitalHubStore.clearData?.();
+          break;
+        case 'doc':
+          const docStore = useDocWidgetStore.getState();
+          docStore.clearData?.();
+          break;
         default:
           log.warn(`Clear operation not implemented for widget type: ${type}`);
       }
@@ -466,8 +512,14 @@ export const processOmniWidget = (params: any, sessionId?: string, userId?: stri
 export const processDataScientistWidget = (params: any, sessionId?: string, userId?: string) => 
   widgetHandler.processRequest({ type: 'data_scientist', params, sessionId, userId });
 
-export const processKnowledgeWidget = (params: any, sessionId?: string, userId?: string) => 
+export const processKnowledgeWidget = (params: any, sessionId?: string, userId?: string) =>
   widgetHandler.processRequest({ type: 'knowledge', params, sessionId, userId });
+
+export const processDigitalHubWidget = (params: any, sessionId?: string, userId?: string) =>
+  widgetHandler.processRequest({ type: 'digitalhub', params, sessionId, userId });
+
+export const processDocWidget = (params: any, sessionId?: string, userId?: string) =>
+  widgetHandler.processRequest({ type: 'doc', params, sessionId, userId });
 
 // Convenience functions for UI actions
 export const processWidgetUIAction = (request: WidgetUIActionRequest) => 

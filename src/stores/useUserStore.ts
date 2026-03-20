@@ -37,7 +37,8 @@ import {
   ExternalUser,
   ExternalSubscription,
   CreditConsumption,
-  UpdateProfileData
+  UpdateProfileData,
+  UserRole
 } from '../types/userTypes';
 import { logger, LogCategory, createLogger } from '../utils/logger';
 
@@ -51,18 +52,20 @@ export interface UserStore {
   // User Data
   externalUser: ExternalUser | null;
   subscription: ExternalSubscription | null;
-  
+  role: UserRole;
+
   // Loading States
   isLoading: boolean;
-  
+
   // Error States
   userError: string | null;
   creditsError: string | null;
   subscriptionError: string | null;
-  
+
   // Actions - User Management
   setExternalUser: (user: ExternalUser | null) => void;
   setSubscription: (subscription: ExternalSubscription | null) => void;
+  setRole: (role: UserRole) => void;
   clearUserState: () => void;
   
   // Actions - Loading States
@@ -91,10 +94,11 @@ const initialState = {
   // User Data
   externalUser: null,
   subscription: null,
-  
+  role: 'user' as UserRole,
+
   // Loading States
   isLoading: false,
-  
+
   // Error States
   userError: null,
   creditsError: null,
@@ -142,6 +146,11 @@ export const useUserStore = create<UserStore>()(
     clearUserState: () => {
       logger.info(LogCategory.USER_AUTH, 'Clearing all user state');
       set(initialState);
+    },
+
+    setRole: (role: UserRole) => {
+      logger.info(LogCategory.USER_AUTH, 'Setting user role', { role });
+      set({ role });
     },
     
     // ================================================================================
@@ -325,6 +334,7 @@ export const useUserStore = create<UserStore>()(
 export const selectExternalUser = (state: UserStore) => state.externalUser;
 export const selectSubscription = (state: UserStore) => state.subscription;
 export const selectIsLoading = (state: UserStore) => state.isLoading;
+export const selectRole = (state: UserStore) => state.role;
 
 // Credits selectors
 export const selectCredits = (state: UserStore) => state.externalUser?.credits || 0;
