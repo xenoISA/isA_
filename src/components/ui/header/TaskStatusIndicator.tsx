@@ -9,7 +9,8 @@
  * - 快速控制按钮
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTaskStore } from '../../../stores/useTaskStore';
 
 // Glass Button Style Creator for Header
 const createHeaderGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'sm', isActive: boolean = false) => ({
@@ -76,6 +77,9 @@ export const TaskStatusIndicator: React.FC<TaskStatusIndicatorProps> = ({
 }) => {
   const [activeTasks, setActiveTasks] = useState<TaskStatus[]>([]);
   const [expanded, setExpanded] = useState(false);
+
+  // Get store actions (stable references, safe to call outside render)
+  const { pauseAllTasks, resumeAllTasks, pauseTask, resumeTask, cancelTask, setShowTaskPanel } = useTaskStore.getState();
 
   // ================================================================================
   // SSE事件解析 - 构建高级任务状态
@@ -183,9 +187,50 @@ export const TaskStatusIndicator: React.FC<TaskStatusIndicatorProps> = ({
   // 事件处理
   // ================================================================================
 
-  const handleQuickAction = (action: 'pause_all' | 'resume_all' | 'show_details') => {
+  const handleQuickAction = useCallback((action: 'pause_all' | 'resume_all' | 'show_details') => {
+    switch (action) {
+      case 'pause_all':
+        pauseAllTasks();
+        // Also pause local SSE-tracked tasks
+        setActiveTasks(prev => prev.map(t =>
+          t.status === 'running' ? { ...t, status: 'paused' as const } : t
+        ));
+        break;
+      case 'resume_all':
+        resumeAllTasks();
+        // Also resume local SSE-tracked tasks
+        setActiveTasks(prev => prev.map(t =>
+          t.status === 'paused' ? { ...t, status: 'running' as const } : t
+        ));
+        break;
+      case 'show_details':
+        setShowTaskPanel(true);
+        break;
+    }
     onTaskControl?.(action);
-  };
+  }, [onTaskControl, pauseAllTasks, resumeAllTasks, setShowTaskPanel]);
+
+  const handleSingleTaskAction = useCallback((taskId: string, action: 'pause' | 'resume' | 'cancel') => {
+    // Apply to store-managed tasks
+    const storeTask = useTaskStore.getState().getTask(taskId);
+    if (storeTask) {
+      switch (action) {
+        case 'pause': pauseTask(taskId); break;
+        case 'resume': resumeTask(taskId); break;
+        case 'cancel': cancelTask(taskId); break;
+      }
+    }
+    // Also update local SSE-tracked tasks
+    setActiveTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      switch (action) {
+        case 'pause': return t.status === 'running' ? { ...t, status: 'paused' as const } : t;
+        case 'resume': return t.status === 'paused' ? { ...t, status: 'running' as const } : t;
+        case 'cancel': return { ...t, status: 'completed' as const, currentStep: 'Cancelled' };
+        default: return t;
+      }
+    }));
+  }, [pauseTask, resumeTask, cancelTask]);
 
   const handleToggleExpand = () => {
     setExpanded(!expanded);
@@ -290,10 +335,10 @@ export const TaskStatusIndicator: React.FC<TaskStatusIndicatorProps> = ({
           <div className="space-y-2">
             {activeTasks.map(task => (
               <div key={task.id} className="flex items-center justify-between p-2 bg-gray-700 rounded">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-300">{task.name}</span>
-                    <span className={`text-xs ${
+                    <span className="text-xs text-gray-300 truncate">{task.name}</span>
+                    <span className={`text-xs flex-shrink-0 ${
                       task.status === 'running' ? 'text-green-400' :
                       task.status === 'paused' ? 'text-yellow-400' :
                       task.status === 'completed' ? 'text-gray-400' :
@@ -305,13 +350,53 @@ export const TaskStatusIndicator: React.FC<TaskStatusIndicatorProps> = ({
                   <div className="text-xs text-gray-400 mt-1">
                     {task.currentStep}
                   </div>
-                  {/* 进度条 */}
+                  {/* Progress bar */}
                   <div className="w-full h-1 bg-gray-600 rounded-full mt-2">
-                    <div 
+                    <div
                       className="h-full bg-blue-500 rounded-full transition-all"
                       style={{ width: `${task.progress}%` }}
                     />
                   </div>
+                </div>
+                {/* Per-task controls */}
+                <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                  {task.status === 'running' && (
+                    <button
+                      onClick={() => handleSingleTaskAction(task.id, 'pause')}
+                      style={createHeaderGlassButtonStyle('251, 191, 36', 'sm')}
+                      title="Pause task"
+                      {...createHeaderGlassHoverHandlers('251, 191, 36')}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                        <rect x="6" y="4" width="4" height="16" stroke="currentColor" strokeWidth="2" fill="currentColor"/>
+                        <rect x="14" y="4" width="4" height="16" stroke="currentColor" strokeWidth="2" fill="currentColor"/>
+                      </svg>
+                    </button>
+                  )}
+                  {task.status === 'paused' && (
+                    <button
+                      onClick={() => handleSingleTaskAction(task.id, 'resume')}
+                      style={createHeaderGlassButtonStyle('34, 197, 94', 'sm')}
+                      title="Resume task"
+                      {...createHeaderGlassHoverHandlers('34, 197, 94')}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                        <polygon points="5,3 19,12 5,21" stroke="currentColor" strokeWidth="2" fill="currentColor"/>
+                      </svg>
+                    </button>
+                  )}
+                  {(task.status === 'running' || task.status === 'paused') && (
+                    <button
+                      onClick={() => handleSingleTaskAction(task.id, 'cancel')}
+                      style={createHeaderGlassButtonStyle('239, 68, 68', 'sm')}
+                      title="Cancel task"
+                      {...createHeaderGlassHoverHandlers('239, 68, 68')}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -563,6 +563,7 @@ export interface Translations {
     currentSession: string;
     sessionCount: string;
     untitledSession: string;
+    searchPlaceholder: string;
     noMessages: string;
     errorLoadingMessage: string;
     today: string;
@@ -1194,6 +1195,7 @@ const zhCN: Translations = {
     currentSession: '当前会话',
     sessionCount: '{count} 个会话',
     untitledSession: '未命名会话',
+    searchPlaceholder: '搜索会话...',
     noMessages: '暂无消息',
     errorLoadingMessage: '消息加载错误',
     today: '今天',
@@ -1825,6 +1827,7 @@ const enUS: Translations = {
     currentSession: 'Current Session',
     sessionCount: '{count} sessions',
     untitledSession: 'Untitled Session',
+    searchPlaceholder: 'Search sessions...',
     noMessages: 'No messages yet',
     errorLoadingMessage: 'Error loading message',
     today: 'Today',

@@ -32,6 +32,11 @@ export interface CreateExternalUserData {
   name: string;
 }
 
+export interface UpdateProfileData {
+  name?: string;
+  email?: string;
+}
+
 export interface ExternalUser {
   auth0_id: string;
   email: string;

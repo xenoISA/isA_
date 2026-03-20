@@ -224,6 +224,31 @@ export const GATEWAY_ENDPOINTS = {
     BLOCK: buildEndpoint(GATEWAY_SERVICES.BLOCKCHAIN, '/block/{number}'),
   },
   
+  // ==== 组织服务端点 ====
+  ORGANIZATION: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION),
+    LIST: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations'),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations'),
+    GET: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}'),
+    MEMBERS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/members'),
+    MEMBER: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/members/{userId}'),
+    INVITATIONS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/invitations'),
+    INVITATION: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/invitations/{invitationId}'),
+    ACCEPT_INVITATION: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/invitations/{invitationToken}/accept'),
+    STATS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/stats'),
+    SWITCH_CONTEXT: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/context/switch'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/health'),
+  },
+
+  // ==== 邀请服务端点 ====
+  INVITATION: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.INVITATION),
+    RESEND: buildEndpoint(GATEWAY_SERVICES.INVITATION, '/api/v1/invitations/{invitationId}/resend'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.INVITATION, '/health'),
+  },
+
   // ==== 网关管理端点 ====
   GATEWAY: {
     BASE: buildEndpoint(GATEWAY_SERVICES.GATEWAY),

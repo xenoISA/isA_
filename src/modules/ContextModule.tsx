@@ -28,6 +28,7 @@ import {
   getStoredOrgContextId,
   setStoredOrgContextId,
 } from '../config/authSessionConfig';
+import { organizationService } from '../api/organizationService';
 
 // ================================================================================
 // Context Types
@@ -248,10 +249,13 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Switching to personal context');
-      
-      // API context switching deferred — client-side only for now
-      // await organizationService.switchContext(currentContext.userId, null);
-      
+
+      try {
+        await organizationService.switchContext(currentContext?.userId || '', null);
+      } catch (apiError) {
+        logger.warn(LogCategory.USER_AUTH, 'API context switch failed, proceeding with client-side switch', { error: apiError });
+      }
+
       const personalContext: PersonalContext = {
         type: 'personal',
         userId: currentContext?.userId || '',
@@ -290,9 +294,12 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
         throw new Error(`Organization not found: ${organizationId}`);
       }
 
-      // API context switching deferred — client-side only for now
-      // await organizationService.switchContext(currentContext.userId, organizationId);
-      
+      try {
+        await organizationService.switchContext(currentContext?.userId || '', organizationId);
+      } catch (apiError) {
+        logger.warn(LogCategory.USER_AUTH, 'API context switch failed, proceeding with client-side switch', { error: apiError });
+      }
+
       const orgContext: OrganizationContext = {
         type: 'organization',
         userId: currentContext?.userId || '',
@@ -323,15 +330,38 @@ export const ContextModule: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       logger.info(LogCategory.USER_AUTH, 'Refreshing context');
-      
-      // Organization list refresh deferred — using cached data
-      // const organizations = await organizationService.getUserOrganizations(currentContext.userId);
-      // setAvailableOrganizations(organizations);
-      
-      // Context refresh deferred — using cached data
+
+      try {
+        const organizations = await organizationService.getUserOrganizations();
+        setAvailableOrganizations(organizations.map(org => ({
+          id: org.id,
+          name: org.name,
+          domain: org.domain,
+          plan: org.plan,
+          role: 'member' as const,
+          permissions: [],
+          creditsPool: org.creditsPool,
+        })));
+      } catch (apiError) {
+        logger.warn(LogCategory.USER_AUTH, 'Failed to refresh organizations from API', { error: apiError });
+      }
+
       if (currentContext?.type === 'organization') {
-        // const updatedOrg = await organizationService.getOrganization(currentContext.organization.id);
-        // Update current context with fresh data
+        try {
+          const updatedOrg = await organizationService.getOrganization(currentContext.organization.id);
+          setCurrentContext({
+            ...currentContext,
+            organization: {
+              ...currentContext.organization,
+              name: updatedOrg.name,
+              domain: updatedOrg.domain,
+              plan: updatedOrg.plan,
+              creditsPool: updatedOrg.creditsPool,
+            },
+          });
+        } catch (apiError) {
+          logger.warn(LogCategory.USER_AUTH, 'Failed to refresh current organization from API', { error: apiError });
+        }
       }
       
       logger.info(LogCategory.USER_AUTH, 'Context refreshed successfully');

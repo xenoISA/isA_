@@ -42,7 +42,8 @@ export interface LeftSidebarLayoutProps {
   isLoadingSession?: boolean;
   editingSessionId?: string | null;
   editingTitle?: string;
-  
+  searchQuery?: string;
+
   // Event callbacks - passed to SessionHistory
   onSessionSelect?: (sessionId: string) => void;
   onNewSession?: () => void;
@@ -51,6 +52,7 @@ export interface LeftSidebarLayoutProps {
   onStartRename?: (sessionId: string, currentTitle: string) => void;
   onCancelRename?: () => void;
   onEditingTitleChange?: (title: string) => void;
+  onSearchChange?: (query: string) => void;
   
   // User content - provided by UserModule
   userContent?: React.ReactNode;
@@ -70,7 +72,8 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
   isLoadingSession,
   editingSessionId,
   editingTitle,
-  
+  searchQuery,
+
   // Event callbacks for SessionHistory
   onSessionSelect,
   onNewSession,
@@ -79,6 +82,7 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
   onStartRename,
   onCancelRename,
   onEditingTitleChange,
+  onSearchChange,
   
   userContent
 }) => {
@@ -93,7 +97,8 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
           isLoading={isLoadingSession}
           editingSessionId={editingSessionId}
           editingTitle={editingTitle}
-          
+          searchQuery={searchQuery}
+
           // Pass all event callbacks
           onSessionSelect={onSessionSelect}
           onNewSession={onNewSession}
@@ -102,6 +107,7 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
           onStartRename={onStartRename}
           onCancelRename={onCancelRename}
           onEditingTitleChange={onEditingTitleChange}
+          onSearchChange={onSearchChange}
           
           className="flex-1 p-4"
         />

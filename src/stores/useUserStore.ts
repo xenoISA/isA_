@@ -33,10 +33,11 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { 
-  ExternalUser, 
+import {
+  ExternalUser,
   ExternalSubscription,
-  CreditConsumption 
+  CreditConsumption,
+  UpdateProfileData
 } from '../types/userTypes';
 import { logger, LogCategory, createLogger } from '../utils/logger';
 
@@ -73,6 +74,9 @@ export interface UserStore {
   setSubscriptionError: (error: string | null) => void;
   clearErrors: () => void;
   
+  // Actions - Profile Management
+  updateProfile: (data: UpdateProfileData) => void;
+
   // Actions - Credits Management
   updateCredits: (credits: number, source?: 'api' | 'billing' | 'manual') => void;
   consumeCreditsOptimistic: (consumption: CreditConsumption) => void;
@@ -183,9 +187,35 @@ export const useUserStore = create<UserStore>()(
     },
     
     // ================================================================================
+    // Profile Management Actions
+    // ================================================================================
+
+    updateProfile: (data: UpdateProfileData) => {
+      const currentUser = get().externalUser;
+      if (!currentUser) {
+        log.warn('Cannot update profile - no current user');
+        return;
+      }
+
+      logger.info(LogCategory.USER_AUTH, 'Updating user profile in store', {
+        auth0_id: currentUser.auth0_id,
+        fields: Object.keys(data)
+      });
+
+      set({
+        externalUser: {
+          ...currentUser,
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.email !== undefined && { email: data.email }),
+        },
+        userError: null
+      });
+    },
+
+    // ================================================================================
     // Credits Management Actions
     // ================================================================================
-    
+
     // 🆕 智能信用更新机制
     updateCredits: (newCredits: number, source?: 'api' | 'billing' | 'manual') => {
       const currentUser = get().externalUser;

@@ -24,6 +24,7 @@ import { BaseApiService } from './BaseApiService';
 import { config } from '../config';
 import {
   CreateExternalUserData,
+  UpdateProfileData,
   ExternalUser,
   ExternalSubscription,
   ExternalUsageRecord,
@@ -119,6 +120,37 @@ export class UserService {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(LogCategory.API_REQUEST, 'Failed to get current user', { error: errorMessage });
       throw new Error(`Get user failed: ${errorMessage}`);
+    }
+  }
+
+  // ================================================================================
+  // Profile Management Methods
+  // ================================================================================
+
+  /**
+   * Update user profile information
+   */
+  async updateProfile(data: UpdateProfileData): Promise<ExternalUser> {
+    try {
+      logger.info(LogCategory.API_REQUEST, 'Updating user profile', {
+        fields: Object.keys(data)
+      });
+
+      const response = await this.apiService.post<ExternalUser>('/api/v1/users/me/profile', data);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update profile');
+      }
+
+      logger.info(LogCategory.API_REQUEST, 'Profile updated successfully', {
+        auth0_id: response.data?.auth0_id
+      });
+
+      return response.data!;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(LogCategory.API_REQUEST, 'Failed to update profile', { error: errorMessage });
+      throw new Error(`Profile update failed: ${errorMessage}`);
     }
   }
 

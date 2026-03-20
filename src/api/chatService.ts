@@ -21,6 +21,7 @@ import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { createLogger, LogCategory } from '../utils/logger';
 import { adaptMateEvent, createMateStreamContext, buildMateRequest } from './adapters/MateEventAdapter';
 import type { MateSSEEvent } from './adapters/MateEventAdapter';
+import { getStorageService } from './storageService';
 
 const log = createLogger('ChatService', LogCategory.CHAT_FLOW);
 
@@ -556,8 +557,43 @@ export class ChatService {
     }
   }
 
+  // Allowed MIME types for multimodal uploads
+  private static readonly ALLOWED_FILE_TYPES = new Set([
+    // Images
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    // Documents
+    'application/pdf',
+    // Text
+    'text/plain', 'text/csv', 'text/markdown',
+    'application/json',
+  ]);
+
+  private static readonly MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+  /**
+   * Validate files for multimodal upload.
+   * Throws on invalid file type or size.
+   */
+  private validateFiles(files: File[]): void {
+    for (const file of files) {
+      if (!ChatService.ALLOWED_FILE_TYPES.has(file.type)) {
+        throw new Error(
+          `Unsupported file type: ${file.type || 'unknown'}. Accepted: images, PDFs, and text files.`
+        );
+      }
+      if (file.size > ChatService.MAX_FILE_SIZE) {
+        throw new Error(
+          `File "${file.name}" exceeds the 20 MB size limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`
+        );
+      }
+    }
+  }
+
   /**
    * 发送多模态消息
+   *
+   * Strategy: upload files via StorageService first, then send a regular
+   * chat message that includes file references so the backend can access them.
    */
   async sendMultimodalMessage(
     message: string,
@@ -579,9 +615,65 @@ export class ChatService {
       hasFiles: !!files,
       fileCount: files?.length || 0
     });
-    
-    // Multimodal file upload not yet implemented — falls back to text chat
-    return this.sendMessage(message, metadata, token, callbacks);
+
+    // If no files, fall back to plain text chat
+    if (!files || files.length === 0) {
+      return this.sendMessage(message, metadata, token, callbacks);
+    }
+
+    try {
+      // Validate file types and sizes
+      this.validateFiles(files);
+
+      // Upload files via StorageService
+      const storageService = getStorageService();
+      const fileReferences: Array<{ file_id: string; file_name: string; mime_type: string; file_size: number }> = [];
+
+      for (const file of files) {
+        try {
+          const uploadResult = await storageService.uploadFile(file, {
+            user_id: metadata.user_id,
+            access_level: 'private' as any,
+            tags: ['chat-attachment', metadata.session_id],
+          });
+
+          fileReferences.push({
+            file_id: uploadResult.file_id,
+            file_name: file.name,
+            mime_type: file.type,
+            file_size: file.size,
+          });
+
+          log.info('File uploaded for multimodal message', {
+            fileId: uploadResult.file_id,
+            fileName: file.name,
+          });
+        } catch (uploadError) {
+          log.error('Failed to upload file for multimodal message', {
+            fileName: file.name,
+            error: uploadError,
+          });
+          throw new Error(
+            `Failed to upload file "${file.name}": ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`
+          );
+        }
+      }
+
+      // Send the message with file references in prompt_args
+      const augmentedMetadata = {
+        ...metadata,
+        prompt_args: {
+          ...metadata.prompt_args,
+          file_attachments: fileReferences,
+        },
+      };
+
+      return this.sendMessage(message, augmentedMetadata, token, callbacks);
+    } catch (error) {
+      log.error('Multimodal message failed', { error });
+      callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
   }
   
   /**

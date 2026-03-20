@@ -36,12 +36,13 @@ import { UserService } from '../api/userService';
 import { logger, LogCategory, createLogger } from '../utils/logger';
 
 const log = createLogger('useUser');
-import { 
-  ExternalUser, 
-  CreateExternalUserData, 
+import {
+  ExternalUser,
+  CreateExternalUserData,
+  UpdateProfileData,
   CreditConsumption,
   PlanType,
-  ExternalSubscription 
+  ExternalSubscription
 } from '../types/userTypes';
 
 // ================================================================================
@@ -76,6 +77,7 @@ export interface UseUserReturn {
   // User Actions
   ensureUser: (userData: CreateExternalUserData, accessToken: string) => Promise<void>;
   fetchCurrentUser: (accessToken: string) => Promise<void>;
+  updateProfile: (data: UpdateProfileData, accessToken: string) => Promise<void>;
   clearUser: () => void;
   
   // Credits Actions
@@ -105,6 +107,7 @@ export const useUser = (): UseUserReturn => {
     setUserError,
     setCreditsError,
     setSubscriptionError,
+    updateProfile: storeUpdateProfile,
     clearUserState
   } = useUserStore();
 
@@ -244,6 +247,39 @@ export const useUser = (): UseUserReturn => {
     clearUserState();
   }, [clearUserState]);
 
+  const updateProfile = useCallback(async (data: UpdateProfileData, accessToken: string) => {
+    try {
+      setLoading(true);
+      setUserError(null);
+
+      logger.info(LogCategory.USER_AUTH, 'Updating user profile', { fields: Object.keys(data) });
+
+      const authenticatedUserService = new UserService(
+        undefined,
+        async () => ({
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        })
+      );
+
+      const updatedUser = await authenticatedUserService.updateProfile(data);
+
+      // Update store with the server response
+      setExternalUser(updatedUser);
+
+      logger.info(LogCategory.USER_AUTH, 'Profile updated successfully', {
+        auth0_id: updatedUser.auth0_id
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+      logger.error(LogCategory.USER_AUTH, 'Failed to update profile', { error });
+      setUserError(errorMessage);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, setUserError, setExternalUser]);
+
   // ================================================================================
   // Credits Management Actions
   // ================================================================================
@@ -370,6 +406,7 @@ export const useUser = (): UseUserReturn => {
     // User Actions
     ensureUser,
     fetchCurrentUser,
+    updateProfile,
     clearUser,
     
     // Credits Actions

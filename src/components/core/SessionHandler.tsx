@@ -25,7 +25,7 @@
  *   - 状态监听（由 SessionHook 处理）
  */
 
-import { useSessionActions } from '../../stores/useSessionStore';
+import { useSessionActions, useSessionStore } from '../../stores/useSessionStore';
 import { logger, LogCategory } from '../../utils/logger';
 
 // ================================================================================
@@ -195,18 +195,12 @@ export class SessionHandler {
    * 处理搜索会话事件
    */
   handleSessionSearch(event: SessionSearchEvent): void {
-    logger.debug(LogCategory.CHAT_FLOW, 'SessionHandler: Session search event', { 
-      query: event.query 
+    logger.debug(LogCategory.CHAT_FLOW, 'SessionHandler: Session search event', {
+      query: event.query
     });
 
-    // 基本参数验证
-    if (!event.query?.trim()) {
-      logger.warn(LogCategory.CHAT_FLOW, 'Session search ignored: empty query');
-      return;
-    }
-
-    // Session search not yet implemented in store
-    logger.debug(LogCategory.CHAT_FLOW, 'Session search not yet implemented');
+    // Update the search query in the store (empty string clears the filter)
+    this.sessionActions.setSearchQuery(event.query?.trim() || '');
   }
 
   // ================================================================================
@@ -242,12 +236,31 @@ export class SessionHandler {
    * 处理更新会话上下文事件
    */
   handleSessionUpdateContext(event: SessionContextEvent): void {
-    logger.debug(LogCategory.CHAT_FLOW, 'SessionHandler: Session update context event', { 
+    logger.debug(LogCategory.CHAT_FLOW, 'SessionHandler: Session update context event', {
       sessionId: event.sessionId
     });
 
-    // Context update not yet implemented in session store
-    logger.debug(LogCategory.CHAT_FLOW, 'Session context update not yet implemented');
+    // Find the session and merge the new context into its metadata
+    const { sessions } = useSessionStore.getState();
+    const session = sessions.find(s => s.id === event.sessionId);
+    if (session) {
+      const updatedSession = {
+        ...session,
+        metadata: {
+          ...session.metadata,
+          ...event.context,
+          last_activity: new Date().toISOString()
+        }
+      };
+      this.sessionActions.updateSession(updatedSession);
+      logger.debug(LogCategory.CHAT_FLOW, 'Session context updated', {
+        sessionId: event.sessionId
+      });
+    } else {
+      logger.warn(LogCategory.CHAT_FLOW, 'Session not found for context update', {
+        sessionId: event.sessionId
+      });
+    }
   }
 
   // ================================================================================
