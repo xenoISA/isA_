@@ -304,6 +304,82 @@ export interface AGUIEventParserOptions extends ParserOptions {
 }
 
 // ================================================================================
+// Legacy Normalization Maps
+// ================================================================================
+
+/**
+ * Explicit mapping from legacy event type strings to AGUI standard event types.
+ * This consolidates the scattered type-matching logic in convertLegacyToAGUI()
+ * into a single searchable lookup table. Each key is a legacy `type` value sent
+ * by the backend; each value is the canonical AGUIEventType it maps to.
+ *
+ * Note: some mappings are approximate (e.g. 'custom_event' -> 'custom_event')
+ * because the actual conversion involves sub-type dispatch. The switch/case in
+ * convertLegacyToAGUI() remains the authoritative conversion logic.
+ */
+const LEGACY_EVENT_MAP: Record<string, AGUIEventType> = {
+  // Control events
+  'start': 'run_started',
+  'end': 'run_finished',
+  'complete': 'run_finished',
+  'error': 'run_error',
+  // Message / content events
+  'content': 'text_message_content',
+  'message_stream': 'text_message_content',
+  'message_event': 'text_message_content',
+  'custom_stream': 'text_message_content',
+  'token': 'text_message_content',
+  // Tool events
+  'tool_start': 'tool_call_start',
+  'tool_calls': 'tool_call_start',
+  'tool_executing': 'tool_executing',
+  'tool_completed': 'tool_call_end',
+  'tool_result_msg': 'tool_call_end',
+  // LLM events
+  'llm_completed': 'llm_completed',
+  // State / system events
+  'node_update': 'node_update',
+  'state_update': 'state_update',
+  'update_event': 'state_update',
+  'graph_update': 'state_update',
+  'interrupt': 'paused',
+  'paused': 'paused',
+  'custom_event': 'custom_event',
+  // Business events
+  'memory_update': 'memory_update',
+  'billing': 'billing',
+  'credits': 'billing',
+  // Resume events
+  'resume_start': 'resume_start',
+  'resume_end': 'resume_end',
+  // HIL / artifact / task events
+  'hil_interrupt_detected': 'hil_interrupt_detected',
+  'artifact_update': 'artifact_created',
+  'task_progress': 'task_progress_update',
+};
+
+/**
+ * Mapping from legacy field names (camelCase or inconsistent snake_case)
+ * to their canonical AGUI field names. This serves as documentation and
+ * can be used programmatically for field normalization.
+ */
+const LEGACY_FIELD_MAP: Record<string, string> = {
+  'sessionId': 'thread_id',
+  'session_id': 'thread_id',
+  'conversationId': 'thread_id',
+  'runId': 'run_id',
+  'run_id': 'run_id',
+  'messageId': 'message_id',
+  'message_id': 'message_id',
+  'content': 'delta',
+  'tool_args': 'parameters',
+  'creditsRemaining': 'credits_remaining',
+  'totalCredits': 'total_credits',
+  'modelCalls': 'model_calls',
+  'toolCalls': 'tool_calls',
+};
+
+// ================================================================================
 // AGUI Event Parser Implementation
 // ================================================================================
 
@@ -416,34 +492,18 @@ export class AGUIEventParser extends BaseParser<string | LegacySSEEvent, AGUIEve
   }
   
   /**
-   * 判断是否为 Legacy 事件格式
+   * 判断是否为 Legacy 事件格式.
+   * Detection uses LEGACY_EVENT_MAP (defined above the class) for type matching,
+   * plus heuristics for missing thread_id or legacy field names.
    */
   private isLegacyEvent(eventData: any): boolean {
-    // 基于您后端的完整事件类型列表
-    const legacyEventTypes = [
-      // 基础控制事件
-      'start', 'end', 'error', 'resume_start', 'resume_end', 'paused',
-      // 消息内容事件
-      'content', 'message_stream', 'message_event', 'tool_calls', 'tool_result_msg',
-      // 工具执行事件  
-      'tool_start', 'tool_executing', 'tool_completed',
-      // LLM相关事件
-      'token', 'llm_completed',
-      // 系统状态事件
-      'node_update', 'state_update', 'graph_update', 'update_event',
-      'interrupt', 'custom_stream', 'custom_event',
-      // 业务功能事件
-      'memory_update', 'billing', 'credits',
-      // HIL相关
-      'hil_interrupt_detected', 'artifact_update', 'task_progress'
-    ];
-    
-    return legacyEventTypes.includes(eventData.type) ||
+    if (!eventData?.type) return false;
+    return eventData.type in LEGACY_EVENT_MAP ||
            !eventData.thread_id ||
            eventData.sessionId ||
            eventData.conversationId ||
            eventData.custom_llm_chunk !== undefined || // Legacy chunk content
-           eventData.resumed !== undefined; // Resume标记
+           eventData.resumed !== undefined; // Resume marker
   }
   
   /**
