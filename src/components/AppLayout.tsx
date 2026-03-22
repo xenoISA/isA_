@@ -58,9 +58,12 @@ export interface AppLayoutProps {
  * No business logic or direct state management
  */
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
-  );
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Auto-close sidebar on mobile after initial render (SSR-safe)
+  React.useEffect(() => {
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+  }, []);
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
