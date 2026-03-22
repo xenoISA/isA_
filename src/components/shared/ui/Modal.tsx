@@ -16,7 +16,7 @@
  * - 用户体验：流畅的动画和交互
  */
 
-import React, { memo, useEffect, useRef, useCallback, forwardRef, useMemo } from 'react';
+import React, { memo, useState, useEffect, useRef, useCallback, forwardRef, useMemo } from 'react';
 import { createLogger } from '../../../utils/logger';
 import { createPortal } from 'react-dom';
 
@@ -252,6 +252,10 @@ export const Modal = memo(forwardRef<HTMLDivElement, ModalProps>(({
   'aria-describedby': ariaDescribedBy
 }, ref) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Delay portal rendering until after hydration to prevent mismatch
+  useEffect(() => { setMounted(true); }, []);
 
   // Enhanced focus management with accessibility
   useFocusTrap(isOpen, modalRef, initialFocus);
@@ -373,10 +377,9 @@ export const Modal = memo(forwardRef<HTMLDivElement, ModalProps>(({
     </>
   );
 
-  // 使用Portal渲染到body
-  return typeof document !== 'undefined' 
-    ? createPortal(modalContent, document.body)
-    : null;
+  // Render portal only after hydration to prevent server/client mismatch
+  if (!mounted) return null;
+  return createPortal(modalContent, document.body);
 }));
 
 // ================================================================================

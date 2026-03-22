@@ -198,6 +198,21 @@ test.describe('App page — main application', () => {
     const children = await nextRoot.locator('> *').count();
     expect(children).toBeGreaterThan(0);
   });
+
+  test('no hydration errors on /app', async ({ page }) => {
+    const hydrationErrors: string[] = [];
+    page.on('console', msg => {
+      const text = msg.text();
+      if (text.includes('Hydration failed') || text.includes('did not match')) {
+        hydrationErrors.push(text.slice(0, 200));
+      }
+    });
+
+    await page.goto(`${BASE}/app`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(3000);
+
+    expect(hydrationErrors, `Hydration errors found:\n${hydrationErrors.join('\n')}`).toHaveLength(0);
+  });
 });
 
 // ─── CROSS-PAGE NAVIGATION ──────────────────────────────────────
