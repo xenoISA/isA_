@@ -48,7 +48,7 @@ export const extractHostname = (hostOrUrl: string): string => {
 const DEFAULT_MARKETING_HOSTS = ['www.iapro.ai', 'iapro.ai', 'localhost', '127.0.0.1'];
 
 const marketingHostSet = parseHostCsv(
-  getEnv('NEXT_PUBLIC_MARKETING_HOSTS', DEFAULT_MARKETING_HOSTS.join(',')),
+  process.env.NEXT_PUBLIC_MARKETING_HOSTS || DEFAULT_MARKETING_HOSTS.join(','),
   DEFAULT_MARKETING_HOSTS
 );
 
@@ -60,15 +60,19 @@ export const getMarketingHostnames = (): string[] => Array.from(marketingHostSet
  * Surface URLs default to relative paths for Multi-Zone routing (same domain).
  * In production, all zones are served under one domain via APISIX gateway.
  * In development, override with absolute URLs via env vars (.env.local).
+ *
+ * IMPORTANT: Next.js only inlines NEXT_PUBLIC_* when accessed as literal strings
+ * (process.env.NEXT_PUBLIC_X), not via bracket notation (process.env[key]).
+ * Using direct access ensures server and client get the same values.
  */
 export const surfaceUrls = Object.freeze({
-  marketing: trimTrailingSlash(getEnv('NEXT_PUBLIC_MARKETING_URL', '/')),
-  app: trimTrailingSlash(getEnv('NEXT_PUBLIC_APP_URL', '/app')),
+  marketing: trimTrailingSlash(process.env.NEXT_PUBLIC_MARKETING_URL || '/'),
+  app: trimTrailingSlash(process.env.NEXT_PUBLIC_APP_URL || '/app'),
   appDashboard: trimTrailingSlash(
-    getEnv('NEXT_PUBLIC_APP_DASHBOARD_URL', getEnv('NEXT_PUBLIC_APP_URL', '/app'))
+    process.env.NEXT_PUBLIC_APP_DASHBOARD_URL || process.env.NEXT_PUBLIC_APP_URL || '/app'
   ),
-  console: trimTrailingSlash(getEnv('NEXT_PUBLIC_CONSOLE_URL', '/console')),
-  docs: trimTrailingSlash(getEnv('NEXT_PUBLIC_DOCS_URL', '/docs')),
+  console: trimTrailingSlash(process.env.NEXT_PUBLIC_CONSOLE_URL || '/console'),
+  docs: trimTrailingSlash(process.env.NEXT_PUBLIC_DOCS_URL || '/docs'),
 });
 
 const appendPath = (base: string, path: string): string => {
