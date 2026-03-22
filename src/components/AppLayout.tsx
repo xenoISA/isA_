@@ -20,8 +20,8 @@
  * - Mobile/tablet (<1024px): sidebar as drawer, header overflow menu
  */
 
-import React from 'react';
-import { PlatformNav, useSidebar } from '@isa/ui-web';
+import React, { useState, useCallback } from 'react';
+import { PlatformNav } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
 import { useAuthContext } from '../providers/AuthProvider';
 import { surfaceUrls } from '../config/surfaceConfig';
@@ -58,7 +58,10 @@ export interface AppLayoutProps {
  * No business logic or direct state management
  */
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
-  const sidebar = useSidebar({ defaultOpen: true, persistKey: 'isa-app-sidebar' });
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const { authUser, isAuthenticated, logout } = useAuthContext();
 
   // Get rendered modules and data from AppModule via render props
@@ -100,8 +103,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
         <AppHeader
           currentApp={appData.currentApp}
           availableApps={appData.availableApps}
-          onMenuClick={sidebar.toggle}
-          sidebarOpen={sidebar.isOpen}
+          onMenuClick={toggleSidebar}
+          sidebarOpen={sidebarOpen}
         />
       </div>
 
@@ -110,8 +113,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
         {/* Render Chat Module with sidebar state injected */}
         {React.isValidElement(chatModule)
           ? React.cloneElement(chatModule as React.ReactElement<any>, {
-              sidebarOpen: sidebar.isOpen,
-              onSidebarOpenChange: (open: boolean) => open ? sidebar.open() : sidebar.close(),
+              sidebarOpen,
+              onSidebarOpenChange: (open: boolean) => open ? openSidebar() : closeSidebar(),
             })
           : chatModule}
       </div>

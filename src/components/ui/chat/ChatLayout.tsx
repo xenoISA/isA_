@@ -35,8 +35,7 @@
  * props → UI渲染
  * UI事件 → callback props → modules → business logic
  */
-import React, { useState, memo, useCallback, useMemo } from 'react';
-import { ResponsiveSidebar } from '@isa/ui-web';
+import React, { useState, memo, useCallback, useMemo, useEffect } from 'react';
 import { ChatContentLayout } from './ChatContentLayout';
 import { InputAreaLayout } from './InputAreaLayout';
 import { SmartWidgetSelector } from '../widgets/SmartWidgetSelector';
@@ -314,17 +313,15 @@ export const ChatLayout = memo<ChatLayoutProps>(({
           <div className="absolute bottom-1/2 left-3/4 w-40 h-40 bg-blue-400/8 rounded-full blur-2xl animate-pulse delay-500" />
         </div>
 
-        {/* Left Sidebar — persistent on desktop, drawer overlay on mobile/tablet */}
-        {hasSidebarContent && (
-          <ResponsiveSidebar
-            open={isSidebarOpen}
-            onOpenChange={handleSidebarOpenChange}
-            position="left"
-            width={300}
-            className="relative z-10 !bg-transparent !text-inherit"
+        {/* Left Sidebar — persistent on desktop, hidden on mobile */}
+        {hasSidebarContent && isSidebarOpen && (
+          <aside
+            className="relative z-10 flex flex-col h-full overflow-hidden bg-transparent text-inherit border-r border-white/10 transition-[width]"
+            style={{ width: '300px', minWidth: '300px', transitionDuration: '300ms' }}
+            aria-label="Session sidebar"
           >
             {effectiveLeftPanelContent}
-          </ResponsiveSidebar>
+          </aside>
         )}
 
         {/* CSS Grid for chat + optional right panels */}
