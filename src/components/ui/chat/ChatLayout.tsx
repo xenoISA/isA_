@@ -36,6 +36,7 @@
  * UI事件 → callback props → modules → business logic
  */
 import React, { useState, memo, useCallback, useMemo } from 'react';
+import { ResponsiveSidebar } from '@isa/ui-web';
 import { ChatContentLayout } from './ChatContentLayout';
 import { InputAreaLayout } from './InputAreaLayout';
 import { SmartWidgetSelector } from '../widgets/SmartWidgetSelector';
@@ -114,6 +115,12 @@ export interface ChatLayoutProps {
   // Configuration props - passed through from modules
   conversationProps?: any;
   inputProps?: any;
+
+  // Responsive sidebar state (injected from AppLayout via useSidebar)
+  /** Whether the left session sidebar is open */
+  sidebarOpen?: boolean;
+  /** Callback when sidebar open state changes */
+  onSidebarOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -176,53 +183,48 @@ export const ChatLayout = memo<ChatLayoutProps>(({
   onCloseFullScreenWidget,
   
   // Right Panel toggle callback
-  onToggleRightPanel
+  onToggleRightPanel,
+
+  // Responsive sidebar state
+  sidebarOpen,
+  onSidebarOpenChange
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(fullscreen);
   
-  // Optimized CSS Grid layout configuration
+  // Left sidebar is now handled by ResponsiveSidebar (persistent on desktop, drawer on mobile)
+  // so it is removed from the CSS grid. The grid only contains chat + optional right areas.
+  const effectiveLeftPanelContent = leftPanelContent || (sidebarPosition === 'left' ? sidebarContent : null);
+  const hasSidebarContent = Boolean(effectiveLeftPanelContent);
+  // Determine if the sidebar is open. If sidebarOpen is not provided, fall back to showSidebar legacy prop.
+  const isSidebarOpen = sidebarOpen !== undefined ? sidebarOpen : (showSidebar ?? true);
+  const handleSidebarOpenChange = onSidebarOpenChange ?? (() => {});
+
+  // Optimized CSS Grid layout configuration (left sidebar removed -- see ResponsiveSidebar below)
   const gridConfig = useMemo(() => {
-    // Define grid template areas and columns based on layout state
     if (showRightSidebar) {
-      // Widget mode: hide sidebars, show chat + widget
+      // Widget mode: show chat + widget
       return {
         templateAreas: '"chat widget"',
         templateColumns: '1fr 1fr',
-        showLeftSidebar: false,
-        showRightPanel: false
+        showRightPanel: false,
       };
     }
-    
-    // Normal mode: configurable sidebars
-    const areas = [];
-    const columns = [];
-    
-    if (showSidebar) {
-      areas.push('left');
-      columns.push('1fr'); // Left sidebar takes flexible space
-    }
-    
-    areas.push('chat');
-    // Chat area takes remaining space
-    columns.push(showRightPanel ? '4fr' : (showSidebar ? '5fr' : '1fr')); // Proportional space
-    
+
+    const areas = ['chat'];
+    const columns = [showRightPanel ? '4fr' : '1fr'];
+
     if (showRightPanel) {
       areas.push('right');
-      columns.push('1fr'); // Right panel takes flexible space
+      columns.push('1fr');
     }
-    
+
     return {
       templateAreas: `"${areas.join(' ')}"`,
       templateColumns: columns.join(' '),
-      showLeftSidebar: showSidebar,
-      showRightPanel: showRightPanel
+      showRightPanel: showRightPanel,
     };
-  }, [showSidebar, showRightPanel, showRightSidebar]);
+  }, [showRightPanel, showRightSidebar]);
 
-  // Backward compatibility: map legacy props to new props
-  const effectiveLeftPanelContent = leftPanelContent || (sidebarPosition === 'left' ? sidebarContent : null);
-  const effectiveShowLeftPanel = gridConfig.showLeftSidebar && (leftPanelContent || (sidebarPosition === 'left' && showSidebar));
-  
   // Right sidebar mode determines overlay vs inline
   const isRightSidebarFullscreen = rightSidebarMode === 'fullscreen';
   const isRightSidebarOverlay = showRightSidebar;
@@ -300,138 +302,150 @@ export const ChatLayout = memo<ChatLayoutProps>(({
         </div>
       )}
 
-      {/* CSS Grid Main Content Area with Glass Overlay */}
-      <div style={gridStyles} className="flex-1 overflow-hidden relative">
+      {/* Main Content: ResponsiveSidebar + CSS Grid */}
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Glassmorphism Background Overlay */}
         <div className="absolute inset-0 bg-white/5 backdrop-blur-sm pointer-events-none" />
-        
+
         {/* Floating Glass Orbs for Ambient Effect */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white/5 rounded-full blur-xl animate-pulse delay-1000" />
           <div className="absolute top-3/4 right-1/3 w-24 h-24 bg-purple-400/10 rounded-full blur-lg animate-pulse delay-2000" />
           <div className="absolute bottom-1/2 left-3/4 w-40 h-40 bg-blue-400/8 rounded-full blur-2xl animate-pulse delay-500" />
         </div>
-        
-        {/* Left Sidebar */}
-        {gridConfig.showLeftSidebar && effectiveLeftPanelContent && (
-          <div 
-            className="overflow-hidden relative z-10"
-            style={{ borderRight: '1px solid var(--glass-border)', gridArea: 'left' }}
+
+        {/* Left Sidebar — persistent on desktop, drawer overlay on mobile/tablet */}
+        {hasSidebarContent && (
+          <ResponsiveSidebar
+            open={isSidebarOpen}
+            onOpenChange={handleSidebarOpenChange}
+            position="left"
+            width={300}
+            className="relative z-10 !bg-transparent !text-inherit"
           >
             {effectiveLeftPanelContent}
-          </div>
+          </ResponsiveSidebar>
         )}
 
-        {/* Center Chat Area */}
-        <div 
-          className="flex flex-col overflow-hidden min-w-0 relative z-10"
-          style={{ gridArea: 'chat' }}
-        >
-          {/* Chat Content */}
-          <div className="flex-1 overflow-hidden">
-            <ChatContentLayout
-              messages={messages}
-              isLoading={isLoading}
-              isTyping={isTyping}
-              currentTasks={currentTasks}
-              onMessageClick={onMessageClick}
-              {...conversationProps}
-            />
-          </div>
-
-          {/* Input Area */}
-          <div className="flex-shrink-0" style={{ borderTop: '1px solid var(--glass-border)' }}>
-            <InputAreaLayout
-              onSend={onSendMessage}
-              onSendMultimodal={onSendMultimodal}
-              onShowWidgetSelector={onShowWidgetSelector}
-              showWidgetSelector={showWidgetSelector}
-              {...inputProps}
-            />
-          </div>
-        </div>
-
-        {/* Right Sidebar (Widget Mode) */}
-        {showRightSidebar && rightSidebarContent && (
-          <div 
-            className="glass-tertiary overflow-hidden relative z-10"
-            style={{ borderLeft: '1px solid var(--glass-border)', gridArea: 'widget' }}
+        {/* CSS Grid for chat + optional right panels */}
+        <div style={gridStyles} className="flex-1 overflow-hidden relative z-10 min-w-0">
+          {/* Center Chat Area */}
+          <div
+            className="flex flex-col overflow-hidden min-w-0"
+            style={{ gridArea: 'chat' }}
           >
-            {rightSidebarContent}
-          </div>
-        )}
+            {/* Chat Content */}
+            <div className="flex-1 overflow-hidden">
+              <ChatContentLayout
+                messages={messages}
+                isLoading={isLoading}
+                isTyping={isTyping}
+                currentTasks={currentTasks}
+                onMessageClick={onMessageClick}
+                {...conversationProps}
+              />
+            </div>
 
-        {/* Right Panel (Session Management) */}
-        {gridConfig.showRightPanel && rightPanelContent && (
-          <div 
-            className="overflow-hidden w-full max-w-full relative z-10"
-            style={{ 
-              borderLeft: '1px solid var(--glass-border)', 
-              gridArea: 'right',
-              minWidth: 0,
-              maxWidth: '100%'
-            }}
-          >
-            <div className="w-full h-full overflow-hidden">
-              {rightPanelContent}
+            {/* Input Area */}
+            <div className="flex-shrink-0" style={{ borderTop: '1px solid var(--glass-border)' }}>
+              <InputAreaLayout
+                onSend={onSendMessage}
+                onSendMultimodal={onSendMultimodal}
+                onShowWidgetSelector={onShowWidgetSelector}
+                showWidgetSelector={showWidgetSelector}
+                {...inputProps}
+              />
             </div>
           </div>
-        )}
 
-        {/* Ultra-Transparent Floating Toggle */}
-        {!showRightSidebar && (
-          <div className="fixed right-3 top-1/2 transform -translate-y-1/2 z-30">
-            <button
-              onClick={onToggleRightPanel}
-              className={`group relative w-10 h-10 rounded-full transition-all duration-700 ease-out hover:scale-125 active:scale-90 ${
-                showRightPanel 
-                  ? 'opacity-40 hover:opacity-80' 
-                  : 'opacity-25 hover:opacity-90'
-              }`}
-              title={showRightPanel ? 'Hide Session Panel' : 'Show Session Panel'}
+          {/* Right Sidebar (Widget Mode) */}
+          {showRightSidebar && rightSidebarContent && (
+            <div
+              className="glass-tertiary overflow-hidden"
+              style={{ borderLeft: '1px solid var(--glass-border)', gridArea: 'widget' }}
+            >
+              {rightSidebarContent}
+            </div>
+          )}
+
+          {/* Right Panel (Session Management) */}
+          {gridConfig.showRightPanel && rightPanelContent && (
+            <div
+              className="overflow-hidden w-full max-w-full"
               style={{
-                background: showRightPanel 
-                  ? 'rgba(75, 85, 99, 0.15)' 
-                  : 'rgba(59, 130, 246, 0.15)',
-                backdropFilter: 'blur(20px) saturate(1.8)',
-                WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
-                border: showRightPanel 
-                  ? '1px solid rgba(255,255,255,0.08)' 
-                  : '1px solid rgba(59,130,246,0.2)',
-                boxShadow: showRightPanel 
-                  ? '0 4px 20px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.05)' 
-                  : '0 4px 20px rgba(59,130,246,0.15), inset 0 1px 0 rgba(147,197,253,0.1)'
+                borderLeft: '1px solid var(--glass-border)',
+                gridArea: 'right',
+                minWidth: 0,
+                maxWidth: '100%',
               }}
             >
-              {/* Subtle animated glow */}
-              <div className={`absolute inset-0 rounded-full transition-opacity duration-500 ${
-                showRightPanel ? 'opacity-0' : 'opacity-60'
-              }`}>
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400/10 to-purple-500/10 animate-pulse"></div>
+              <div className="w-full h-full overflow-hidden">
+                {rightPanelContent}
               </div>
-              
-              {/* Minimal icon */}
-              <div className="relative flex items-center justify-center w-full h-full">
-                <svg 
-                  className={`w-4 h-4 text-white/70 group-hover:text-white transition-all duration-500 ${
-                    showRightPanel ? 'rotate-180' : 'rotate-0'
+            </div>
+          )}
+
+          {/* Ultra-Transparent Floating Toggle */}
+          {!showRightSidebar && (
+            <div className="fixed right-3 top-1/2 transform -translate-y-1/2 z-30">
+              <button
+                onClick={onToggleRightPanel}
+                aria-label={showRightPanel ? 'Hide session panel' : 'Show session panel'}
+                className={`group relative w-10 h-10 rounded-full hover:scale-125 active:scale-90 ${
+                  showRightPanel
+                    ? 'opacity-40 hover:opacity-80'
+                    : 'opacity-25 hover:opacity-90'
+                }`}
+                style={{
+                  transitionProperty: 'transform, opacity',
+                  transitionDuration: '200ms',
+                  background: showRightPanel
+                    ? 'rgba(75, 85, 99, 0.15)'
+                    : 'rgba(59, 130, 246, 0.15)',
+                  backdropFilter: 'blur(20px) saturate(1.8)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+                  border: showRightPanel
+                    ? '1px solid rgba(255,255,255,0.08)'
+                    : '1px solid rgba(59,130,246,0.2)',
+                  boxShadow: showRightPanel
+                    ? '0 4px 20px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
+                    : '0 4px 20px rgba(59,130,246,0.15), inset 0 1px 0 rgba(147,197,253,0.1)',
+                }}
+              >
+                {/* Subtle animated glow */}
+                <div
+                  className={`absolute inset-0 rounded-full transition-opacity ${
+                    showRightPanel ? 'opacity-0' : 'opacity-60'
                   }`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
+                  style={{ transitionDuration: '200ms' }}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </div>
-              
-              {/* Subtle indicator dot */}
-              {!showRightPanel && (
-                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-400/60 rounded-full animate-pulse border border-white/20"></div>
-              )}
-            </button>
-          </div>
-        )}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400/10 to-purple-500/10 animate-pulse" />
+                </div>
+
+                {/* Minimal icon */}
+                <div className="relative flex items-center justify-center w-full h-full">
+                  <svg
+                    className={`w-4 h-4 text-white/70 group-hover:text-white ${
+                      showRightPanel ? 'rotate-180' : 'rotate-0'
+                    }`}
+                    style={{ transitionProperty: 'transform, color', transitionDuration: '200ms' }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </div>
+
+                {/* Subtle indicator dot */}
+                {!showRightPanel && (
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-400/60 rounded-full animate-pulse border border-white/20" />
+                )}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Smart Widget Selector Modal */}

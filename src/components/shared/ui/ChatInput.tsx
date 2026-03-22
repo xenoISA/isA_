@@ -2,7 +2,7 @@
  * ChatInput Component - Multi-line text input with modern AI chat features
  * Based on modern AI chat interfaces (Claude, ChatGPT, Gemini, Grok)
  */
-import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import React, { useState, useRef, useEffect, KeyboardEvent, useMemo } from 'react';
 
 export interface ChatInputProps {
   value: string;
@@ -27,7 +27,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   value,
   onChange,
   onSend,
-  placeholder = 'Type a message...',
+  placeholder = 'Type your message...',
   maxLength = 4000,
   minRows = 1,
   maxRows = 10,
@@ -69,6 +69,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const canSend = value.trim().length > 0 && !disabled && !isLoading;
+
+  // Detect touch/mobile devices for hint text
+  const isTouchDevice = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }, []);
 
   return (
     <div className={`chat-input-container ${className}`}>
@@ -190,10 +196,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         )}
       </div>
 
-      {/* Hint Text */}
+      {/* Hint Text — adaptive for touch vs keyboard devices */}
       {allowShiftEnter && !disabled && (
         <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 text-center border-t border-gray-100 dark:border-gray-800">
-          Press <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> to send, <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Shift + Enter</kbd> for new line
+          {isTouchDevice ? (
+            <>Tap the send button to send</>
+          ) : (
+            <>
+              Press <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> to send, <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Shift + Enter</kbd> for new line
+            </>
+          )}
         </div>
       )}
     </div>

@@ -642,7 +642,6 @@ export interface Translations {
   // Placeholders and form inputs
   placeholders: {
     typeMessage: string;
-    messageAssistant: string;
     addTask: string;
     typeRequest: string;
     email: string;
@@ -1274,7 +1273,6 @@ const zhCN: Translations = {
   // Placeholders and form inputs
   placeholders: {
     typeMessage: '输入您的消息...',
-    messageAssistant: '与AI助手对话...',
     addTask: '添加新任务...',
     typeRequest: '输入您的请求...（例如："监控我的GitHub仓库的新问题"）',
     email: 'colleague@company.com',
@@ -1410,7 +1408,7 @@ const enUS: Translations = {
   chat: {
     welcome: 'Welcome',
     startConversation: 'Start Conversation',
-    typeMessage: 'Type a message...',
+    typeMessage: 'Type your message...',
     sendMessage: 'Send Message',
     newChat: 'New Chat',
     clearChat: 'Clear Chat',
@@ -1906,7 +1904,6 @@ const enUS: Translations = {
   // Placeholders and form inputs
   placeholders: {
     typeMessage: 'Type your message...',
-    messageAssistant: 'Message AI Assistant...',
     addTask: 'Add a new task...',
     typeRequest: 'Type your request... (e.g., "Monitor my GitHub repo for new issues")',
     email: 'colleague@company.com',
