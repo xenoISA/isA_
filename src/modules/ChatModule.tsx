@@ -82,6 +82,10 @@ import { createMessageHandlers } from './handlers/messageHandlers';
 
 interface ChatModuleProps extends Omit<ChatLayoutProps, 'messages' | 'isLoading' | 'isTyping' | 'onSendMessage' | 'onSendMultimodal'> {
   // All ChatLayout props except the data and callback props that we'll provide from business logic
+  /** Whether the session sidebar is open (injected by AppLayout) */
+  sidebarOpen?: boolean;
+  /** Callback to change sidebar open state (injected by AppLayout) */
+  onSidebarOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -98,13 +102,15 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   // Module state for upgrade modal
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Extract widget selector and panel state from props (managed by parent)
+  // Extract widget selector, panel state, and sidebar state from props (managed by parent)
   const {
     showWidgetSelector = false,
     onCloseWidgetSelector,
     onShowWidgetSelector,
     showRightPanel = false,
     onToggleRightPanel,
+    sidebarOpen,
+    onSidebarOpenChange,
     ...otherProps
   } = props;
 
@@ -480,6 +486,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         onSendMultimodal={messageHandlers.handleSendMultimodal}
         onMessageClick={messageHandlers.handleMessageClick}
         onNewChat={messageHandlers.handleNewChat}
+
+        // Sidebar state (injected from AppLayout via useSidebar)
+        sidebarOpen={sidebarOpen}
+        onSidebarOpenChange={onSidebarOpenChange}
 
         // 🆕 Responsive layout based on device type
         forceLayout={isMobile ? 'mobile' : 'auto'} // Use mobile layout for mobile devices

@@ -2,37 +2,27 @@
  * ============================================================================
  * App Layout (AppLayout.tsx) - Pure UI Layout Component
  * ============================================================================
- * 
+ *
  * Core Responsibilities:
  * - Provide pure UI layout structure for the main application
  * - Render header, chat area, and sidebars based on props
  * - Handle responsive design and layout states
  * - Coordinate UI components without business logic
- * 
+ *
  * Architecture:
  * - Receives all data and callbacks as props from AppModule
  * - Renders pure UI components with provided data
  * - Three-panel layout: Header + (LeftSidebar + Chat + RightSidebar)
  * - No direct hooks or business logic
- * 
- * 【关注点分离】
- * ✅ 负责：
- *   - UI布局结构和响应式设计
- *   - 组件的渲染和空间分配
- *   - 样式和视觉效果管理
- *   - 事件的传递（不处理）
- * 
- * ❌ 不负责：
- *   - 业务逻辑处理（由AppModule处理）
- *   - 数据状态管理（由stores处理）
- *   - API调用（由services处理）
- *   - Hook使用（由modules处理）
+ *
+ * Responsive strategy:
+ * - Desktop (>=1024px): persistent sidebar, full header actions
+ * - Mobile/tablet (<1024px): sidebar as drawer, header overflow menu
  */
 
 import React from 'react';
-import { PlatformNav } from '@isa/ui-web';
+import { PlatformNav, useSidebar } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
-import { useBreakpoint } from '@isa/ui-web';
 import { useAuthContext } from '../providers/AuthProvider';
 import { surfaceUrls } from '../config/surfaceConfig';
 
@@ -68,15 +58,15 @@ export interface AppLayoutProps {
  * No business logic or direct state management
  */
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
-  const { isMobile } = useBreakpoint();
+  const sidebar = useSidebar({ defaultOpen: true, persistKey: 'isa-app-sidebar' });
   const { authUser, isAuthenticated, logout } = useAuthContext();
 
   // Get rendered modules and data from AppModule via render props
   const moduleData = children?.();
-  
+
   if (!moduleData) {
     return (
-      <div className="h-screen flex items-center justify-center text-white bg-gray-900">
+      <div className="min-h-dvh flex items-center justify-center text-white bg-gray-900">
         <div className="text-center">
           <div className="text-xl font-bold mb-2">Loading Application...</div>
           <div className="text-gray-400">Setting up modules...</div>
@@ -84,7 +74,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
       </div>
     );
   }
-  
+
   const { chatModule, appData, userPortal } = moduleData;
 
   return (
@@ -110,16 +100,23 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
         <AppHeader
           currentApp={appData.currentApp}
           availableApps={appData.availableApps}
+          onMenuClick={sidebar.toggle}
+          sidebarOpen={sidebar.isOpen}
         />
       </div>
-      
+
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden w-full">
-        {/* Render Chat Module with integrated input handling and sidebars */}
-        {chatModule}
+        {/* Render Chat Module with sidebar state injected */}
+        {React.isValidElement(chatModule)
+          ? React.cloneElement(chatModule as React.ReactElement<any>, {
+              sidebarOpen: sidebar.isOpen,
+              onSidebarOpenChange: (open: boolean) => open ? sidebar.open() : sidebar.close(),
+            })
+          : chatModule}
       </div>
-      
-      {/* User Portal - 独立渲染在最上层 */}
+
+      {/* User Portal - rendered at highest layer */}
       {userPortal}
     </div>
   );

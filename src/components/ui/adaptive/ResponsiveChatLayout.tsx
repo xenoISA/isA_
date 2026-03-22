@@ -16,12 +16,18 @@ export interface ResponsiveChatLayoutProps extends Omit<ChatLayoutProps, 'classN
   className?: string;
   style?: React.CSSProperties;
   onNewChat?: () => void;
+  /** Whether the session sidebar is open */
+  sidebarOpen?: boolean;
+  /** Callback to change sidebar open state */
+  onSidebarOpenChange?: (open: boolean) => void;
 }
 
 export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
   className = '',
   style = {},
   onNewChat,
+  sidebarOpen,
+  onSidebarOpenChange,
   ...props
 }) => {
   return (
@@ -29,7 +35,11 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
       className={`responsive-chat-layout w-full h-full ${className}`}
       style={style}
     >
-      <ChatLayout {...props} />
+      <ChatLayout
+        {...props}
+        sidebarOpen={sidebarOpen}
+        onSidebarOpenChange={onSidebarOpenChange}
+      />
     </div>
   );
 };

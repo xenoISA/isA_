@@ -2,7 +2,7 @@
  * GlassChatInput Component - Ultra-modern glassmorphism chat input
  * Advanced chat input with glass effects and modern interactions
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
 // 智能模式设置接口
@@ -319,6 +319,12 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
 
   const canSend = value.trim().length > 0 && !disabled && !isLoading;
 
+  // Detect touch/mobile devices for hint text
+  const isTouchDevice = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }, []);
+
   const getVariantStyles = () => {
     switch (variant) {
       case 'elevated':
@@ -467,18 +473,24 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
           </div>
         )}
 
-        {/* Hint Text */}
+        {/* Hint Text — adaptive for touch vs keyboard devices */}
         {allowShiftEnter && !disabled && variant !== 'compact' && (
           <div className="mt-3 text-xs text-center text-gray-500/60 dark:text-gray-400/60">
-            Press{' '}
-            <kbd className="px-2 py-0.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded text-xs backdrop-blur-sm">
-              Enter
-            </kbd>{' '}
-            to send, {' '}
-            <kbd className="px-2 py-0.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded text-xs backdrop-blur-sm">
-              Shift + Enter
-            </kbd>{' '}
-            for new line
+            {isTouchDevice ? (
+              <>Tap the send button to send</>
+            ) : (
+              <>
+                Press{' '}
+                <kbd className="px-2 py-0.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded text-xs backdrop-blur-sm">
+                  Enter
+                </kbd>{' '}
+                to send, {' '}
+                <kbd className="px-2 py-0.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded text-xs backdrop-blur-sm">
+                  Shift + Enter
+                </kbd>{' '}
+                for new line
+              </>
+            )}
           </div>
         )}
 
