@@ -32,10 +32,9 @@
 import React from 'react';
 import { PlatformNav } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
-import { useDeviceType } from '../hooks/useDeviceType';
+import { useBreakpoint } from '@isa/ui-web';
 import { useAuthContext } from '../providers/AuthProvider';
 import { surfaceUrls } from '../config/surfaceConfig';
-import { THEME_COLORS } from '../constants/theme';
 
 export interface AppLayoutProps {
   className?: string;
@@ -69,8 +68,7 @@ export interface AppLayoutProps {
  * No business logic or direct state management
  */
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
-  // Get device type to determine whether to show desktop header
-  const { isMobile } = useDeviceType();
+  const { isMobile } = useBreakpoint();
   const { authUser, isAuthenticated, logout } = useAuthContext();
 
   // Get rendered modules and data from AppModule via render props
@@ -90,16 +88,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
   const { chatModule, appData, userPortal } = moduleData;
 
   return (
-    <div 
-      className={`h-screen w-full flex flex-col text-white relative ${className}`} 
-      style={{ background: THEME_COLORS.primaryGradient }}
+    <div
+      className={`min-h-dvh w-full flex flex-col bg-[var(--surface-bg,#0f172a)] text-[var(--text-primary,#fff)] relative ${className}`}
     >
-      {/* Ambient Glass Orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl opacity-40 animate-pulse"></div>
-        <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-3/4 left-3/4 w-48 h-48 bg-purple-500/8 rounded-full blur-3xl opacity-50 animate-pulse" style={{ animationDelay: '4s' }}></div>
-      </div>
       {/* Platform Navigation - Surface switcher for authenticated users */}
       {isAuthenticated && (
         <PlatformNav
@@ -114,15 +105,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
           onLogout={logout}
         />
       )}
-      {/* Application Header - Only show on desktop, hidden on mobile */}
-      {!isMobile && (
-        <div className="h-16 flex-shrink-0 p-2">
-          <AppHeader
-            currentApp={appData.currentApp}
-            availableApps={appData.availableApps}
-          />
-        </div>
-      )}
+      {/* Application Header - responsive on all viewports */}
+      <div className="h-14 md:h-16 flex-shrink-0 p-1.5 md:p-2">
+        <AppHeader
+          currentApp={appData.currentApp}
+          availableApps={appData.availableApps}
+        />
+      </div>
       
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden w-full">

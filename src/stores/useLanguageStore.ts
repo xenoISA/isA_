@@ -49,6 +49,25 @@ export interface LanguageState {
 }
 
 // ================================================================================
+// Utilities (defined before store so they can be used in initialization)
+// ================================================================================
+
+/**
+ * Get browser preferred language, fallback to English
+ */
+export const getBrowserLanguage = (): SupportedLanguage => {
+  if (typeof navigator === 'undefined') return 'en-US';
+
+  const browserLang = navigator.language || navigator.languages?.[0];
+
+  if (browserLang?.startsWith('zh')) {
+    return 'zh-CN';
+  }
+
+  return 'en-US'; // Default fallback
+};
+
+// ================================================================================
 // Language Configuration
 // ================================================================================
 
@@ -74,8 +93,8 @@ const AVAILABLE_LANGUAGES: LanguageConfig[] = [
 export const useLanguageStore = create<LanguageState>()(
   persist(
     (set) => ({
-      // Default to Chinese
-      currentLanguage: 'zh-CN',
+      // Default to browser language (detected synchronously before first render)
+      currentLanguage: getBrowserLanguage(),
       
       // Available languages
       availableLanguages: AVAILABLE_LANGUAGES,
@@ -120,23 +139,6 @@ export const useLanguageStore = create<LanguageState>()(
 // ================================================================================
 // Utilities
 // ================================================================================
-
-/**
- * Get browser preferred language, fallback to Chinese
- */
-export const getBrowserLanguage = (): SupportedLanguage => {
-  if (typeof navigator === 'undefined') return 'zh-CN';
-  
-  const browserLang = navigator.language || navigator.languages?.[0];
-  
-  if (browserLang?.startsWith('zh')) {
-    return 'zh-CN';
-  } else if (browserLang?.startsWith('en')) {
-    return 'en-US';
-  }
-  
-  return 'zh-CN'; // Default fallback
-};
 
 /**
  * Initialize language based on browser preference
