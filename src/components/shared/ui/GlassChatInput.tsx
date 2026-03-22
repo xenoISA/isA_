@@ -326,14 +326,7 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
   }, []);
 
   const getVariantStyles = () => {
-    switch (variant) {
-      case 'elevated':
-        return 'glass-secondary';
-      case 'compact':
-        return 'glass-tertiary';
-      default:
-        return 'glass-secondary';
-    }
+    return 'bg-[var(--color-neutral-800,#1e293b)]';
   };
 
   const getInputStyles = () => {
