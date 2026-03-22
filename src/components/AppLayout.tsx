@@ -58,7 +58,9 @@ export interface AppLayoutProps {
  * No business logic or direct state management
  */
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);

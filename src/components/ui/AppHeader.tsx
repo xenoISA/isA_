@@ -51,10 +51,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onMenuClick,
   sidebarOpen,
 }) => {
-  // Logo element
+  // Logo element — clean, no gradient
   const logo = (
-    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 shadow-lg shadow-indigo-500/25 backdrop-blur-sm border border-white/10">
-      <span className="text-lg font-bold text-white drop-shadow-sm">isA</span>
+    <div className="size-9 rounded-lg flex items-center justify-center bg-white/10 border border-white/10">
+      <span className="text-sm font-semibold text-white" style={{ letterSpacing: '-0.02em' }}>isA</span>
     </div>
   );
 

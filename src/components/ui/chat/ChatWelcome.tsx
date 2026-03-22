@@ -109,90 +109,97 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   };
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-[60vh] px-4 sm:px-6 lg:px-8 ${className}`}>
-      {/* Main Welcome Card - Simplified design for consistency */}
-      <div className="p-4 sm:p-6 lg:p-8 w-full max-w-5xl mx-auto glass-secondary rounded-2xl" style={{ border: '1px solid var(--glass-border)' }}>
-        {/* AI Avatar */}
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-6 glass-tertiary" style={{ border: '1px solid var(--glass-border)' }}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--color-primary)' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-        </div>
-        
-        {/* Welcome Text - Responsive typography */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
+    <div className={`flex flex-col items-center justify-center min-h-[60vh] px-4 sm:px-6 lg:px-8 py-8 md:py-16 ${className}`}>
+      <div className="w-full max-w-2xl mx-auto">
+        {/* Heading — left-aligned on desktop per taste anti-center rule */}
+        <div className="mb-8 md:mb-12 text-center md:text-left">
+          <h1
+            className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-3 text-balance"
+            style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: '1.15' }}
+          >
             {welcomeConfig.title}
           </h1>
-          <p className="text-sm sm:text-base leading-relaxed max-w-2xl mx-auto px-2" style={{ color: 'var(--text-secondary)' }}>
+          <p
+            className="text-sm sm:text-base leading-relaxed max-w-[50ch] text-pretty"
+            style={{ color: 'var(--text-muted)' }}
+          >
             {welcomeConfig.subtitle}
           </p>
         </div>
 
-        {/* Dynamic Widget Cards - Enhanced mobile layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 mb-6 sm:mb-8">
-          {welcomeConfig.widgets.map((widget, index) => (
+        {/* Widget Cards — 2-col grid, no glass, clean borders */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+          {welcomeConfig.widgets.map((widget) => (
             <button
               key={widget.id}
-              className={`p-3 sm:p-4 lg:p-5 rounded-xl sm:rounded-2xl cursor-pointer group transition-all duration-200 text-left glass-tertiary hover:glass-secondary ${
-                widget.featured ? 'sm:col-span-2 lg:col-span-2 xl:col-span-2' : ''
-              }`}
-              style={{ border: '1px solid var(--glass-border)' }}
+              className="flex items-start gap-3 p-4 rounded-xl text-left cursor-pointer group transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+              style={{
+                background: 'var(--color-neutral-800)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                e.currentTarget.style.background = 'var(--color-neutral-700)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                e.currentTarget.style.background = 'var(--color-neutral-800)';
+              }}
               onClick={() => handleWidgetClick(widget)}
             >
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div 
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-105 glass-tertiary"
-                  style={{
-                    border: `1px solid var(--glass-border)`,
-                    color: widget.accentColor
-                  }}
+              <div
+                className="size-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'rgba(255,255,255,0.06)', color: widget.accentColor }}
+              >
+                {widget.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3
+                  className="font-medium text-sm mb-1"
+                  style={{ color: 'var(--text-primary)' }}
                 >
-                  {widget.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm sm:text-base mb-1 sm:mb-2 transition-colors" style={{ color: 'var(--text-primary)' }}>
-                    {widget.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm transition-colors leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                    {widget.description}
-                  </p>
-                </div>
+                  {widget.title}
+                </h3>
+                <p
+                  className="text-xs leading-relaxed line-clamp-2"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  {widget.description}
+                </p>
               </div>
             </button>
           ))}
         </div>
 
-        {/* Example Prompts - Mobile-optimized layout */}
-        <div className="pt-4 sm:pt-6" style={{ borderTop: '1px solid var(--glass-border)' }}>
-          <h4 className="font-medium mb-3 sm:mb-4 text-center text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>Quick start examples:</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-2 gap-2 sm:gap-3 max-w-4xl mx-auto">
+        {/* Quick start — horizontal chips */}
+        <div className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+            Try asking
+          </p>
+          <div className="flex flex-wrap gap-2">
             {welcomeConfig.examplePrompts.map((prompt, index) => (
               <button
                 key={index}
-                className="p-2 sm:p-2.5 lg:p-3 rounded-lg text-left text-xs sm:text-sm glass-tertiary hover:glass-secondary transition-all duration-200"
-                style={{ 
-                  border: '1px solid var(--glass-border)',
-                  color: 'var(--text-secondary)'
+                className="px-3 py-1.5 rounded-full text-xs cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'var(--text-secondary)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
                 onClick={() => handlePromptClick(prompt)}
               >
-                "{prompt}"
+                {prompt}
               </button>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Getting Started Tip - Enhanced styling */}
-      <div className="mt-4 sm:mt-6 text-center px-4">
-        <div className="inline-flex items-center justify-center gap-2 px-4 py-2 glass-secondary rounded-full" style={{ border: '1px solid var(--glass-border)' }}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--color-primary)' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {welcomeConfig.tipText}
-          </span>
         </div>
       </div>
     </div>

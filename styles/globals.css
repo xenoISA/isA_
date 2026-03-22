@@ -54,23 +54,23 @@ a {
   --color-accent: var(--color-violet-500);
   --color-accent-hover: var(--color-violet-600);
 
-  /* Background System */
-  --gradient-primary: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-  --gradient-secondary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 50%, var(--color-accent) 100%);
-  --gradient-tertiary: linear-gradient(135deg, var(--color-blue-500) 0%, var(--color-primary) 50%, var(--color-secondary) 100%);
-  --gradient-surface: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
-  --gradient-overlay: linear-gradient(135deg, rgba(99, 102, 241, 0.02) 0%, rgba(139, 92, 246, 0.02) 100%);
+  /* Background System — clean solid surfaces, no gradients */
+  --gradient-primary: #0f172a;
+  --gradient-secondary: #0f172a;
+  --gradient-tertiary: #0f172a;
+  --gradient-surface: transparent;
+  --gradient-overlay: transparent;
 
-  /* Glass System */
-  --glass-primary: rgba(15, 15, 35, 0.8);
-  --glass-secondary: rgba(26, 26, 46, 0.9);
-  --glass-tertiary: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(99, 102, 241, 0.1);
-  --glass-border-hover: rgba(99, 102, 241, 0.2);
-  --glass-border-active: rgba(99, 102, 241, 0.3);
-  --glass-border-focused: rgba(99, 102, 241, 0.4);
-  --glass-border-subtle: rgba(255, 255, 255, 0.05);
-  --glass-border-strong: rgba(99, 102, 241, 0.5);
+  /* Surface System — replaces glass with solid surfaces */
+  --glass-primary: var(--color-neutral-900);
+  --glass-secondary: var(--color-neutral-800);
+  --glass-tertiary: rgba(30, 41, 59, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.15);
+  --glass-border-active: rgba(255, 255, 255, 0.2);
+  --glass-border-focused: var(--color-indigo-500);
+  --glass-border-subtle: rgba(255, 255, 255, 0.04);
+  --glass-border-strong: rgba(255, 255, 255, 0.2);
 
   /* Text System */
   --text-primary: var(--color-neutral-50);
@@ -110,8 +110,8 @@ a {
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-glow: 0 0 20px var(--color-primary), 0 0 40px var(--color-primary);
-  --shadow-glow-secondary: 0 0 20px var(--color-secondary), 0 0 40px var(--color-secondary);
+  --shadow-glow: none;
+  --shadow-glow-secondary: none;
 
   /* Animation System */
   --duration-fast: 150ms;

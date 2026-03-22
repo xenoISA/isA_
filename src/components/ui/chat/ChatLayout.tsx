@@ -303,15 +303,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
 
       {/* Main Content: ResponsiveSidebar + CSS Grid */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Glassmorphism Background Overlay */}
-        <div className="absolute inset-0 bg-white/5 backdrop-blur-sm pointer-events-none" />
-
-        {/* Floating Glass Orbs for Ambient Effect */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white/5 rounded-full blur-xl animate-pulse delay-1000" />
-          <div className="absolute top-3/4 right-1/3 w-24 h-24 bg-purple-400/10 rounded-full blur-lg animate-pulse delay-2000" />
-          <div className="absolute bottom-1/2 left-3/4 w-40 h-40 bg-blue-400/8 rounded-full blur-2xl animate-pulse delay-500" />
-        </div>
+        {/* Clean background */}
 
         {/* Left Sidebar — persistent on desktop, hidden on mobile */}
         {hasSidebarContent && isSidebarOpen && (
