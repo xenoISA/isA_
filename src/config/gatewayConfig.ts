@@ -67,7 +67,7 @@ export const GATEWAY_SERVICES = {
   // 业务服务
   PAYMENT: 'api/v1/payment',         // 支付服务 (8207)
   ORDER: 'api/v1/order',             // 订单服务 (8210)
-  ORGANIZATION: 'api/v1/organizations', // 组织服务 (8212)
+  ORGANIZATION: 'api/v1/organization', // 组织服务 (8212)
   INVITATION: 'api/v1/invitation',   // 邀请服务 (8213)
 
   // 基础服务
