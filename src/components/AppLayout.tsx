@@ -23,6 +23,7 @@
 import React, { useState, useCallback } from 'react';
 import { PlatformNav } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
+import { LoginScreen } from './ui/LoginScreen';
 import { useAuthContext } from '../providers/AuthProvider';
 import { surfaceUrls } from '../config/surfaceConfig';
 
@@ -59,15 +60,29 @@ export interface AppLayoutProps {
  */
 export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginMode, setLoginMode] = useState<'login' | 'signup' | 'verify'>('login');
 
   // Auto-close sidebar on mobile after initial render (SSR-safe)
   React.useEffect(() => {
     if (window.innerWidth < 1024) setSidebarOpen(false);
   }, []);
+
+  // Listen for login screen trigger from UserButton
+  React.useEffect(() => {
+    const handler = () => setShowLogin(true);
+    window.addEventListener('isa:show-login', handler);
+    return () => window.removeEventListener('isa:show-login', handler);
+  }, []);
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-  const { authUser, isAuthenticated, logout } = useAuthContext();
+  const { authUser, isAuthenticated, isLoading: authLoading, error: authError, login, signup, verify, logout } = useAuthContext();
+
+  // Close login screen on successful auth
+  React.useEffect(() => {
+    if (isAuthenticated) setShowLogin(false);
+  }, [isAuthenticated]);
 
   // Get rendered modules and data from AppModule via render props
   const moduleData = children?.();
@@ -120,12 +135,51 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
           ? React.cloneElement(chatModule as React.ReactElement<any>, {
               sidebarOpen,
               onSidebarOpenChange: (open: boolean) => open ? openSidebar() : closeSidebar(),
+              onLoginClick: () => setShowLogin(true),
             })
           : chatModule}
       </div>
 
       {/* User Portal - rendered at highest layer */}
       {userPortal}
+
+      {/* Login Screen Overlay */}
+      {showLogin && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowLogin(false)}
+          />
+          <div className="relative z-10">
+            <LoginScreen
+              mode={loginMode}
+              isLoading={authLoading}
+              error={authError}
+              onLogin={async (email, password) => {
+                await login(email, password);
+              }}
+              onSignup={async (email, password, name) => {
+                await signup(email, password, name);
+                setLoginMode('verify');
+              }}
+              onVerify={async (code) => {
+                await verify(code);
+              }}
+              onSwitchMode={setLoginMode}
+            />
+          </div>
+          <button
+            onClick={() => setShowLogin(false)}
+            className="absolute top-4 right-4 z-20 size-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            aria-label="Close login"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="4" y1="4" x2="16" y2="16" />
+              <line x1="16" y1="4" x2="4" y2="16" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
