@@ -82,11 +82,12 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
   const handleLogin = useCallback(() => {
     try {
       logger.info(LogCategory.USER_AUTH, 'User login initiated from UserButton');
-      userModule.login();
+      // Dispatch custom event — AppLayout listens and shows LoginScreen
+      window.dispatchEvent(new CustomEvent('isa:show-login'));
     } catch (error) {
       logger.error(LogCategory.USER_AUTH, 'Failed to initiate login', { error });
     }
-  }, [userModule]);
+  }, []);
 
   const handleSwitchToPersonal = useCallback(async () => {
     try {
