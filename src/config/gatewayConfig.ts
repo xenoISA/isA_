@@ -53,35 +53,35 @@ export const GATEWAY_CONFIG = {
 // ================================================================================
 
 export const GATEWAY_SERVICES = {
-  // 核心AI服务
-  AGENTS: 'agents',           // Agent聊天服务 (8080)
-  MATE: 'mate',               // isA Mate聊天服务 (18789)
-  MCP: 'mcp',                 // MCP工具服务 (8081)
-  
-  // 用户相关服务  
-  ACCOUNTS: 'accounts',       // 账户服务 (8201)
-  AUTH: 'auth',              // 认证服务 (8202)
-  AUTHORIZATION: 'authorization', // 授权服务 (8203)
-  SESSIONS: 'sessions',       // 会话服务 (8205)
-  
+  // 核心AI服务 — paths match APISIX routes directly
+  AGENTS: 'api/v1/agents',           // Agent聊天服务 (8080)
+  MATE: 'mate',                      // isA Mate聊天服务 (18789) — direct, no gateway
+  MCP: 'api/v1/mcp',                 // MCP工具服务 (8081)
+
+  // 用户相关服务
+  ACCOUNTS: 'api/v1/accounts',       // 账户服务 (8201)
+  AUTH: 'api/v1/auth',               // 认证服务 (8202)
+  AUTHORIZATION: 'api/v1/authorization', // 授权服务 (8203)
+  SESSIONS: 'api/v1/sessions',       // 会话服务 (8205)
+
   // 业务服务
-  PAYMENT: 'payment',         // 支付服务 (8207)
-  ORDER: 'order',            // 订单服务 (8210)
-  ORGANIZATION: 'organization', // 组织服务 (8212)
-  INVITATION: 'invitation',   // 邀请服务 (8213)
-  
+  PAYMENT: 'api/v1/payment',         // 支付服务 (8207)
+  ORDER: 'api/v1/order',             // 订单服务 (8210)
+  ORGANIZATION: 'api/v1/organizations', // 组织服务 (8212)
+  INVITATION: 'api/v1/invitation',   // 邀请服务 (8213)
+
   // 基础服务
-  NOTIFICATION: 'notification', // 通知服务 (8206)
-  STORAGE: 'storage',         // 存储服务 (8208)
-  WALLET: 'wallet',          // 钱包服务 (8209)
-  TASK: 'task_service',      // 任务服务 (8211)
-  AUDIT: 'audit',            // 审计服务 (8204)
-  
+  NOTIFICATION: 'api/v1/notification', // 通知服务 (8206)
+  STORAGE: 'api/v1/storage',         // 存储服务 (8208)
+  WALLET: 'api/v1/wallet',           // 钱包服务 (8209)
+  TASK: 'api/v1/task_service',       // 任务服务 (8211)
+  AUDIT: 'api/v1/audit',             // 审计服务 (8204)
+
   // 区块链服务
-  BLOCKCHAIN: 'blockchain',   // 区块链网关
-  
+  BLOCKCHAIN: 'api/v1/blockchain',   // 区块链网关
+
   // 网关管理
-  GATEWAY: 'gateway'         // 网关自身管理
+  GATEWAY: 'gateway'                 // 网关自身管理
 } as const;
 
 // ================================================================================
@@ -152,44 +152,44 @@ export const GATEWAY_ENDPOINTS = {
   // backend exposes routes under that prefix, unlike AGENTS which uses short paths.
   ACCOUNTS: {
     BASE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS),
-    ME: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/me'),
-    ENSURE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/ensure'),
-    CREDITS: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/{userId}/credits/consume'),
-    SUBSCRIPTION: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/api/v1/users/{userId}/subscription'),
+    ME: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/me'),
+    ENSURE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/ensure'),
+    CREDITS: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/{userId}/credits/consume'),
+    SUBSCRIPTION: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/{userId}/subscription'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/health'),
   },
   
   // ==== 会话服务端点 ====
   SESSIONS: {
     BASE: buildEndpoint(GATEWAY_SERVICES.SESSIONS),
-    LIST: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions'),
-    CREATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions'),
-    GET: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/{sessionId}'),
-    UPDATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/{sessionId}'),
-    DELETE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/{sessionId}'),
-    USER: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/user'),
-    ACTIVE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/active'),
-    SEARCH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/api/v1/sessions/search'),
+    LIST: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions'),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions'),
+    GET: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/{sessionId}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/{sessionId}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/{sessionId}'),
+    USER: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/user'),
+    ACTIVE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/active'),
+    SEARCH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/search'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/health'),
   },
   
   // ==== 认证服务端点 ====
   AUTH: {
     BASE: buildEndpoint(GATEWAY_SERVICES.AUTH),
-    VERIFY_TOKEN: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/verify-token'),
-    VERIFY_API_KEY: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/verify-api-key'),
-    DEV_TOKEN: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/dev-token'),
-    API_KEYS: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api/v1/auth/api-keys'),
+    VERIFY_TOKEN: buildEndpoint(GATEWAY_SERVICES.AUTH, '/verify-token'),
+    VERIFY_API_KEY: buildEndpoint(GATEWAY_SERVICES.AUTH, '/verify-api-key'),
+    DEV_TOKEN: buildEndpoint(GATEWAY_SERVICES.AUTH, '/dev-token'),
+    API_KEYS: buildEndpoint(GATEWAY_SERVICES.AUTH, '/api-keys'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.AUTH, '/health'),
   },
   
   // ==== 授权服务端点 ====
   AUTHORIZATION: {
     BASE: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION),
-    CHECK_ACCESS: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/check-access'),
-    GRANT: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/grant'),
-    REVOKE: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/revoke'),
-    USER_PERMISSIONS: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/api/v1/authorization/user-permissions'),
+    CHECK_ACCESS: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/check-access'),
+    GRANT: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/grant'),
+    REVOKE: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/revoke'),
+    USER_PERMISSIONS: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/user-permissions'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.AUTHORIZATION, '/health'),
   },
   
@@ -227,25 +227,25 @@ export const GATEWAY_ENDPOINTS = {
   // ==== 组织服务端点 ====
   ORGANIZATION: {
     BASE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION),
-    LIST: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations'),
-    CREATE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations'),
-    GET: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}'),
-    UPDATE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}'),
-    DELETE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}'),
-    MEMBERS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/members'),
-    MEMBER: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/members/{userId}'),
-    INVITATIONS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/invitations'),
-    INVITATION: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/invitations/{invitationId}'),
-    ACCEPT_INVITATION: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/invitations/{invitationToken}/accept'),
-    STATS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/organizations/{organizationId}/stats'),
-    SWITCH_CONTEXT: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/api/v1/context/switch'),
+    LIST: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations'),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations'),
+    GET: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}'),
+    MEMBERS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}/members'),
+    MEMBER: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}/members/{userId}'),
+    INVITATIONS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}/invitations'),
+    INVITATION: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}/invitations/{invitationId}'),
+    ACCEPT_INVITATION: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/invitations/{invitationToken}/accept'),
+    STATS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}/stats'),
+    SWITCH_CONTEXT: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/context/switch'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/health'),
   },
 
   // ==== 邀请服务端点 ====
   INVITATION: {
     BASE: buildEndpoint(GATEWAY_SERVICES.INVITATION),
-    RESEND: buildEndpoint(GATEWAY_SERVICES.INVITATION, '/api/v1/invitations/{invitationId}/resend'),
+    RESEND: buildEndpoint(GATEWAY_SERVICES.INVITATION, '/invitations/{invitationId}/resend'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.INVITATION, '/health'),
   },
 
