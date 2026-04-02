@@ -30,6 +30,8 @@ export class DataScientistWidgetPlugin implements WidgetPlugin {
   icon = '📊';
   description = 'Advanced data analysis and insights generation';
   version = '1.0.0';
+  skillLabel = 'Data Analysis';
+  conversationalTriggerPrefix = 'Let me analyze that data...';
   triggers = [
     'analyze data',
     'data analysis',

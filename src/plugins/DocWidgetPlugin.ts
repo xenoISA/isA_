@@ -30,6 +30,8 @@ export class DocWidgetPlugin implements WidgetPlugin {
   icon = '📝';
   description = 'Create, edit, and export documents with AI assistance';
   version = '1.0.0';
+  skillLabel = 'Document Studio';
+  conversationalTriggerPrefix = 'Let me draft that document...';
   triggers = [
     'create document',
     'write document',

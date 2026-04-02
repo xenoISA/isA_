@@ -30,6 +30,8 @@ export class OmniWidgetPlugin implements WidgetPlugin {
   icon = '⚡';
   description = 'Multi-purpose content creation with customizable tone and length';
   version = '1.0.0';
+  skillLabel = 'Content Generation';
+  conversationalTriggerPrefix = 'Let me create that content...';
   triggers = [
     'generate content',
     'create content',

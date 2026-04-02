@@ -42,6 +42,10 @@ import { AwayActivityGroup } from './AwayActivityGroup';
 import type { RegularMessage } from '../../../types/chatTypes';
 
 import { DelegationCard } from './DelegationCard';
+import { GentleNotification } from './GentleNotification';
+import type { GentleNotificationType } from './GentleNotification';
+import { SkillActivationCard } from './SkillActivationCard';
+import type { SkillActivationStatus } from './SkillActivationCard';
 import { useMessageStore } from '../../../stores/useMessageStore';
 
 // MessageActions will be implemented later
@@ -194,6 +198,99 @@ const MemoryRecallSection = memo<{ recalls: MemoryRecallData[] }>(({ recalls }) 
 MemoryRecallSection.displayName = 'MemoryRecallSection';
 
 /** DelegationCards — renders active delegations from the message store.
+
+// ---------------------------------------------------------------------------
+// Gentle Notification detection helper (#122)
+// ---------------------------------------------------------------------------
+// Returns a GentleNotificationType if the message should render as a
+// GentleNotification instead of a regular bubble. Returns null otherwise.
+
+function detectGentleNotification(message: ChatMessage): {
+  type: GentleNotificationType;
+  content: string;
+  source?: string;
+} | null {
+  if (message.type !== 'regular') return null;
+  const reg = message as RegularMessage;
+
+  // Cross-channel forwarded messages
+  if (reg.autonomousSource === 'channel') {
+    return {
+      type: 'channel-message',
+      content: reg.content,
+      source: reg.metadata?.sender as string | undefined,
+    };
+  }
+
+  // System info messages (metadata.type === 'system' or sender === 'system')
+  if (reg.metadata?.sender === 'system' || reg.metadata?.type === 'system') {
+    return {
+      type: 'info',
+      content: reg.content,
+    };
+  }
+
+  // Mate autonomous updates (non-scheduler, non-channel)
+  if (reg.isAutonomous && reg.autonomousSource === 'trigger') {
+    return {
+      type: 'update',
+      content: reg.content,
+    };
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Skill Activation detection helper (#123)
+// ---------------------------------------------------------------------------
+// Returns props for SkillActivationCard if the message represents a widget
+// execution in progress or a completed widget result that should render
+// inline as a skill card.
+
+function detectSkillActivation(message: ChatMessage): {
+  skillId: string;
+  skillLabel: string;
+  icon: string;
+  status: SkillActivationStatus;
+  errorMessage?: string;
+} | null {
+  if (message.type !== 'regular') return null;
+  const reg = message as RegularMessage;
+  // Only match skill-activation placeholder messages (not regular widget user messages)
+  if (!reg.metadata?.skillActivation) return null;
+
+  const widgetType = reg.metadata.widgetType as string | undefined;
+  if (!widgetType) return null;
+
+  // Skill label lookup — matches the plugin skillLabel fields
+  const SKILL_LABELS: Record<string, { label: string; icon: string }> = {
+    dream: { label: 'Image Generation', icon: '\uD83C\uDFA8' },
+    hunt: { label: 'Product Search', icon: '\uD83D\uDD0D' },
+    omni: { label: 'Content Generation', icon: '\u26A1' },
+    data_scientist: { label: 'Data Analysis', icon: '\uD83D\uDCCA' },
+    knowledge: { label: 'Knowledge Analysis', icon: '\uD83E\uDDE0' },
+    custom_automation: { label: 'Smart Automation', icon: '\uD83E\uDD16' },
+    digitalhub: { label: 'File Management', icon: '\uD83D\uDCC2' },
+    doc: { label: 'Document Studio', icon: '\uD83D\uDCDD' },
+  };
+
+  const meta = SKILL_LABELS[widgetType] || { label: widgetType, icon: '\uD83D\uDD27' };
+
+  // Determine status based on streaming / completion flags
+  const isCompleted = !!reg.metadata.skillCompleted;
+  const isStreaming = !!reg.isStreaming;
+
+  return {
+    skillId: widgetType,
+    skillLabel: meta.label,
+    icon: meta.icon,
+    status: isCompleted ? 'completed' : (isStreaming ? 'running' : 'activating'),
+  };
+}
+
+/**
+ * DelegationCards — renders active delegations from the message store.
  * Only displayed after the last assistant message in the stream.
  */
 const DelegationCards = memo(() => {
@@ -303,6 +400,84 @@ export const MessageList = memo<MessageListProps>(({
         return customResult;
       }
       // If custom renderer returns null, continue to default rendering
+    }
+
+    // --- Gentle Notification (#122) ---
+    const gentleInfo = detectGentleNotification(message);
+    if (gentleInfo) {
+      return (
+        <div className="mb-4">
+          <GentleNotification
+            type={gentleInfo.type}
+            content={gentleInfo.content}
+            timestamp={message.timestamp}
+            source={gentleInfo.source}
+            onDismiss={() => { /* notification dismissed */ }}
+          />
+        </div>
+      );
+    }
+
+    // --- Skill Activation Card for in-progress widget user requests (#123) ---
+    const skillInfo = detectSkillActivation(message);
+    if (skillInfo) {
+      return (
+        <div className="mb-4">
+          <SkillActivationCard
+            skillId={skillInfo.skillId}
+            skillLabel={skillInfo.skillLabel}
+            icon={skillInfo.icon}
+            status={skillInfo.status}
+            errorMessage={skillInfo.errorMessage}
+            onExpand={() => onMessageClick?.(message)}
+          />
+        </div>
+      );
+    }
+
+    // --- Skill Activation Card for completed artifact messages (#123) ---
+    if (message.type === 'artifact') {
+      const artifactMessage = message as ArtifactMessage;
+      const wt = artifactMessage.artifact.widgetType;
+      const SKILL_LABELS_ART: Record<string, { label: string; icon: string }> = {
+        dream: { label: 'Image Generation', icon: '\uD83C\uDFA8' },
+        hunt: { label: 'Product Search', icon: '\uD83D\uDD0D' },
+        omni: { label: 'Content Generation', icon: '\u26A1' },
+        data_scientist: { label: 'Data Analysis', icon: '\uD83D\uDCCA' },
+        knowledge: { label: 'Knowledge Analysis', icon: '\uD83E\uDDE0' },
+        custom_automation: { label: 'Smart Automation', icon: '\uD83E\uDD16' },
+        digitalhub: { label: 'File Management', icon: '\uD83D\uDCC2' },
+        doc: { label: 'Document Studio', icon: '\uD83D\uDCDD' },
+      };
+      const artMeta = SKILL_LABELS_ART[wt];
+
+      // If we have skill metadata, render as an inline skill card with result
+      if (artMeta) {
+        const isStreaming = artifactMessage.isStreaming;
+        const resultPreview = !isStreaming && artifactMessage.artifact.content && artifactMessage.artifact.content !== 'Loading...'
+          ? (
+            <div className="ml-12" style={{ width: 'calc(100% - 3rem)' }}>
+              <ArtifactMessageComponent
+                artifactMessage={artifactMessage}
+                onReopen={() => onMessageClick?.(artifactMessage)}
+              />
+            </div>
+          )
+          : undefined;
+
+        return (
+          <div className="mb-6">
+            <SkillActivationCard
+              skillId={wt}
+              skillLabel={artMeta.label}
+              icon={artMeta.icon}
+              status={isStreaming ? 'running' : 'completed'}
+              result={resultPreview}
+              onExpand={() => onMessageClick?.(artifactMessage)}
+            />
+          </div>
+        );
+      }
     }
 
     // Check if this is a new ArtifactMessage type

@@ -6,7 +6,7 @@
  */
 import { useChatStore } from '../../stores/useChatStore';
 import { createLogger } from '../../utils/logger';
-import { executePlugin } from '../../plugins';
+import { executePlugin, getSkillMetadata } from '../../plugins';
 import { AppId } from '../../types/appTypes';
 
 const log = createLogger('ChatModule:Widget');
@@ -126,6 +126,27 @@ export function createWidgetHandlers(deps: WidgetHandlerDeps) {
 
     log.info('Adding widget user message to chat');
     useChatStore.getState().addMessage(userMessage);
+
+    // Inject a skill activation message so SkillActivationCard renders inline (#123)
+    const skillMeta = getSkillMetadata(widgetType);
+    if (skillMeta) {
+      const skillActivationMessage = {
+        id: `skill-activation-${requestId}`,
+        type: 'regular' as const,
+        role: 'assistant' as const,
+        content: skillMeta.conversationalTriggerPrefix,
+        timestamp: new Date().toISOString(),
+        sessionId: activeSessionId,
+        isStreaming: true,
+        streamingStatus: `Using ${skillMeta.skillLabel}...`,
+        metadata: {
+          widgetType,
+          widgetRequest: true,
+          skillActivation: true,
+        },
+      };
+      useChatStore.getState().addMessage(skillActivationMessage);
+    }
 
     try {
       const actualUserInput = widgetType === 'hunt' ? params.query : params.prompt;
@@ -265,6 +286,26 @@ export function createWidgetHandlers(deps: WidgetHandlerDeps) {
         };
 
         useChatStore.getState().addMessage(artifactMessage);
+
+        // Mark the skill activation placeholder as completed (#123)
+        if (skillMeta) {
+          useChatStore.getState().addMessage({
+            id: `skill-activation-${requestId}`,
+            type: 'regular' as const,
+            role: 'assistant' as const,
+            content: skillMeta.conversationalTriggerPrefix,
+            timestamp: new Date().toISOString(),
+            sessionId: activeSessionId,
+            isStreaming: false,
+            streamingStatus: undefined,
+            metadata: {
+              widgetType,
+              widgetRequest: true,
+              skillActivation: true,
+              skillCompleted: true,
+            },
+          });
+        }
 
         useChatStore.getState().setChatLoading(false);
 
