@@ -22,6 +22,15 @@
  *   - 用户认证类型（由auth_types.ts处理）
  */
 
+// Schedule confirmation data — attached to assistant messages when a job is created
+export interface ScheduleConfirmationData {
+  jobId: string;
+  name: string;
+  cronExpression: string;
+  nextRunAt?: string;
+  description?: string;
+}
+
 // 基础消息接口
 export interface BaseMessage {
   id: string;
@@ -59,6 +68,9 @@ export interface RegularMessage extends BaseMessage {
   isAutonomous?: boolean;
   autonomousSource?: AutonomousSource;
   completedAt?: string; // ISO timestamp when the autonomous action finished
+  // Schedule fields — present when the message confirms a scheduled job
+  scheduleData?: ScheduleConfirmationData;
+  jobId?: string;
 }
 
 // 工件消息接口 - 用于显示小部件生成的工件
