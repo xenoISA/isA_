@@ -16,7 +16,9 @@
  * - 完整的变化历史记录
  */
 
-import { logger, LogCategory } from './logger';
+import { createLogger, LogCategory } from './logger';
+
+const log = createLogger('CreditMonitor', LogCategory.USER_AUTH);
 
 // ================================================================================
 // Types and Interfaces
@@ -58,7 +60,7 @@ class CreditMonitor {
 
   constructor() {
     this.initializeEventListeners();
-    console.log('💳 CreditMonitor: Initialized credit monitoring system');
+    log.info('Initialized credit monitoring system');
   }
 
   // ================================================================================
@@ -68,7 +70,7 @@ class CreditMonitor {
   private initializeEventListeners(): void {
     if (typeof window !== 'undefined') {
       window.addEventListener('userCreditsUpdated', this.handleCreditUpdate.bind(this) as EventListener);
-      console.log('💳 CreditMonitor: Event listeners registered');
+      log.info('Event listeners registered');
     }
   }
 
@@ -79,7 +81,7 @@ class CreditMonitor {
   private handleCreditUpdate(event: CustomEvent<CreditChangeEvent>): void {
     const changeEvent = event.detail;
     
-    console.log('💳 CreditMonitor: Credit change detected', {
+    log.info('Credit change detected', {
       transition: `${changeEvent.oldCredits} → ${changeEvent.newCredits}`,
       difference: changeEvent.difference > 0 ? `+${changeEvent.difference}` : `${changeEvent.difference}`,
       source: changeEvent.source,
@@ -111,7 +113,7 @@ class CreditMonitor {
       this.changeHistory.shift();
     }
 
-    console.log('💳 CreditMonitor: Change recorded', {
+    log.debug('Change recorded', {
       totalChanges: this.changeHistory.length,
       latestChange: {
         credits: change.newCredits,
@@ -171,7 +173,7 @@ class CreditMonitor {
     // 📋 Record alerts
     alerts.forEach(alert => {
       this.alerts.push(alert);
-      console.log(`💳 CreditMonitor: ${alert.level.toUpperCase()} - ${alert.message}`);
+      log.info(`${alert.level.toUpperCase()} - ${alert.message}`);
       
       // 🔔 Show browser notification for critical alerts
       if (alert.level === 'error' && 'Notification' in window) {
@@ -211,21 +213,21 @@ class CreditMonitor {
       try {
         listener(change);
       } catch (error) {
-        console.error('💳 CreditMonitor: Listener error', error);
+        log.error('Listener error', error);
       }
     });
   }
 
   public addListener(callback: (event: CreditChangeEvent) => void): () => void {
     this.listeners.push(callback);
-    console.log('💳 CreditMonitor: Listener added');
+    log.debug('Listener added');
     
     // Return cleanup function
     return () => {
       const index = this.listeners.indexOf(callback);
       if (index > -1) {
         this.listeners.splice(index, 1);
-        console.log('💳 CreditMonitor: Listener removed');
+        log.debug('Listener removed');
       }
     };
   }
@@ -235,7 +237,7 @@ class CreditMonitor {
   // ================================================================================
 
   private logChange(change: CreditChangeEvent): void {
-    logger.info(LogCategory.USER_AUTH, 'Credit monitor: Change detected', {
+    log.info('Change detected', {
       auth0_id: change.auth0_id,
       oldCredits: change.oldCredits,
       newCredits: change.newCredits,
@@ -273,18 +275,18 @@ class CreditMonitor {
 
   public enable(): void {
     this.isEnabled = true;
-    console.log('💳 CreditMonitor: Monitoring enabled');
+    log.info('Monitoring enabled');
   }
 
   public disable(): void {
     this.isEnabled = false;
-    console.log('💳 CreditMonitor: Monitoring disabled');
+    log.info('Monitoring disabled');
   }
 
   public clearHistory(): void {
     this.changeHistory = [];
     this.alerts = [];
-    console.log('💳 CreditMonitor: History cleared');
+    log.info('History cleared');
   }
 
   // ================================================================================
@@ -292,11 +294,11 @@ class CreditMonitor {
   // ================================================================================
 
   public debug(): void {
-    console.group('💳 CreditMonitor Debug Info');
-    console.log('📊 Status:', this.getCurrentStatus());
-    console.log('📈 Recent Changes:', this.changeHistory.slice(-3));
-    console.log('🚨 Alerts:', this.alerts.slice(-3));
-    console.groupEnd();
+    log.debug('Debug Info', {
+      status: this.getCurrentStatus(),
+      recentChanges: this.changeHistory.slice(-3),
+      recentAlerts: this.alerts.slice(-3),
+    });
   }
 }
 
@@ -313,7 +315,7 @@ export const creditMonitor = new CreditMonitor();
 if (typeof window !== 'undefined') {
   // 🔧 Make monitor available globally in development
   (window as any).__creditMonitor = creditMonitor;
-  console.log('💳 CreditMonitor: Available globally as window.__creditMonitor');
+  log.debug('Available globally as window.__creditMonitor');
 }
 
 export default creditMonitor;

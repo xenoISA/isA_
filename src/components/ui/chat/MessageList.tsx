@@ -193,26 +193,6 @@ export const MessageList = memo<MessageListProps>(({
       return true;
     });
   }, [baseMessagesToRender]);
-  
-  // useEffect(() => {
-  //   if (process.env.NODE_ENV === 'development') {
-  //     console.log('💬 MessageList: Messages updated, count:', messages.length);
-  //   }
-  // }, [messages.length]);
-  
-  // useEffect(() => {
-  //   if (process.env.NODE_ENV === 'development') {
-  //     const streamingMessages = messages.filter(m => m.isStreaming);
-  //     if (streamingMessages.length > 0) {
-  //       console.log('🔄 MessageList: Streaming messages:', streamingMessages.map(m => ({
-  //         id: m.id,
-  //         contentLength: m.content.length,
-  //         status: m.streamingStatus,
-  //         isStreaming: m.isStreaming
-  //       })));
-  //     }
-  //   }
-  // }, [messages.filter(m => m.isStreaming).length]);
 
   // Default message renderer
   const renderMessage = (message: ChatMessage, index: number) => {
