@@ -181,6 +181,30 @@ const { currentApp, setCurrentApp } = useAppStore();
 
 This architecture provides a robust, scalable foundation for building AI-powered applications with multiple specialized tools and comprehensive session management.
 
+## Multi-Zone Architecture
+
+isA_ is the root zone of a multi-zone Next.js deployment. All zones are served
+under a single domain via Apache APISIX gateway:
+
+```
+iapro.ai -> APISIX (:9080)
+  |-- /*         -> isA_        (:4100)  Main app
+  |-- /console/* -> isA_Console (:4200)  Developer console
+  |-- /docs/*    -> isA_Docs    (:4300)  Documentation
+```
+
+- **isA_** serves `/` with no `basePath`.
+- **isA_Console** requires `basePath: '/console'` in its Next config.
+- **isA_Docs** requires `basePath: '/docs'` in its Next config.
+
+Cross-zone links are relative in production and configurable via env vars for
+local development. Surface URLs are centralized in `src/config/surfaceConfig.ts`.
+
+For full details see:
+- [Multi-Zone Architecture Guide](docs/architecture/MULTI_ZONE.md)
+- [APISIX Route Configuration](docs/architecture/APISIX_ROUTES.md)
+- [Cross-Surface Auth Contract](docs/cross-surface-auth-contract.md)
+
 ## 🌐 Surface Integration
 
 `isA_` is the entry-point surface for platform navigation. Cross-surface links are configured via env vars in `.env.local`:
