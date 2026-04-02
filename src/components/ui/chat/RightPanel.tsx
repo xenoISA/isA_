@@ -18,9 +18,12 @@ import { useUserModule } from '../../../modules/UserModule';
 import { TaskProgress, TaskItem } from '../../../types/taskTypes';
 import { HILStatusPanel } from '../hil/HILStatusPanel';
 import { HILInterruptData, HILCheckpointData, HILExecutionStatusData } from '../../../types/aguiTypes';
+import { ContextPanel } from '../sidepanel/ContextPanel';
 
 export interface RightPanelProps {
   className?: string;
+  /** When true, render the contextual ContextPanel instead of the static tabs */
+  useContextPanel?: boolean;
   // HIL 相关props
   hilStatus?: HILExecutionStatusData | null;
   hilCheckpoints?: HILCheckpointData[];
@@ -55,8 +58,9 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id'];
 
-export const RightPanel: React.FC<RightPanelProps> = ({ 
+export const RightPanel: React.FC<RightPanelProps> = ({
   className = '',
+  useContextPanel = true,
   hilStatus,
   hilCheckpoints = [],
   hilInterrupts = [],
@@ -425,6 +429,15 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       </div>
     );
   };
+
+  // Contextual side panel mode — replaces the static tab system
+  if (useContextPanel) {
+    return (
+      <div className={`h-full w-full max-w-full flex flex-col bg-gray-900/50 border-l border-white/10 overflow-hidden ${className}`} style={{ minWidth: 0, maxWidth: '100%' }}>
+        <ContextPanel className="flex-1" />
+      </div>
+    );
+  }
 
   return (
     <div className={`h-full w-full max-w-full flex flex-col bg-gray-900/50 border-l border-r border-white/10 overflow-hidden ${className}`} style={{ minWidth: 0, maxWidth: '100%' }}>

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -134,6 +136,13 @@ a {
   --accent-soft: var(--color-primary);
   --accent-muted: var(--color-secondary);
   --accent-subtle: var(--color-accent);
+
+  /* Mate Companion Tokens */
+  --font-display: 'DM Sans', system-ui, sans-serif;
+  --mate-surface: #1e2433;
+  --mate-border: rgba(124, 140, 245, 0.12);
+  --mate-glow: rgba(124, 140, 245, 0.06);
+  --mate-accent: #7c8cf5;
 }
 
 /* ============================================================================
@@ -1497,6 +1506,15 @@ div.input-area-container button.audio-button.recording {
     -webkit-overflow-scrolling: touch !important;
   }
 }
+
+/* ============================================================================
+ * MATE COMPANION ANIMATIONS
+ * ============================================================================ */
+@keyframes mate-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 140, 245, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(124, 140, 245, 0); }
+}
+.animate-mate-breathe { animation: mate-breathe 3s ease-in-out infinite; }
 
 /* ============================================================================
  * END OF GLOBALS.CSS - No layout-specific overrides below this point

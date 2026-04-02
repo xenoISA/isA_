@@ -210,11 +210,11 @@ export const ChatLayout = memo<ChatLayoutProps>(({
     }
 
     const areas = ['chat'];
-    const columns = [showRightPanel ? '4fr' : '1fr'];
+    const columns = [showRightPanel ? '1fr' : '1fr'];
 
     if (showRightPanel) {
       areas.push('right');
-      columns.push('1fr');
+      columns.push('280px');
     }
 
     return {
