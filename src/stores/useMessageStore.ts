@@ -30,6 +30,7 @@ import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { authTokenStore } from './authTokenStore';
 import { TaskItem, TaskProgress } from '../types/taskTypes';
 import { HILInterruptDetectedEvent, HILCheckpointCreatedEvent, HILExecutionStatusData } from '../types/aguiTypes';
+import type { MemoryRecallData } from '../types/memoryTypes';
 
 // ---------------------------------------------------------------------------
 // State & Action interfaces
@@ -69,6 +70,9 @@ export interface MessageActions {
   setExecutingPlan: (executing: boolean) => void;
   clearTasks: () => void;
   resetTaskHistory: () => void;
+
+  // Memory recall
+  attachMemoryRecall: (messageId: string, recall: MemoryRecallData) => void;
 
   // HIL
   setHILStatus: (status: 'idle' | 'waiting_for_human' | 'processing_response' | 'error') => void;
@@ -272,6 +276,30 @@ export const useMessageStore = create<MessageStore>()(
         currentThreadId: null
       });
       logger.info(LogCategory.CHAT_FLOW, 'Task history and HIL state reset for new session');
+    },
+
+    // -------------------------------------------------------------------
+    // Memory recall
+    // -------------------------------------------------------------------
+
+    attachMemoryRecall: (messageId: string, recall: MemoryRecallData) => {
+      set((state) => {
+        const idx = state.messages.findIndex(m => m.id === messageId);
+        if (idx < 0) return state;
+
+        const msg = state.messages[idx];
+        if (msg.type !== 'regular') return state;
+
+        const existing = msg.memoryRecalls ?? [];
+        const updated = { ...msg, memoryRecalls: [...existing, recall] };
+        const newMessages = [...state.messages];
+        newMessages[idx] = updated;
+        return { messages: newMessages };
+      });
+      logger.info(LogCategory.CHAT_FLOW, 'Memory recall attached to message', {
+        messageId,
+        memoryType: recall.memoryType,
+      });
     },
 
     // -------------------------------------------------------------------

@@ -94,15 +94,39 @@ export function adaptMateEvent(
     }
 
     case 'tool_use': {
+      // Detect memory/recall tool invocations and synthesize a memory_recall custom event
+      const toolName = event.tool_name || 'unknown';
+      const isMemoryTool = /memory|recall/i.test(toolName);
+
       results.push({
         type: 'tool_call_start',
         thread_id: threadId,
         timestamp: now,
         run_id: context.runId,
-        tool_name: event.tool_name || 'unknown',
+        tool_name: toolName,
         tool_call_id: event.tool_call_id || generateId('tool'),
         parameters: event.parameters,
       });
+
+      if (isMemoryTool && event.result) {
+        // Synthesize a memory_recall custom event from the tool result
+        const resultData = typeof event.result === 'object' ? event.result as Record<string, unknown> : {};
+        results.push({
+          type: 'custom_event' as AGUIEventType,
+          thread_id: threadId,
+          timestamp: now,
+          run_id: context.runId,
+          metadata: {
+            custom_type: 'memory_recall',
+            memoryId: resultData.memoryId || resultData.memory_id || generateId('mem'),
+            memoryType: resultData.memoryType || resultData.memory_type || 'factual',
+            content: resultData.content || (typeof event.result === 'string' ? event.result : JSON.stringify(event.result)),
+            learnedAt: resultData.learnedAt || resultData.learned_at,
+            confidence: resultData.confidence,
+            sourceSessionId: resultData.sourceSessionId || resultData.source_session_id,
+          },
+        });
+      }
       break;
     }
 
@@ -194,6 +218,27 @@ export function adaptMateEvent(
 
     case 'node_exit': {
       // LangGraph node transition — no UI action needed
+      break;
+    }
+
+    case 'memory_recall': {
+      // Explicit memory recall event from Mate — map to custom_event
+      const recallMeta = event.metadata || {};
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        metadata: {
+          custom_type: 'memory_recall',
+          memoryId: recallMeta.memoryId || recallMeta.memory_id || generateId('mem'),
+          memoryType: recallMeta.memoryType || recallMeta.memory_type || 'factual',
+          content: event.content || recallMeta.content || '',
+          learnedAt: recallMeta.learnedAt || recallMeta.learned_at,
+          confidence: recallMeta.confidence,
+          sourceSessionId: recallMeta.sourceSessionId || recallMeta.source_session_id,
+        },
+      });
       break;
     }
 
