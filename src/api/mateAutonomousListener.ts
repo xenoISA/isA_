@@ -153,15 +153,18 @@ class MateAutonomousListenerService {
     const prefix = `[${triggerLabel}] `;
     const content = `${prefix}${event.content}`;
 
+    // Pass occurred_at as completedAt so the timeline card can display it.
+    // Falls back to current time inside the store if occurred_at is absent.
     insertAutonomousMessage(
       content,
       event.source || 'scheduler',
-      event.occurred_at,
+      event.occurred_at || new Date().toISOString(),
     );
 
     log.debug('Autonomous event dispatched to store', {
       type: event.type,
       source: event.source,
+      completedAt: event.occurred_at,
     });
   }
 
