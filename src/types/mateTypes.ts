@@ -102,6 +102,27 @@ export interface MateSchedulerJobsResponse {
 }
 
 // ================================================================================
+// Knowledge — Facts, Preferences, Patterns
+// ================================================================================
+
+export type MateKnowledgeType = 'fact' | 'preference' | 'pattern';
+
+export interface MateKnowledgeItem {
+  id: string;
+  type: MateKnowledgeType;
+  content: string;
+  source?: string;
+  learned_at: string;
+  confidence?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MateKnowledgeResponse {
+  items: MateKnowledgeItem[];
+  total: number;
+}
+
+// ================================================================================
 // Tools
 // ================================================================================
 

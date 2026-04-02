@@ -4,9 +4,11 @@
  */
 import React from 'react';
 import { useChatMessages } from '../../../stores/useChatStore';
+import { useSidePanelStore } from '../../../stores/useSidePanelStore';
 
 export const SidePanelIdle: React.FC = () => {
   const messages = useChatMessages();
+  const setPanelContext = useSidePanelStore((s) => s.setPanelContext);
   const messageCount = messages.length;
   const aiCount = messages.filter((m) => m.role === 'assistant').length;
 
@@ -36,6 +38,17 @@ export const SidePanelIdle: React.FC = () => {
           <span className="text-white/80 font-medium">{aiCount}</span>
         </div>
       </div>
+
+      {/* Knowledge shortcut */}
+      <button
+        onClick={() => setPanelContext('knowledge')}
+        className="w-full mt-2 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[var(--mate-glow)] border border-[var(--mate-border)] hover:border-[var(--mate-accent)]/30 transition-colors duration-200 group"
+      >
+        <span className="text-sm">🧠</span>
+        <span className="text-xs text-white/50 group-hover:text-white/70 transition-colors font-display">
+          What Mate knows about you
+        </span>
+      </button>
 
       {/* Prompt */}
       <div className="mt-4 text-center">
