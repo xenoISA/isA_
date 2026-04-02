@@ -4,6 +4,7 @@ import { TaskToolbar } from './TaskToolbar';
 import { NotificationToolbar } from './NotificationToolbar';
 import { TaskStatusIndicator } from './header/TaskStatusIndicator';
 import { ThemeToggle } from './theme/ThemeToggle';
+import { MatePresenceIndicator } from './chat/MatePresenceIndicator';
 import { docsLinks } from '../../config/surfaceConfig';
 
 interface AppHeaderProps {
@@ -112,12 +113,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
       )}
 
-      {/* Logo + title */}
+      {/* Logo + title + presence */}
       {logo}
       <div className="min-w-0 hidden sm:block">
         <h1 className="text-sm font-semibold text-white truncate">Intelligent Systems Assistant</h1>
         <p className="text-xs text-white/50 truncate">AI-Powered Productivity</p>
       </div>
+      <MatePresenceIndicator className="ml-1" />
 
       <div className="flex-1" />
 

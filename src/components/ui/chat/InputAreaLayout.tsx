@@ -3,6 +3,8 @@ import { createLogger } from '../../../utils/logger';
 import { FileUpload } from './FileUpload';
 import { GlassChatInput, GlassCard, GlassButton, IntelligentModeSettings } from '../../shared';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { useMatePresence } from '../../../hooks/useMatePresence';
+import { useMessageStore } from '../../../stores/useMessageStore';
 const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {
@@ -52,6 +54,10 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
   onShowChatConfig
 }) => {
   const { t } = useTranslation();
+  const { isOnline, isWorking, channels } = useMatePresence();
+  const activeDelegationCount = useMessageStore(
+    (s) => s.activeDelegations.filter((d) => d.status === 'delegating' || d.status === 'working').length
+  );
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -408,10 +414,21 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
       )}
 
       {/* Mate status line */}
-      <div className="mb-2 px-1">
-        <span className="text-xs font-display text-[var(--mate-accent)]/60">
-          {isLoading ? 'Mate is thinking...' : 'Mate is here'}
+      <div className="mb-2 px-1 flex items-center gap-2">
+        <span className={`text-xs font-display ${!isOnline ? 'text-white/30' : 'text-[var(--mate-accent)]/60'}`}>
+          {isLoading
+            ? 'Mate is thinking...'
+            : !isOnline
+              ? 'Mate is offline'
+              : isWorking
+                ? `Mate is working on ${activeDelegationCount} task${activeDelegationCount !== 1 ? 's' : ''}`
+                : 'Mate is here'}
         </span>
+        {isOnline && channels.length > 0 && !isLoading && (
+          <span className="text-xs text-white/30">
+            Active on {channels.length} channel{channels.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {/* Main Glass Chat Input */}
