@@ -28,6 +28,8 @@ export class CustomAutomationWidgetPlugin implements WidgetPlugin {
   icon = '🤖';
   description = 'Intelligent automation for business processes with customizable workflows';
   version = '1.0.0';
+  skillLabel = 'Smart Automation';
+  conversationalTriggerPrefix = 'Let me set that up...';
   triggers = [
     'automate',
     'automation',

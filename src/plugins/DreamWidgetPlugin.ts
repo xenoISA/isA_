@@ -30,6 +30,8 @@ export class DreamWidgetPlugin implements WidgetPlugin {
   icon = '🎨';
   description = 'Generate beautiful images from text descriptions using AI';
   version = '1.0.0';
+  skillLabel = 'Image Generation';
+  conversationalTriggerPrefix = 'Let me generate that image...';
   triggers = [
     'generate image',
     'create image',

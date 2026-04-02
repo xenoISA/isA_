@@ -30,6 +30,8 @@ export class KnowledgeWidgetPlugin implements WidgetPlugin {
   icon = '🧠';
   description = 'Advanced document analysis with vector and graph RAG';
   version = '1.0.0';
+  skillLabel = 'Knowledge Analysis';
+  conversationalTriggerPrefix = 'Let me look that up...';
   triggers = [
     'analyze document',
     'knowledge search',

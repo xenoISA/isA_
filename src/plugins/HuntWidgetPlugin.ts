@@ -30,6 +30,8 @@ export class HuntWidgetPlugin implements WidgetPlugin {
   icon = '🔍';
   description = 'Product search and comparison with detailed analysis';
   version = '1.0.0';
+  skillLabel = 'Product Search';
+  conversationalTriggerPrefix = 'Let me search for that...';
   triggers = [
     'search for',
     'find',

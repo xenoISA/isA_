@@ -264,6 +264,23 @@ export class PluginManager implements IPluginManager {
   }
 
   // ============================================================================
+  // Skill metadata (#123)
+  // ============================================================================
+
+  /**
+   * Return user-facing skill metadata for a plugin.
+   */
+  getSkillMetadata(pluginId: AppId): { skillLabel: string; icon: string; conversationalTriggerPrefix: string } | undefined {
+    const plugin = this.getPlugin(pluginId);
+    if (!plugin) return undefined;
+    return {
+      skillLabel: plugin.skillLabel || plugin.name,
+      icon: plugin.icon,
+      conversationalTriggerPrefix: plugin.conversationalTriggerPrefix || `Using ${plugin.skillLabel || plugin.name}...`,
+    };
+  }
+
+  // ============================================================================
   // 工具方法
   // ============================================================================
 

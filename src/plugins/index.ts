@@ -109,6 +109,13 @@ export function getPluginStats() {
   return pluginManager.getStats();
 }
 
+/**
+ * Get user-facing skill metadata for a plugin (#123)
+ */
+export function getSkillMetadata(pluginId: string) {
+  return pluginManager.getSkillMetadata(pluginId as any);
+}
+
 // ============================================================================
 // 开发测试方法
 // ============================================================================

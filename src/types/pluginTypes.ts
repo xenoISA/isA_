@@ -76,17 +76,23 @@ export interface WidgetPlugin {
   version: string;
   /** 触发关键词 */
   triggers?: string[];
-  
+
+  // Skill metadata — user-facing labels for conversational UX (#123)
+  /** Human-readable skill label shown in chat (e.g. "Image Generation") */
+  skillLabel?: string;
+  /** Mate's conversational prefix when activating this skill (e.g. "Let me generate that image...") */
+  conversationalTriggerPrefix?: string;
+
   // 核心方法
   /** 执行插件功能 */
   execute: (input: PluginInput) => Promise<PluginOutput>;
-  
+
   // 生命周期（可选）
   /** 插件初始化 */
   onInit?: () => Promise<void>;
   /** 插件销毁 */
   onDestroy?: () => void;
-  
+
   // 配置（可选）
   /** 插件配置 */
   config?: Record<string, any>;

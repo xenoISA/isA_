@@ -30,6 +30,8 @@ export class DigitalHubWidgetPlugin implements WidgetPlugin {
   icon = '📂';
   description = 'File organization, browsing, searching, and storage management';
   version = '1.0.0';
+  skillLabel = 'File Management';
+  conversationalTriggerPrefix = 'Let me find those files...';
   triggers = [
     'upload file',
     'list files',
