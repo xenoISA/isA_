@@ -11,6 +11,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { GATEWAY_ENDPOINTS, GATEWAY_CONFIG } from '../config/gatewayConfig';
 import { getAuthHeaders, saveAuthToken, clearAuth } from '../config/gatewayConfig';
 import { authTokenStore } from '../stores/authTokenStore';
+import { isHttpOnlyCookieMode, clearAuthCookies, getCredentialsMode } from '../utils/authCookieHelper';
 import { logger, LogCategory } from '../utils/logger';
 
 // ================================================================================
@@ -143,10 +144,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const data = await res.json();
       const tokenValue = data.token || data.access_token;
-      if (!tokenValue) {
+      // In cookie mode the gateway sets the auth cookie via Set-Cookie header.
+      // We still cache the token in memory as a fallback for Bearer header auth
+      // and for non-cookie environments (development).
+      if (tokenValue) {
+        saveAuthToken(tokenValue);
+      } else if (!isHttpOnlyCookieMode()) {
         throw new Error('Server did not return an auth token');
       }
-      saveAuthToken(tokenValue);
       const user = data.user || {};
       setAuthUser({
         ...user,
@@ -243,7 +248,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    // Fire-and-forget gateway logout so the server can clear the HttpOnly cookie
+    fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/logout', {
+      method: 'POST',
+      credentials: getCredentialsMode(),
+    }).catch(() => {
+      // Best-effort — don't block client-side logout on network errors
+    });
     clearAuth();
+    clearAuthCookies();
     setAuthUser(null);
     setError(null);
     logger.info(LogCategory.USER_AUTH, 'User logged out');

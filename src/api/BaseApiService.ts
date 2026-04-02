@@ -41,6 +41,7 @@ import axios, {
 } from 'axios';
 import { config } from '../config';
 import { createLogger, LogCategory } from '../utils/logger';
+import { getCredentialsMode } from '../utils/authCookieHelper';
 
 const log = createLogger('BaseApiService', LogCategory.API_REQUEST);
 
@@ -114,11 +115,12 @@ export class BaseApiService {
       'Accept': 'application/json'
     };
 
-    // 初始化axios实例
+    // 初始化axios实例 — withCredentials sends cookies cross-origin
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: this.timeout,
-      headers: this.defaultHeaders
+      headers: this.defaultHeaders,
+      withCredentials: true,
     });
 
     this.setupAxiosInterceptors();
@@ -287,7 +289,8 @@ export class BaseApiService {
           method,
           headers: requestHeaders,
           body: body ? JSON.stringify(body) : undefined,
-          signal: controller.signal
+          signal: controller.signal,
+          credentials: getCredentialsMode(),
         });
 
         clearTimeout(timeoutId);
@@ -393,7 +396,8 @@ export class BaseApiService {
         const response = await fetch(url, {
           method: 'POST',
           body: formData,
-          headers
+          headers,
+          credentials: getCredentialsMode(),
         });
 
         if (!response.ok) {
