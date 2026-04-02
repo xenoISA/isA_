@@ -284,9 +284,8 @@ export class HuntWidgetPlugin implements WidgetPlugin {
           }
         };
 
-        // 调用现有的 chatService - 修正参数顺序
-        // Note: ChatService.sendMessage expects (message, sessionId, callbacks, userId)
-        chatService.sendMessage(query, chatOptions.session_id, callbacks, chatOptions.user_id)
+        // ChatService.sendMessage expects (message, metadata, token, callbacks)
+        chatService.sendMessage(query, { user_id: chatOptions.user_id, session_id: chatOptions.session_id, prompt_name: chatOptions.prompt_name, prompt_args: chatOptions.prompt_args }, '', callbacks)
           .catch(error => {
             clearTimeout(timeout);
             reject(error);

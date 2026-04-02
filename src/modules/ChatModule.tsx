@@ -491,16 +491,8 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         sidebarOpen={sidebarOpen}
         onSidebarOpenChange={onSidebarOpenChange}
 
-        // 🆕 Responsive layout based on device type
-        forceLayout={isMobile ? 'mobile' : 'auto'} // Use mobile layout for mobile devices
+        // Responsive layout: props passed only if ChatLayout supports them
         showHeader={!isMobile} // Hide ChatLayout header on mobile (AppLayout controls desktop header)
-
-        // 🆕 Mobile-first responsive props
-        enableSwipeGestures={isMobile || isTablet}
-        enablePullToRefresh={isMobile}
-        isNativeApp={nativeApp.isNativeApp}
-        nativeStatusBarHeight={nativeApp.statusBarHeight}
-        nativeBottomSafeArea={nativeApp.safeAreaInsets.bottom}
 
         // Right Panel (会话信息管理)
         showRightPanel={showRightPanel}

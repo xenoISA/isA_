@@ -67,14 +67,29 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   const selectedOption = options.find(option => option.id === value) || null;
-  
+
   // 过滤选项
   const filteredOptions = searchable && searchTerm
-    ? options.filter(option => 
+    ? options.filter(option =>
         option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
         option.subtitle?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : options;
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setSearchTerm("");
+    setFocusedIndex(-1);
+    onClose?.();
+  }, [onClose]);
+
+  const handleSelect = useCallback((optionId: string) => {
+    const option = options.find(opt => opt.id === optionId);
+    if (option && !option.disabled) {
+      onChange(optionId);
+      handleClose();
+    }
+  }, [options, onChange, handleClose]);
 
   // 点击外部关闭
   useEffect(() => {
@@ -135,10 +150,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const handleToggle = () => {
     if (disabled) return;
-    
+
     const newIsOpen = !isOpen;
     setIsOpen(newIsOpen);
-    
+
     if (newIsOpen) {
       setFocusedIndex(-1);
       setSearchTerm("");
@@ -147,21 +162,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
       onClose?.();
     }
   };
-
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
-    setSearchTerm("");
-    setFocusedIndex(-1);
-    onClose?.();
-  }, [onClose]);
-
-  const handleSelect = useCallback((optionId: string) => {
-    const option = options.find(opt => opt.id === optionId);
-    if (option && !option.disabled) {
-      onChange(optionId);
-      handleClose();
-    }
-  }, [options, onChange, handleClose]);
 
   // 默认触发器渲染
   const renderDefaultTrigger = () => (

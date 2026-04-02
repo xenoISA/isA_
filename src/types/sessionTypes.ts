@@ -26,11 +26,17 @@
 // Session 消息类型
 // ================================================================================
 
+export type MessageRole = 'user' | 'assistant' | 'system';
+export type MessageType = 'chat' | 'system' | 'notification';
+
 export interface SessionMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
+  id?: string;
+  message_id?: string;
+  session_id?: string;
+  role: MessageRole | string;
   content: string;
-  timestamp: string;
+  timestamp?: string;
+  created_at?: string;
   metadata?: Record<string, any>;
 }
 
@@ -50,16 +56,18 @@ export interface SessionMetadata {
 // ================================================================================
 
 export interface Session {
-  id: string;
-  user_id: string;
-  title: string;
-  created_at: string;
-  last_activity: string;
-  message_count: number;
-  status: 'active' | 'archived' | 'deleted';
-  summary: string;
-  tags: string[];
-  metadata: SessionMetadata;
+  id?: string;
+  session_id?: string;
+  user_id?: string;
+  title?: string;
+  created_at?: string;
+  updated_at?: string;
+  last_activity?: string;
+  message_count?: number;
+  status?: 'active' | 'archived' | 'deleted' | string;
+  summary?: string;
+  tags?: string[];
+  metadata?: SessionMetadata;
   messages?: SessionMessage[];
 }
 
@@ -68,21 +76,27 @@ export interface Session {
 // ================================================================================
 
 export interface SessionResponse {
-  timestamp: string;
-  success: boolean;
-  message: string;
+  timestamp?: string;
+  success?: boolean;
+  message?: string;
   session_id?: string | null;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  status?: string;
   trace_id?: string | null;
   metadata?: Record<string, any>;
   session?: Session;
 }
 
 export interface SessionListResponse {
-  timestamp: string;
-  success: boolean;
-  message: string;
+  timestamp?: string;
+  success?: boolean;
+  message?: string;
   sessions: Session[];
-  pagination: {
+  total?: number;
+  has_more?: boolean;
+  pagination?: {
     total: number;
     page: number;
     per_page: number;
@@ -91,11 +105,13 @@ export interface SessionListResponse {
 }
 
 export interface SessionMessagesResponse {
-  timestamp: string;
-  success: boolean;
-  message: string;
+  timestamp?: string;
+  success?: boolean;
+  message?: string;
   messages: SessionMessage[];
-  pagination: {
+  total?: number;
+  has_more?: boolean;
+  pagination?: {
     total: number;
     page: number;
     per_page: number;
@@ -151,6 +167,7 @@ export interface SearchSessionsOptions {
 export interface UpdateSessionData {
   title?: string;
   tags?: string[];
+  context?: Record<string, unknown>;
   metadata?: SessionMetadata;
 }
 

@@ -328,10 +328,12 @@ export class SessionService {
     try {
       logger.debug(LogCategory.API_REQUEST, 'Adding session message', { sessionId, role: message.role });
 
+      // SDK MessageRole/MessageType enums are not exported, but accept string
+      // values at runtime (string-backed enums). Cast via unknown to satisfy TS.
       const newMessage = await this.coreSessionService.addMessage(sessionId, {
-        role: message.role || 'user',
+        role: (message.role || 'user') as unknown as Parameters<typeof this.coreSessionService.addMessage>[1]['role'],
         content: message.content,
-        message_type: message.message_type || 'chat',
+        message_type: (message.message_type || 'chat') as unknown as Parameters<typeof this.coreSessionService.addMessage>[1]['message_type'],
         metadata: message.metadata || {},
         tokens_used: message.tokens_used || 0,
         cost_usd: message.cost_usd || 0
@@ -341,8 +343,8 @@ export class SessionService {
         message_id: newMessage.message_id,
         session_id: sessionId,
         content: newMessage.content,
-        role: newMessage.role,
-        timestamp: newMessage.created_at,
+        role: newMessage.role as string,
+        timestamp: newMessage.created_at || new Date().toISOString(),
         metadata: newMessage.metadata
       };
 
