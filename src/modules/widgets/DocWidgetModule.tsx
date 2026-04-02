@@ -45,6 +45,8 @@ interface DocWidgetParams {
   format?: 'markdown' | 'richtext' | 'plaintext';
   exportFormat?: 'pdf' | 'docx' | 'html' | 'txt';
   templateType?: 'report' | 'letter' | 'proposal' | 'meeting-notes' | 'blank';
+  templateParams?: { template_id: string; prompt_args: Record<string, any> };
+  [key: string]: any;
 }
 
 // Doc widget result
@@ -162,7 +164,7 @@ const prepareDocTemplateParams = (params: DocWidgetParams) => {
 };
 
 // Doc widget configuration
-const docWidgetConfig = createWidgetConfig({
+const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
   type: 'doc',
   title: 'Document Studio',
   icon: '📝',

@@ -52,6 +52,8 @@ interface DigitalHubWidgetParams {
   tags?: string[];
   sortBy?: 'name' | 'date' | 'size' | 'type';
   sortOrder?: 'asc' | 'desc';
+  templateParams?: { template_id: string; prompt_args: Record<string, any> };
+  [key: string]: any;
 }
 
 // DigitalHub widget result
@@ -164,7 +166,7 @@ const prepareDigitalHubTemplateParams = (params: DigitalHubWidgetParams) => {
 };
 
 // DigitalHub widget configuration
-const digitalHubWidgetConfig = createWidgetConfig({
+const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, DigitalHubWidgetResult>({
   type: 'digitalhub',
   title: 'DigitalHub File Manager',
   icon: '📂',
@@ -191,7 +193,7 @@ const digitalHubWidgetConfig = createWidgetConfig({
   },
 
   // Extract parameters from triggered input
-  extractParamsFromInput: (input: string) => {
+  extractParamsFromInput: (input: string): DigitalHubWidgetParams | null => {
     const lowerInput = input.toLowerCase();
 
     // Determine action based on keywords

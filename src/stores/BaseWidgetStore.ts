@@ -380,11 +380,14 @@ export function createBaseWidgetStore<TSpecificState, TSpecificActions>(
               promptArgs: chatOptions.prompt_args,
               templateParameters: chatOptions.template_parameters
             });
-            // chatService.sendMessage expects: (message, sessionId, callbacks, userId)
-            // Extract sessionId and userId from chatOptions
-            const sessionId = chatOptions.session_id || `widget_${Date.now()}`;
-            const userId = chatOptions.user_id || 'default_user';
-            await chatService.sendMessage(prompt, sessionId, callbacks, userId);
+            // chatService.sendMessage expects: (message, metadata, token, callbacks)
+            const metadata = {
+              user_id: chatOptions.user_id || 'default_user',
+              session_id: chatOptions.session_id || `widget_${Date.now()}`,
+              prompt_name: chatOptions.prompt_name,
+              prompt_args: chatOptions.prompt_args,
+            };
+            await chatService.sendMessage(prompt, metadata, '', callbacks);
             
           } catch (error) {
             setProcessing(false);

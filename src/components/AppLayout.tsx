@@ -21,11 +21,15 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { PlatformNav } from '@isa/ui-web';
+import { PlatformNav as PlatformNavOriginal } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
 import { LoginScreen } from './ui/LoginScreen';
 import { useAuthContext } from '../providers/AuthProvider';
 import { surfaceUrls } from '../config/surfaceConfig';
+
+// Cast needed: @isa/ui-web bundles its own @types/react (v19) which conflicts
+// with this app's React types. The component works correctly at runtime.
+const PlatformNav = PlatformNavOriginal as React.FC<any>;
 
 export interface AppLayoutProps {
   className?: string;
@@ -104,19 +108,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
     <div
       className={`min-h-dvh w-full flex flex-col bg-[var(--surface-bg,#0f172a)] text-[var(--text-primary,#fff)] relative ${className}`}
     >
-      {/* Platform Navigation - Surface switcher for authenticated users */}
+      {/* Platform Navigation - Surface switcher for authenticated users
+           Cast needed: @isa/ui-web's React types differ from app's @types/react version */}
       {isAuthenticated && (
-        <PlatformNav
-          activeSurface="app"
-          user={authUser ? { name: authUser.name, email: authUser.email } : null}
-          urls={{
+        (PlatformNav as React.FC<any>)({
+          activeSurface: "app",
+          user: authUser ? { name: authUser.name, email: authUser.email } : null,
+          urls: {
             app: surfaceUrls.app,
             console: surfaceUrls.console,
             docs: surfaceUrls.docs,
             marketing: surfaceUrls.marketing,
-          }}
-          onLogout={logout}
-        />
+          },
+          onLogout: logout,
+        })
       )}
       {/* Application Header - responsive on all viewports */}
       <div className="h-14 md:h-16 flex-shrink-0 p-1.5 md:p-2">

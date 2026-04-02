@@ -178,13 +178,8 @@ export const TaskStatusIndicator: React.FC<TaskStatusIndicatorProps> = ({
     };
   }, [activeTasks]);
 
-  // 如果没有活跃任务，不显示
-  if (taskSummary.total === 0) {
-    return null;
-  }
-
   // ================================================================================
-  // 事件处理
+  // 事件处理 (hooks must be called before any early return)
   // ================================================================================
 
   const handleQuickAction = useCallback((action: 'pause_all' | 'resume_all' | 'show_details') => {
@@ -235,6 +230,11 @@ export const TaskStatusIndicator: React.FC<TaskStatusIndicatorProps> = ({
   const handleToggleExpand = () => {
     setExpanded(!expanded);
   };
+
+  // 如果没有活跃任务，不显示
+  if (taskSummary.total === 0) {
+    return null;
+  }
 
   // ================================================================================
   // 渲染函数
