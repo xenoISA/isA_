@@ -436,6 +436,23 @@ export class ChatService {
         });
         break;
         
+      case 'autonomous_result': {
+        // Background autonomous event received via the active chat stream.
+        // Dispatch directly to the chat store so it appears in the timeline.
+        const { useChatStore } = require('../stores/useChatStore');
+        const store = useChatStore.getState();
+        store.insertAutonomousMessage(
+          event.metadata?.content || customData.content || '',
+          event.metadata?.source || 'scheduler',
+          event.metadata?.completed_at,
+        );
+        log.info('Autonomous result dispatched to store', {
+          source: event.metadata?.source,
+          jobId: event.metadata?.job_id,
+        });
+        break;
+      }
+
       default:
         log.debug('Custom event', { customType, customData });
         break;

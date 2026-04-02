@@ -141,6 +141,7 @@ export const GATEWAY_ENDPOINTS = {
         JOB_RUN: buildMateEndpoint('/v1/scheduler/jobs/{jobId}/run'),
       },
       HEALTH: buildMateEndpoint('/health'),
+      AUTONOMOUS_EVENTS: buildMateEndpoint('/v1/autonomous/events'),
     };
   })(),
 
