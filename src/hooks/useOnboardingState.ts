@@ -22,10 +22,8 @@ export interface OnboardingState {
 }
 
 export const useOnboardingState = (): OnboardingState => {
-  const [isNewUser, setIsNewUser] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(ONBOARDING_KEY) !== 'true';
-  });
+  // Always start as false to match server render, then check client-side
+  const [isNewUser, setIsNewUser] = useState<boolean>(false);
 
   // Sync with localStorage on mount (handles SSR hydration)
   useEffect(() => {
