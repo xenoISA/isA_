@@ -23,6 +23,8 @@ import type {
   MateMemoryMessage,
   MateMemorySessionsResponse,
   MateMemoryMessagesResponse,
+  MateKnowledgeItem,
+  MateKnowledgeResponse,
   MateSchedulerJob,
   MateJobRun,
   MateSchedulerJobsResponse,
@@ -121,6 +123,53 @@ export class MateService {
       const msg = error instanceof Error ? error.message : String(error);
       log.error('Failed to fetch Mate session messages', { error: msg, sessionId });
       throw new Error(`Fetch Mate session messages failed: ${msg}`);
+    }
+  }
+
+  // ================================================================================
+  // Knowledge — Facts, Preferences, Patterns
+  // ================================================================================
+
+  /**
+   * List knowledge items (facts, preferences, patterns) Mate has learned about the user.
+   */
+  async listKnowledge(): Promise<MateKnowledgeItem[]> {
+    try {
+      log.info('Fetching Mate knowledge items');
+      const response = await this.apiService.get<MateKnowledgeResponse>(
+        GATEWAY_ENDPOINTS.MATE.MEMORY.KNOWLEDGE
+      );
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch knowledge');
+      }
+      const data = response.data;
+      if (Array.isArray(data)) return data;
+      return data?.items ?? [];
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log.error('Failed to fetch Mate knowledge', { error: msg });
+      throw new Error(`Fetch Mate knowledge failed: ${msg}`);
+    }
+  }
+
+  /**
+   * Delete a specific knowledge item by ID.
+   */
+  async deleteKnowledgeItem(itemId: string): Promise<void> {
+    try {
+      log.info('Deleting Mate knowledge item', { itemId });
+      const url = buildUrlWithParams(
+        GATEWAY_ENDPOINTS.MATE.MEMORY.KNOWLEDGE_ITEM,
+        { itemId }
+      );
+      const response = await this.apiService.delete(url);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to delete knowledge item');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log.error('Failed to delete Mate knowledge item', { error: msg, itemId });
+      throw new Error(`Delete Mate knowledge item failed: ${msg}`);
     }
   }
 

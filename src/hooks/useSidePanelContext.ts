@@ -38,6 +38,24 @@ export function useSidePanelContext() {
       }
     }
 
+    // Check if user is asking about what Mate knows about them
+    if (lastMessage && lastMessage.role === 'user' && 'content' in lastMessage) {
+      const text = (typeof lastMessage.content === 'string' ? lastMessage.content : '').toLowerCase();
+      const knowledgePatterns = [
+        'what do you know about me',
+        'what have you learned',
+        'what do you remember',
+        'what do you know',
+        'show me my knowledge',
+        'my preferences',
+        'what facts do you have',
+      ];
+      if (knowledgePatterns.some((p) => text.includes(p))) {
+        setPanelContext('knowledge');
+        return;
+      }
+    }
+
     // Default
     setPanelContext('idle');
   }, [currentTasks, messages, setPanelContext]);

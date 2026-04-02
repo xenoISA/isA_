@@ -7,6 +7,7 @@ import { useSidePanelContext } from '../../../hooks/useSidePanelContext';
 import { SidePanelIdle } from './SidePanelIdle';
 import { SidePanelDelegation } from './SidePanelDelegation';
 import { SidePanelMemory } from './SidePanelMemory';
+import { SidePanelKnowledge } from './SidePanelKnowledge';
 
 export const ContextPanel: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { panelContext, contextData } = useSidePanelContext();
@@ -17,6 +18,8 @@ export const ContextPanel: React.FC<{ className?: string }> = ({ className = '' 
         return <SidePanelDelegation contextData={contextData} />;
       case 'memory':
         return <SidePanelMemory contextData={contextData} />;
+      case 'knowledge':
+        return <SidePanelKnowledge />;
       case 'idle':
       default:
         return <SidePanelIdle />;

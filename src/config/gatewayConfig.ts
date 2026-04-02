@@ -134,6 +134,8 @@ export const GATEWAY_ENDPOINTS = {
         SESSIONS: buildMateEndpoint('/v1/memory/sessions'),
         SESSION_MESSAGES: buildMateEndpoint('/v1/memory/sessions/{sessionId}/messages'),
         TURNS: buildMateEndpoint('/v1/memory/turns'),
+        KNOWLEDGE: buildMateEndpoint('/v1/memory/knowledge'),
+        KNOWLEDGE_ITEM: buildMateEndpoint('/v1/memory/knowledge/{itemId}'),
       },
       SCHEDULER: {
         JOBS: buildMateEndpoint('/v1/scheduler/jobs'),
