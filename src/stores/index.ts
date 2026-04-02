@@ -32,8 +32,8 @@ export {
   type AppActions
 } from './useAppStore';
 
-// === 聊天状态 ===
-export { 
+// === 聊天状态 (composed facade — backward-compatible) ===
+export {
   useChatStore,
   useChatMessages,
   useChatTyping,
@@ -41,6 +41,19 @@ export {
   useChatActions,
   type ChatStore
 } from './useChatStore';
+
+// === 消息状态 (split from useChatStore — #124) ===
+export {
+  useMessageStore,
+  type MessageStore
+} from './useMessageStore';
+
+// === 流式状态 (split from useChatStore — #124) ===
+export {
+  useStreamingStore,
+  clearAllFlushTimers,
+  type StreamingStore
+} from './useStreamingStore';
 
 // === 会话状态 ===
 export { 
