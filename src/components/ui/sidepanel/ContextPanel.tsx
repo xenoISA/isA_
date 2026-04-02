@@ -8,6 +8,7 @@ import { SidePanelIdle } from './SidePanelIdle';
 import { SidePanelDelegation } from './SidePanelDelegation';
 import { SidePanelMemory } from './SidePanelMemory';
 import { SidePanelKnowledge } from './SidePanelKnowledge';
+import { SidePanelChannels } from './SidePanelChannels';
 
 export const ContextPanel: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { panelContext, contextData } = useSidePanelContext();
@@ -20,6 +21,8 @@ export const ContextPanel: React.FC<{ className?: string }> = ({ className = '' 
         return <SidePanelMemory contextData={contextData} />;
       case 'knowledge':
         return <SidePanelKnowledge />;
+      case 'channels':
+        return <SidePanelChannels />;
       case 'idle':
       default:
         return <SidePanelIdle />;

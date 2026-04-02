@@ -28,6 +28,9 @@ export interface MateSSEEvent {
   source?: 'scheduler' | 'trigger' | 'channel';
   job_id?: string;
   completed_at?: string;
+  // Cross-channel origin fields
+  channel_origin?: string;
+  channel_message_id?: string;
 }
 
 export interface AGUICompatEvent {
@@ -70,6 +73,15 @@ export function adaptMateEvent(
 
   switch (event.type) {
     case 'text': {
+      // Extract cross-channel origin metadata if present
+      const channelOrigin = event.channel_origin || (event.metadata?.channel_origin as string | undefined);
+      const channelMeta = channelOrigin
+        ? {
+            channel_origin: channelOrigin,
+            channel_message_id: event.channel_message_id || (event.metadata?.channel_message_id as string | undefined),
+          }
+        : undefined;
+
       // If no message started yet, emit text_message_start first
       if (!currentMessageId) {
         currentMessageId = generateId('msg');
@@ -80,6 +92,7 @@ export function adaptMateEvent(
           run_id: context.runId,
           message_id: currentMessageId,
           role: 'assistant',
+          ...(channelMeta && { metadata: { ...event.metadata, ...channelMeta } }),
         });
       }
       results.push({
@@ -89,6 +102,7 @@ export function adaptMateEvent(
         run_id: context.runId,
         message_id: currentMessageId,
         delta: event.content || '',
+        ...(channelMeta && { metadata: { ...event.metadata, ...channelMeta } }),
       });
       break;
     }

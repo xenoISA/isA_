@@ -41,6 +41,7 @@ import { AutonomousActivityCard } from './AutonomousActivityCard';
 import { AwayActivityGroup } from './AwayActivityGroup';
 import type { RegularMessage } from '../../../types/chatTypes';
 
+import { ChannelOriginBadge } from './ChannelOriginBadge';
 import { DelegationCard } from './DelegationCard';
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';
@@ -721,6 +722,17 @@ export const MessageList = memo<MessageListProps>(({
             onCopy={() => navigator.clipboard.writeText(message.content)}
           />
         </div>
+
+        {/* Channel origin badge — shows when message came from another channel */}
+        {message.type === 'regular' && (message as RegularMessage).channelOrigin && (
+          <div className={`mt-1 ${message.role === 'assistant' ? 'ml-12' : ''}`}>
+            <ChannelOriginBadge
+              channel={(message as RegularMessage).channelOrigin!.channel}
+              channelMessageId={(message as RegularMessage).channelOrigin!.channelMessageId}
+              timestamp={(message as RegularMessage).channelOrigin!.timestamp}
+            />
+          </div>
+        )}
 
         {/* Delegation Cards — show after the last assistant message */}
         {message.role === 'assistant' && <DelegationCards />}

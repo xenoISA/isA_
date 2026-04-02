@@ -71,6 +71,12 @@ export interface RegularMessage extends BaseMessage {
   // Schedule fields — present when the message confirms a scheduled job
   scheduleData?: ScheduleConfirmationData;
   jobId?: string;
+  // Cross-channel origin — present when the message originated from another channel
+  channelOrigin?: {
+    channel: string; // 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'web' etc
+    channelMessageId?: string;
+    timestamp?: string;
+  };
 }
 
 // 工件消息接口 - 用于显示小部件生成的工件
