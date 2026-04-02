@@ -50,6 +50,8 @@ export interface RegularMessage extends BaseMessage {
     }>;
     [key: string]: unknown;
   };
+  // Memory recall references attached by the memory_recall event pipeline
+  memoryRecalls?: import('./memoryTypes').MemoryRecallData[];
   // Store相关字段
   processed?: boolean; // 标记用户消息是否已发送到API
   files?: File[]; // 用户上传的文件

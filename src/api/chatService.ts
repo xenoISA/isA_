@@ -436,6 +436,32 @@ export class ChatService {
         });
         break;
         
+      case 'memory_recall': {
+        // Attach the recalled memory to the current streaming message
+        const { useMessageStore } = require('../stores/useMessageStore');
+        const msgStore = useMessageStore.getState();
+        // Find the last streaming assistant message
+        const streamingMsg = [...msgStore.messages].reverse().find(
+          (m: any) => m.role === 'assistant' && m.isStreaming
+        );
+        const currentMsgId = streamingMsg?.id;
+        if (currentMsgId) {
+          msgStore.attachMemoryRecall(currentMsgId, {
+            memoryId: customData.memoryId || event.metadata?.memoryId,
+            memoryType: customData.memoryType || event.metadata?.memoryType || 'factual',
+            content: customData.content || event.metadata?.content || '',
+            learnedAt: customData.learnedAt || event.metadata?.learnedAt,
+            confidence: customData.confidence || event.metadata?.confidence,
+            sourceSessionId: customData.sourceSessionId || event.metadata?.sourceSessionId,
+          });
+        }
+        log.info('Memory recall event dispatched', {
+          memoryType: customData.memoryType || event.metadata?.memoryType,
+          messageId: currentMsgId,
+        });
+        break;
+      }
+
       case 'autonomous_result': {
         // Background autonomous event received via the active chat stream.
         // Dispatch directly to the chat store so it appears in the timeline.

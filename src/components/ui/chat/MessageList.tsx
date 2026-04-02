@@ -22,7 +22,7 @@
  */
 import React, { memo, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { createLogger } from '../../../utils/logger';
-import { ChatMessage, ArtifactMessage } from '../../../types/chatTypes';
+import { ChatMessage, ArtifactMessage, RegularMessage } from '../../../types/chatTypes';
 const log = createLogger('MessageList');
 import { ArtifactComponent } from './ArtifactComponent';
 import { ArtifactMessageComponent } from './ArtifactMessageComponent';
@@ -32,6 +32,8 @@ import { ChatWelcome } from './ChatWelcome';
 import { TaskProgressMessage } from './TaskProgressMessage';
 import { TaskHandler } from '../../core/TaskHandler';
 import { ChatEmbeddedTaskPanel } from './ChatEmbeddedTaskPanel';
+import { MemoryCard } from './MemoryCard';
+import type { MemoryRecallData } from '../../../types/memoryTypes';
 
 // MessageActions will be implemented later
 
@@ -147,6 +149,40 @@ const useVirtualScrolling = (
     visibleRange
   };
 };
+
+/**
+ * MemoryRecallSection — Shows up to 3 MemoryCards with "Show N more" expansion.
+ */
+const MAX_VISIBLE_RECALLS = 3;
+
+const MemoryRecallSection = memo<{ recalls: MemoryRecallData[] }>(({ recalls }) => {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? recalls : recalls.slice(0, MAX_VISIBLE_RECALLS);
+  const hiddenCount = recalls.length - MAX_VISIBLE_RECALLS;
+
+  return (
+    <div className="ml-12 mb-2 flex flex-col gap-1.5 max-w-[80%]">
+      {visible.map((recall, idx) => (
+        <MemoryCard
+          key={recall.memoryId || `recall-${idx}`}
+          {...recall}
+          onDismiss={() => { /* dismiss handled upstream */ }}
+          onCorrect={() => { /* correct handled upstream */ }}
+        />
+      ))}
+      {!expanded && hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="text-xs text-white/50 hover:text-white/80 transition-colors self-start px-2 py-0.5"
+        >
+          Show {hiddenCount} more
+        </button>
+      )}
+    </div>
+  );
+});
+
+MemoryRecallSection.displayName = 'MemoryRecallSection';
 
 /**
  * MessageList - Pure UI component for displaying chat messages
@@ -339,6 +375,13 @@ export const MessageList = memo<MessageListProps>(({
     // Default message rendering using GlassMessageBubble with TaskProgress
     return (
       <div className="mb-6" onClick={() => onMessageClick?.(message)}>
+        {/* Memory recall cards — rendered above the assistant bubble */}
+        {message.role === 'assistant' && message.type === 'regular' && (message as RegularMessage).memoryRecalls && (message as RegularMessage).memoryRecalls!.length > 0 && (
+          <MemoryRecallSection
+            recalls={(message as RegularMessage).memoryRecalls!}
+          />
+        )}
+
         {/* AI Message with Enhanced Header */}
         {message.role === 'assistant' && (
           <div className="flex items-center mb-3">
