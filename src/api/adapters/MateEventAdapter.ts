@@ -238,6 +238,23 @@ export function adaptMateEvent(
 case 'memory_recall': {
       // Explicit memory recall event from Mate — map to custom_event
       const recallMeta = event.metadata || {};
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        metadata: {
+          custom_type: 'memory_recall',
+          memoryId: recallMeta.memoryId || recallMeta.memory_id || generateId('mem'),
+          memoryType: recallMeta.memoryType || recallMeta.memory_type || 'factual',
+          content: event.content || recallMeta.content || '',
+          learnedAt: recallMeta.learnedAt || recallMeta.learned_at,
+          confidence: recallMeta.confidence,
+          sourceSessionId: recallMeta.sourceSessionId || recallMeta.source_session_id,
+        },
+      });
+      break;
+    }
 
     case 'schedule_created': {
       // A new scheduled job was created by Mate
@@ -247,15 +264,7 @@ case 'memory_recall': {
         timestamp: now,
         run_id: context.runId,
         metadata: {
-custom_type: 'memory_recall',
-          memoryId: recallMeta.memoryId || recallMeta.memory_id || generateId('mem'),
-          memoryType: recallMeta.memoryType || recallMeta.memory_type || 'factual',
-          content: event.content || recallMeta.content || '',
-          learnedAt: recallMeta.learnedAt || recallMeta.learned_at,
-          confidence: recallMeta.confidence,
-          sourceSessionId: recallMeta.sourceSessionId || recallMeta.source_session_id,
-
-    custom_type: 'schedule_created',
+          custom_type: 'schedule_created',
           job_id: event.job_id,
           name: (event.metadata?.name as string) || '',
           cron_expression: (event.metadata?.cron_expression as string) || '',

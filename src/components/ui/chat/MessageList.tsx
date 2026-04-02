@@ -39,7 +39,6 @@ import { ScheduleConfirmationCard } from './ScheduleConfirmationCard';
 import { ScheduleResultCard } from './ScheduleResultCard';
 import { AutonomousActivityCard } from './AutonomousActivityCard';
 import { AwayActivityGroup } from './AwayActivityGroup';
-import type { RegularMessage } from '../../../types/chatTypes';
 
 import { ChannelOriginBadge } from './ChannelOriginBadge';
 import { DelegationCard } from './DelegationCard';
@@ -50,6 +49,40 @@ import type { SkillActivationStatus } from './SkillActivationCard';
 import { useMessageStore } from '../../../stores/useMessageStore';
 
 // MessageActions will be implemented later
+
+// --- Helper: detect if a message should render as a gentle notification (#122) ---
+function detectGentleNotification(message: ChatMessage): { type: GentleNotificationType; content: string; source?: string } | null {
+  if (message.type !== 'regular') return null;
+  const reg = message as RegularMessage;
+  // System messages
+  if ((reg.role as string) === 'system') {
+    return { type: 'info', content: reg.content || '' };
+  }
+  // Cross-channel forwarded messages
+  if (reg.channelOrigin && reg.role === 'assistant') {
+    return { type: 'channel-message', content: reg.content || '', source: reg.channelOrigin.channel };
+  }
+  // Autonomous trigger messages (non-scheduler — scheduler has its own card)
+  if (reg.isAutonomous && reg.autonomousSource === 'trigger') {
+    return { type: 'update', content: reg.content || '', source: 'trigger' };
+  }
+  return null;
+}
+
+// --- Helper: detect if a message is a skill activation (#123) ---
+function detectSkillActivation(message: ChatMessage): { skillId: string; skillLabel: string; icon: string; status: SkillActivationStatus; errorMessage?: string } | null {
+  if (message.type !== 'regular') return null;
+  const reg = message as RegularMessage;
+  const meta = (reg as any).skillActivation;
+  if (!meta) return null;
+  return {
+    skillId: meta.skillId || '',
+    skillLabel: meta.skillLabel || 'Skill',
+    icon: meta.icon || '⚡',
+    status: meta.status || 'activating',
+    errorMessage: meta.errorMessage,
+  };
+}
 
 // Smart time formatting function
 const formatMessageTime = (timestamp: string | number | Date): string => {
@@ -667,16 +700,6 @@ export const MessageList = memo<MessageListProps>(({
               </div>
             )}
             <span className="ml-2 text-sm font-display font-semibold text-[var(--mate-accent)]">Mate</span>
-
-<div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm backdrop-blur-sm border border-white/20 text-white/90 shadow-lg ${
-                isStreaming
-                  ? 'bg-gradient-to-br from-blue-500 to-purple-500 shadow-blue-500/30'
-                  : 'bg-white/10'
-              }`}>
-                🤖
-              </div>
-            )}
-            <span className="ml-2 text-sm font-medium text-white/90">AI Assistant</span>
             {/* Streaming Status */}
             {isStreaming && (
               <div className="ml-3 flex items-center space-x-2 bg-blue-500/20 px-3 py-1.5 rounded-full border border-blue-400/40 shadow-lg">
