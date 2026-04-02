@@ -16,19 +16,21 @@
  * - Knowledge Analysis → KnowledgeWidget (🧠 文档分析)
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { createLogger } from '../../../utils/logger';
 import { useAppStore } from '../../../stores/useAppStore';
 const log = createLogger('ChatWelcome');
 import { WidgetType } from '../../../types/widgetTypes';
-import { 
+import {
   useOmniActions,
-  useHuntActions, 
+  useHuntActions,
   useDreamActions,
-  useKnowledgeActions 
+  useKnowledgeActions
 } from '../../../stores/useWidgetStores';
 import { createWelcomeConfig, validateWelcomeConfig } from '../../../config/welcomeConfig';
 import { useLanguageStore } from '../../../stores/useLanguageStore';
+import { useOnboardingState } from '../../../hooks/useOnboardingState';
+import { CompanionOnboarding } from './CompanionOnboarding';
 
 interface ChatWelcomeProps {
   onSendMessage?: (message: string) => void;
@@ -47,9 +49,28 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   const { triggerDreamGeneration } = useDreamActions();
   const { triggerKnowledgeAnalysis } = useKnowledgeActions();
   const { currentLanguage } = useLanguageStore();
-  
+  const { isNewUser, completeOnboarding } = useOnboardingState();
+
   // Generate dynamic welcome config based on current language
   const welcomeConfig = React.useMemo(() => createWelcomeConfig(currentLanguage), [currentLanguage]);
+
+  // Handle onboarding completion — store user preferences then dismiss
+  const handleOnboardingComplete = useCallback(
+    (data?: { name: string; interests: string; preference: string }) => {
+      if (data) {
+        try {
+          localStorage.setItem('mate_user_preferences', JSON.stringify(data));
+          log.info('Onboarding completed with user data', { name: data.name });
+        } catch (err) {
+          log.error('Failed to persist onboarding data', err);
+        }
+      } else {
+        log.info('Onboarding skipped');
+      }
+      completeOnboarding();
+    },
+    [completeOnboarding],
+  );
 
   // Validate configuration on component mount and language change
   useEffect(() => {
@@ -107,6 +128,16 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
       onSendMessage(prompt);
     }
   };
+
+  // New users see the conversational onboarding flow instead of the welcome screen
+  if (isNewUser) {
+    return (
+      <CompanionOnboarding
+        onComplete={handleOnboardingComplete}
+        className={className}
+      />
+    );
+  }
 
   return (
     <div className={`flex flex-col items-center justify-center min-h-[60vh] px-4 sm:px-6 lg:px-8 py-8 md:py-16 ${className}`}>
