@@ -132,7 +132,13 @@ export const GATEWAY_ENDPOINTS = {
       TEAMS: buildMateEndpoint('/v1/teams'),
       MEMORY: {
         SESSIONS: buildMateEndpoint('/v1/memory/sessions'),
+        SESSION_MESSAGES: buildMateEndpoint('/v1/memory/sessions/{sessionId}/messages'),
         TURNS: buildMateEndpoint('/v1/memory/turns'),
+      },
+      SCHEDULER: {
+        JOBS: buildMateEndpoint('/v1/scheduler/jobs'),
+        JOB: buildMateEndpoint('/v1/scheduler/jobs/{jobId}'),
+        JOB_RUN: buildMateEndpoint('/v1/scheduler/jobs/{jobId}/run'),
       },
       HEALTH: buildMateEndpoint('/health'),
     };
