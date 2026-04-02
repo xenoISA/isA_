@@ -17,6 +17,7 @@
 
 import { getGatewayUrl } from './runtimeEnv';
 import { authTokenStore } from '../stores/authTokenStore';
+import { clearAuthCookies, getCredentialsMode, isHttpOnlyCookieMode } from '../utils/authCookieHelper';
 
 // ================================================================================
 // 网关基础配置
@@ -40,6 +41,14 @@ export const GATEWAY_CONFIG = {
     API_KEY_HEADER: 'X-API-Key',
   },
   
+  // Cross-zone SSO cookie config
+  COOKIE: {
+    /** Domain scope for auth cookies — all zones share the session */
+    DOMAIN: process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN || '.iapro.ai',
+    /** Credentials mode for fetch/axios — 'include' sends cookies cross-origin */
+    CREDENTIALS_MODE: (process.env.NEXT_PUBLIC_AUTH_CREDENTIALS_MODE as RequestCredentials) || 'include',
+  },
+
   // 超时配置
   TIMEOUT: {
     DEFAULT: 30000,      // 30秒
@@ -328,6 +337,7 @@ export const saveAuthToken = (token: string): void => {
  */
 export const clearAuth = (): void => {
   authTokenStore.clearToken();
+  clearAuthCookies();
   // Clean up legacy localStorage entries from pre-migration
   if (typeof window !== 'undefined') {
     localStorage.removeItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
