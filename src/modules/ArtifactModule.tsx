@@ -97,24 +97,6 @@ export const useArtifactLogic = () => {
     };
   }, [isAnyWidgetGenerating, latestWidgetArtifact, legacyArtifacts?.length, artifactMessages.length]);
 
-  // 移除这个导致无限循环的 console.log
-  // console.log('🎨 ARTIFACT_MODULE: Business logic state:', {
-  //   artifactsCount: artifacts?.length || 0,
-  //   latestArtifact: latestWidgetArtifact?.appName,
-  //   isGenerating: isAnyWidgetGenerating
-  // });
-
-  // 完全禁用日志以解决无限循环问题
-  // useEffect(() => {
-  //   if (process.env.NODE_ENV === 'development') {
-  //     console.log('🎨 ARTIFACT_MODULE: State changed:', {
-  //       artifactsCount: artifacts?.length || 0,
-  //       latestArtifact: latestWidgetArtifact?.appName,
-  //       isGenerating: isAnyWidgetGenerating
-  //     });
-  //   }
-  // }, [artifacts?.length, latestWidgetArtifact?.appName, isAnyWidgetGenerating]);
-
   return {
     // Legacy data (for backward compatibility)
     artifacts: legacyArtifacts || [],
