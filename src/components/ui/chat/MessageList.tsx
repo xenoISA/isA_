@@ -37,6 +37,8 @@ import type { MemoryRecallData } from '../../../types/memoryTypes';
 
 import { ScheduleConfirmationCard } from './ScheduleConfirmationCard';
 import { ScheduleResultCard } from './ScheduleResultCard';
+import { AutonomousActivityCard } from './AutonomousActivityCard';
+import { AwayActivityGroup } from './AwayActivityGroup';
 import type { RegularMessage } from '../../../types/chatTypes';
 
 import { DelegationCard } from './DelegationCard';
@@ -191,7 +193,7 @@ const MemoryRecallSection = memo<{ recalls: MemoryRecallData[] }>(({ recalls }) 
 
 MemoryRecallSection.displayName = 'MemoryRecallSection';
 
-* DelegationCards — renders active delegations from the message store.
+/** DelegationCards — renders active delegations from the message store.
  * Only displayed after the last assistant message in the stream.
  */
 const DelegationCards = memo(() => {
@@ -252,6 +254,45 @@ export const MessageList = memo<MessageListProps>(({
       return true;
     });
   }, [baseMessagesToRender]);
+
+  // ---------------------------------------------------------------------------
+  // Group consecutive autonomous messages for "While you were away" treatment.
+  // Produces a Set of message IDs that belong to a group of 2+ consecutive
+  // autonomous messages, plus a Map of groupStartId -> RegularMessage[].
+  // ---------------------------------------------------------------------------
+  const { awayGroups, groupedIds } = useMemo(() => {
+    const groups = new Map<string, RegularMessage[]>();
+    const ids = new Set<string>();
+
+    let runStart = -1;
+    for (let i = 0; i <= messagesToRender.length; i++) {
+      const msg = messagesToRender[i];
+      const isAuto =
+        msg &&
+        msg.type === 'regular' &&
+        (msg as RegularMessage).isAutonomous;
+
+      if (isAuto) {
+        if (runStart === -1) runStart = i;
+      } else {
+        // End of a run — check if long enough to group
+        if (runStart !== -1) {
+          const runLen = i - runStart;
+          if (runLen >= 2) {
+            const groupMsgs = messagesToRender
+              .slice(runStart, i)
+              .map((m) => m as RegularMessage);
+            const startId = groupMsgs[0].id;
+            groups.set(startId, groupMsgs);
+            for (const m of groupMsgs) ids.add(m.id);
+          }
+        }
+        runStart = -1;
+      }
+    }
+
+    return { awayGroups: groups, groupedIds: ids };
+  }, [messagesToRender]);
 
   // Default message renderer
   const renderMessage = (message: ChatMessage, index: number) => {
@@ -395,15 +436,23 @@ export const MessageList = memo<MessageListProps>(({
       );
     }
 
-    // Scheduled task result — autonomous messages from the scheduler
+    // Autonomous messages — routed through specialized cards.
+    // Scheduler messages keep the dedicated ScheduleResultCard; all others
+    // use the general-purpose AutonomousActivityCard.
     if (
       message.type === 'regular' &&
-      (message as RegularMessage).isAutonomous &&
-      (message as RegularMessage).autonomousSource === 'scheduler'
+      (message as RegularMessage).isAutonomous
     ) {
+      if ((message as RegularMessage).autonomousSource === 'scheduler') {
+        return (
+          <div className="mb-6" onClick={() => onMessageClick?.(message)}>
+            <ScheduleResultCard message={message as RegularMessage} />
+          </div>
+        );
+      }
       return (
-        <div className="mb-6" onClick={() => onMessageClick?.(message)}>
-          <ScheduleResultCard message={message as RegularMessage} />
+        <div className="mb-4" onClick={() => onMessageClick?.(message)}>
+          <AutonomousActivityCard message={message as RegularMessage} />
         </div>
       );
     }
@@ -416,6 +465,7 @@ export const MessageList = memo<MessageListProps>(({
           <MemoryRecallSection
             recalls={(message as RegularMessage).memoryRecalls!}
           />
+        )}
 
 {/* Schedule confirmation card — inline in assistant messages */}
         {message.type === 'regular' && (message as RegularMessage).scheduleData && (
@@ -535,12 +585,28 @@ export const MessageList = memo<MessageListProps>(({
           <ChatWelcome onSendMessage={onSendMessage} />
         )}
 
-        {/* Messages - Regular rendering */}
-        {messagesToRender.map((message, index) => (
-          <div key={`${message.id}-${index}`}>
-            {renderMessage(message, index)}
-          </div>
-        ))}
+        {/* Messages - Regular rendering with autonomous grouping */}
+        {messagesToRender.map((message, index) => {
+          // Skip messages that are part of an away group (rendered by group leader)
+          if (groupedIds.has(message.id) && !awayGroups.has(message.id)) {
+            return null;
+          }
+
+          // Render the AwayActivityGroup for the first message in a group
+          if (awayGroups.has(message.id)) {
+            return (
+              <div key={`away-group-${message.id}`}>
+                <AwayActivityGroup messages={awayGroups.get(message.id)!} />
+              </div>
+            );
+          }
+
+          return (
+            <div key={`${message.id}-${index}`}>
+              {renderMessage(message, index)}
+            </div>
+          );
+        })}
       </div>
     );
   };
