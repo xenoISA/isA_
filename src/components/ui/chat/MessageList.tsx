@@ -35,6 +35,10 @@ import { ChatEmbeddedTaskPanel } from './ChatEmbeddedTaskPanel';
 import { MemoryCard } from './MemoryCard';
 import type { MemoryRecallData } from '../../../types/memoryTypes';
 
+import { ScheduleConfirmationCard } from './ScheduleConfirmationCard';
+import { ScheduleResultCard } from './ScheduleResultCard';
+import type { RegularMessage } from '../../../types/chatTypes';
+
 // MessageActions will be implemented later
 
 // Smart time formatting function
@@ -372,14 +376,31 @@ export const MessageList = memo<MessageListProps>(({
       );
     }
 
+    // Scheduled task result — autonomous messages from the scheduler
+    if (
+      message.type === 'regular' &&
+      (message as RegularMessage).isAutonomous &&
+      (message as RegularMessage).autonomousSource === 'scheduler'
+    ) {
+      return (
+        <div className="mb-6" onClick={() => onMessageClick?.(message)}>
+          <ScheduleResultCard message={message as RegularMessage} />
+        </div>
+      );
+    }
+
     // Default message rendering using GlassMessageBubble with TaskProgress
     return (
       <div className="mb-6" onClick={() => onMessageClick?.(message)}>
-        {/* Memory recall cards — rendered above the assistant bubble */}
+{/* Memory recall cards — rendered above the assistant bubble */}
         {message.role === 'assistant' && message.type === 'regular' && (message as RegularMessage).memoryRecalls && (message as RegularMessage).memoryRecalls!.length > 0 && (
           <MemoryRecallSection
             recalls={(message as RegularMessage).memoryRecalls!}
           />
+
+{/* Schedule confirmation card — inline in assistant messages */}
+        {message.type === 'regular' && (message as RegularMessage).scheduleData && (
+          <ScheduleConfirmationCard data={(message as RegularMessage).scheduleData!} />
         )}
 
         {/* AI Message with Enhanced Header */}

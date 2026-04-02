@@ -20,6 +20,8 @@ import { HILStatusPanel } from '../hil/HILStatusPanel';
 import { HILInterruptData, HILCheckpointData, HILExecutionStatusData } from '../../../types/aguiTypes';
 import { ContextPanel } from '../sidepanel/ContextPanel';
 
+import { UpcomingSchedulePanel } from './UpcomingSchedulePanel';
+
 export interface RightPanelProps {
   className?: string;
   /** When true, render the contextual ContextPanel instead of the static tabs */
@@ -50,6 +52,7 @@ interface SessionMetrics {
 const TABS = [
   { id: 'overview', name: 'Overview', icon: '📊', color: '#22c55e' },
   { id: 'tasks', name: 'Tasks', icon: '⚡', color: '#3b82f6' },
+  { id: 'schedule', name: 'Schedule', icon: '🕐', color: '#06b6d4' },
   { id: 'billing', name: 'Credits', icon: '💰', color: '#f59e0b' },
   { id: 'memory', name: 'Memory', icon: '🧠', color: '#8b5cf6' },
   { id: 'events', name: 'Events', icon: '📡', color: '#ec4899' },
@@ -473,6 +476,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <div className="w-full max-w-full overflow-hidden">
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'tasks' && renderTasksTab()}
+          {activeTab === 'schedule' && <UpcomingSchedulePanel />}
           {activeTab === 'billing' && renderBillingTab()}
           {activeTab === 'memory' && renderMemoryTab()}
           {activeTab === 'events' && renderEventsTab()}
