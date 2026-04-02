@@ -2,13 +2,25 @@
 
 ## Overview
 
-isA_ is the **unified platform entry point** for the isA ecosystem, serving three audiences through a single application:
-
-- **End users** (isA Mate) — AI chat, widgets, task automation
-- **Developers** (isA Console) — agent management, API access, admin tools
-- **Everyone** (isA Docs) — guides, API reference, tutorials
+isA_ is your **personal AGI companion app**, powered by isA Mate. It is the primary interface through which users interact with their AI mate — a companion that remembers you, schedules things for you, delegates to specialist agents when needed, and reaches you across channels.
 
 The application is built on Next.js 14 and branded as **iapro.ai**.
+
+### Product Vision
+
+isA_ is a **companion, not a dashboard**. Every capability — memory, scheduling, delegation, autonomy — surfaces naturally through conversation. Users talk to Mate; they don't operate software.
+
+**Design Principles:**
+- **Conversation-first** — Everything starts from talking to Mate
+- **Proactive, not reactive** — Mate surfaces context, suggestions, and status without being asked
+- **Ambient awareness** — Memory, tasks, and channels are woven into the chat, not separate views
+- **Personal** — Feels like your companion knows you, not like software you operate
+
+### Audiences
+
+- **End users** (primary) — Personal AI companion via isA Mate (chat, memory, tasks, automation)
+- **Developers** (via Console) — Agent management, API access, admin tools (isA_Console)
+- **Everyone** (via Docs) — Guides, API reference, tutorials (isA_Docs)
 
 ## Architecture
 
@@ -126,17 +138,97 @@ Implementation via Multi-Zone gateway routing (see Architecture section above).
 - Micro-frontend module federation (unnecessary complexity)
 - Client-side cross-zone navigation (full page loads are acceptable)
 
-### isA Mate Integration
+### Epic: Audit Remediation — Production Quality Gaps
+
+**Priority**: P1-High
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for dev
+
+Spec-vs-implementation gaps identified during product audit (2026-04-02).
+
+#### Requirements
+
+1. **Structured logging** — Replace raw console.log/warn/error in creditMonitor.ts, ComponentDemo.tsx, MessageList.tsx with structured logger utility
+2. **TypeScript strict mode** — Fix remaining TS errors, remove `ignoreBuildErrors: true` from next.config.js and `continue-on-error` from CI
+3. **SDK registry migration** — Publish @isa/core, @isa/transport, @isa/ui-web to @xenoisa npm scope; remove file: references (see Issue #30)
+4. **Multi-Zone documentation** — Verify basePath config in Console/Docs repos; document multi-zone setup
+5. **Widget TODO cleanup** — Convert 20+ TODOs in widget plugins to tracked issues or mark out-of-scope
+6. **Cross-zone SSO** — Implement HttpOnly auth cookies with domain `.iapro.ai` for cross-zone session sharing
+7. **Production env template** — Complete deployment/environments/production.env with documented values and secrets management strategy
+
+### Epic: AGI Mate Experience — Companion, Not Dashboard
+
+**Priority**: P1-High
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for design
+
+Mate now has memory (persistent + extractive), scheduling (cron v2), multi-agent delegation (4 specialist teams), autonomous mode, and 10-channel presence — but isA_ only exposes the chat stream. This epic surfaces Mate's full capabilities naturally through the companion experience.
+
+#### Requirements
+
+1. **Memory in context** — Mate proactively surfaces relevant memories inline during conversation ("Last time we discussed X, you decided Y"). No separate memory page required.
+2. **Natural task scheduling** — Users say "remind me to check deploys every morning" and Mate creates a cron job conversationally. Upcoming tasks appear as a lightweight side element, not a CRUD page.
+3. **Transparent delegation** — When Mate delegates to isa_vibe, isa_trade, isa_creative, or isa_marketing, the chat shows a subtle indicator with live progress. No team management UI.
+4. **Companion presence** — Ambient status showing Mate is online, active channels, and autonomous work in progress. Like a companion that's "there."
+5. **Autonomous activity feed** — Results from scheduled tasks and trigger responses appear as gentle inline cards in the timeline ("While you were away, I checked the deploy and everything looks good").
+6. **Cross-channel continuity** — Conversations from Telegram/Discord/Slack continue seamlessly in the web app with shared context.
+7. **Personal knowledge surface** — Minimal side view of what Mate knows about you (facts, preferences, patterns). Editable. Feels personal, not like a database browser.
+8. **Companion onboarding** — First-time experience where Mate introduces itself and learns about you through conversation, not a settings form.
+
+#### Design Principles
+
+- Everything flows through conversation — no admin pages
+- Mate's capabilities are experienced, not configured
+- Widgets (Dream, Hunt, Knowledge, etc.) reframed as "things Mate can do" — triggered conversationally, results inline
+
+#### Out of Scope
+
+- Channel configuration UI (belongs in settings/Console)
+- Team/agent management (belongs in isA_Console)
+- Scheduler CRUD admin (CLI or Console)
+
+### Epic: Companion UI Redesign
+
+**Priority**: P1-High
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for design
+
+Evolve the UI from "LLM chat app" to "personal AGI companion" — warmer, more personal, ambient.
+
+#### Requirements
+
+1. **Conversational layout evolution** — Warmer typography, Mate's personality in UI chrome, subtle presence indicators. Move beyond generic chat UI.
+2. **Contextual side panel** — Replace rigid right sidebar with fluid panel showing what's relevant now — task progress, memories, delegation status — adapting to conversation context.
+3. **Gentle notification pattern** — Autonomous results and cross-channel messages as soft inline cards, not system alerts. Feels like Mate telling you things.
+4. **Widgets as Mate skills** — Dream, Hunt, Knowledge, etc. feel like things Mate can do, not separate apps. Triggered conversationally, results inline.
+
+### Epic: Architecture Enablement
 
 **Priority**: P2-Medium
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for dev
 
-isA Mate replaces the previous isA Agent consumer flow. isA_ must serve as the primary Mate interface:
+Minimal refactoring to support the AGI Mate Experience and Companion UI epics.
 
-- Chat-based AI interaction (existing)
-- Widget ecosystem (Dream, Hunt, Omni, Knowledge, DataScientist, CustomAutomation)
-- Session persistence and history
-- Human-in-the-loop authorization
-- Future: DigitalHub and Doc widgets (Issue #14)
+#### Requirements
+
+1. **Split useChatStore** — Decompose 884-line store into message store + streaming store to support autonomous background messages
+2. **Mate API client** — Add client for Mate's scheduler, memory, and health endpoints (REST on :18789)
+3. **Background message support** — Streaming architecture must handle autonomous/scheduled messages appearing in timeline without active user session
+
+### isA Mate Backend
+
+isA Mate is the backend powering isA_. Key capabilities exposed via REST/SSE/WebSocket on port 18789:
+
+- **190+ tools** — File, web, task, calendar, memory, media, office, shell operations
+- **Persistent memory** — Factual, episodic, semantic, procedural types with progressive summarization
+- **Scheduler** — Cron v2 with catch-up, team job dispatch, pause/resume
+- **Multi-agent delegation** — Pinned teams (isa_vibe, isa_trade, isa_creative, isa_marketing) + dynamic directory
+- **Autonomous mode** — Scheduler-driven dispatch, trigger responses, feedback learning
+- **10 channels** — Telegram, Discord, Slack, WhatsApp, Feishu, Teams, Matrix, Signal, iMessage, LINE
+- **Observability** — Prometheus metrics, OpenTelemetry traces, health registry
+
+Integration via `MateEventAdapter` translating Mate SSE → AGUI protocol events.
 
 ### Role-Based Access Control
 
