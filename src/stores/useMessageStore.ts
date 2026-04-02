@@ -23,7 +23,7 @@ import { logger, LogCategory, createLogger } from '../utils/logger';
 const log = createLogger('MessageStore', LogCategory.CHAT_FLOW);
 
 import { getChatServiceInstance } from '../hooks/useChatService';
-import { ChatMessage, StreamingStatus } from '../types/chatTypes';
+import { ChatMessage, StreamingStatus, DelegationState } from '../types/chatTypes';
 import { useUserStore } from './useUserStore';
 import { useSessionStore } from './useSessionStore';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
@@ -52,6 +52,9 @@ export interface MessageStoreState {
   hilHistory: HILInterruptDetectedEvent[];
   hilCheckpoints: HILCheckpointCreatedEvent[];
   currentThreadId: string | null;
+
+  // Delegation tracking (Mate -> sub-team tool calls)
+  activeDelegations: DelegationState[];
 }
 
 export interface MessageActions {
@@ -83,6 +86,11 @@ export interface MessageActions {
   clearHILState: () => void;
   resumeHILExecution: (sessionId: string, resumeValue: any, token?: string) => Promise<void>;
   checkExecutionStatus: (sessionId: string, token?: string) => Promise<any>;
+
+  // Delegation actions
+  startDelegation: (toolName: string, toolCallId: string) => void;
+  completeDelegation: (toolCallId: string, result?: unknown, error?: string) => void;
+  clearDelegations: () => void;
 }
 
 export type MessageStore = MessageStoreState & MessageActions;
@@ -106,6 +114,8 @@ export const useMessageStore = create<MessageStore>()(
     hilHistory: [],
     hilCheckpoints: [],
     currentThreadId: null,
+
+    activeDelegations: [],
 
     // -------------------------------------------------------------------
     // Message operations
@@ -536,6 +546,59 @@ export const useMessageStore = create<MessageStore>()(
         });
         throw error;
       }
-    }
+    },
+
+    // -------------------------------------------------------------------
+    // Delegation operations
+    // -------------------------------------------------------------------
+
+    startDelegation: (toolName: string, toolCallId: string) => {
+      const delegation: DelegationState = {
+        toolCallId,
+        teamId: toolName,
+        status: 'delegating',
+        startedAt: new Date().toISOString(),
+      };
+      set((state) => ({
+        activeDelegations: [...state.activeDelegations, delegation],
+      }));
+      // Transition to 'working' after a short delay to show the delegating phase
+      setTimeout(() => {
+        set((state) => ({
+          activeDelegations: state.activeDelegations.map((d) =>
+            d.toolCallId === toolCallId && d.status === 'delegating'
+              ? { ...d, status: 'working' as const }
+              : d
+          ),
+        }));
+      }, 1200);
+      logger.info(LogCategory.CHAT_FLOW, 'Delegation started', { toolName, toolCallId });
+    },
+
+    completeDelegation: (toolCallId: string, result?: unknown, error?: string) => {
+      set((state) => ({
+        activeDelegations: state.activeDelegations.map((d) =>
+          d.toolCallId === toolCallId
+            ? {
+                ...d,
+                status: (error ? 'failed' : 'completed') as DelegationState['status'],
+                completedAt: new Date().toISOString(),
+                result,
+                error,
+              }
+            : d
+        ),
+      }));
+      logger.info(LogCategory.CHAT_FLOW, 'Delegation completed', { toolCallId, hasError: !!error });
+    },
+
+    clearDelegations: () => {
+      set((state) => ({
+        activeDelegations: state.activeDelegations.filter(
+          (d) => d.status !== 'completed' && d.status !== 'failed'
+        ),
+      }));
+      logger.info(LogCategory.CHAT_FLOW, 'Completed delegations cleared');
+    },
   }))
 );

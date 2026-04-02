@@ -5,10 +5,12 @@
  * All handler logic is identical to the original — this is a move, not a refactor.
  */
 import { useChatStore } from '../../stores/useChatStore';
+import { useMessageStore } from '../../stores/useMessageStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
 import { ArtifactMessage } from '../../types/chatTypes';
 import { AppId } from '../../types/appTypes';
+import { isDelegationTool } from '../../constants/delegationTeams';
 
 const log = createLogger('ChatModule:Message');
 
@@ -202,6 +204,20 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
             useChatStore.getState().setIsTyping(false);
             useChatStore.getState().setExecutingPlan(false);
             logger.info(LogCategory.CHAT_FLOW, 'Message sending completed successfully');
+          },
+          onToolStart: (toolName: string, toolCallId?: string) => {
+            if (isDelegationTool(toolName) && toolCallId) {
+              useMessageStore.getState().startDelegation(toolName, toolCallId);
+            }
+          },
+          onToolCompleted: (toolName: string, result?: any, error?: string) => {
+            const delegations = useMessageStore.getState().activeDelegations;
+            const active = delegations.find(
+              (d) => d.teamId === toolName && (d.status === 'delegating' || d.status === 'working')
+            );
+            if (active) {
+              useMessageStore.getState().completeDelegation(active.toolCallId, result, error);
+            }
           },
           onError: (error: Error) => {
             logger.error(LogCategory.CHAT_FLOW, 'Message sending failed', { error: error.message });
