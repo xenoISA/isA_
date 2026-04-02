@@ -24,6 +24,10 @@ export interface MateSSEEvent {
   parameters?: Record<string, unknown>;
   result?: unknown;
   error?: string;
+  // Autonomous event fields
+  source?: 'scheduler' | 'trigger' | 'channel';
+  job_id?: string;
+  completed_at?: string;
 }
 
 export interface AGUICompatEvent {
@@ -190,6 +194,26 @@ export function adaptMateEvent(
 
     case 'node_exit': {
       // LangGraph node transition — no UI action needed
+      break;
+    }
+
+    case 'autonomous_result': {
+      // Background autonomous action result from Mate (scheduled tasks, triggers, etc.)
+      // Mapped to a custom AGUI event that the autonomousEventService will handle.
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        metadata: {
+          custom_type: 'autonomous_result',
+          content: event.content || '',
+          source: event.source || 'scheduler',
+          job_id: event.job_id,
+          completed_at: event.completed_at || now,
+          custom_data: event.metadata,
+        },
+      });
       break;
     }
 

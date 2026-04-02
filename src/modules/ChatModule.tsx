@@ -80,6 +80,9 @@ import { createHILHandlers } from './handlers/hilHandlers';
 import { createWidgetHandlers, mapPluginTypeToContentType } from './handlers/widgetHandlers';
 import { createMessageHandlers } from './handlers/messageHandlers';
 
+// 🆕 Autonomous background message listener (#126)
+import { mateAutonomousListener } from '../api/mateAutonomousListener';
+
 interface ChatModuleProps extends Omit<ChatLayoutProps, 'messages' | 'isLoading' | 'isTyping' | 'onSendMessage' | 'onSendMultimodal'> {
   // All ChatLayout props except the data and callback props that we'll provide from business logic
   /** Whether the session sidebar is open (injected by AppLayout) */
@@ -432,6 +435,14 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omitting hilHandlers to avoid restarting monitoring on callback changes; currentSession?.id change triggers cleanup via return
   }, [currentSession, hilMonitoringActive]);
+
+  // 🆕 Start/stop the autonomous background message listener (#126)
+  useEffect(() => {
+    mateAutonomousListener.start();
+    return () => {
+      mateAutonomousListener.stop();
+    };
+  }, []);
 
   // Handle upgrade modal actions
   const handleUpgrade = useCallback(async (planType: 'pro' | 'enterprise') => {

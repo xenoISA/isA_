@@ -53,6 +53,10 @@ export interface RegularMessage extends BaseMessage {
   // Store相关字段
   processed?: boolean; // 标记用户消息是否已发送到API
   files?: File[]; // 用户上传的文件
+  // Autonomous message fields — present when the message was not initiated by the user
+  isAutonomous?: boolean;
+  autonomousSource?: AutonomousSource;
+  completedAt?: string; // ISO timestamp when the autonomous action finished
 }
 
 // 工件消息接口 - 用于显示小部件生成的工件
@@ -127,6 +131,9 @@ export type ChatState =
 
 // 消息类型枚举
 export type MessageType = 'text' | 'multimodal' | 'system' | 'error';
+
+// Autonomous message source — identifies what triggered the background message
+export type AutonomousSource = 'scheduler' | 'trigger' | 'channel';
 
 // ChatService相关接口
 export interface ChatServiceCallbacks {
