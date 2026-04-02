@@ -5,10 +5,12 @@
 import React from 'react';
 import { useChatMessages } from '../../../stores/useChatStore';
 import { useSidePanelStore } from '../../../stores/useSidePanelStore';
+import { useMatePresence } from '../../../hooks/useMatePresence';
 
 export const SidePanelIdle: React.FC = () => {
   const messages = useChatMessages();
   const setPanelContext = useSidePanelStore((s) => s.setPanelContext);
+  const { channels } = useMatePresence();
   const messageCount = messages.length;
   const aiCount = messages.filter((m) => m.role === 'assistant').length;
 
@@ -49,6 +51,19 @@ export const SidePanelIdle: React.FC = () => {
           What Mate knows about you
         </span>
       </button>
+
+      {/* Active channels shortcut */}
+      {channels.length > 0 && (
+        <button
+          onClick={() => setPanelContext('channels')}
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[var(--mate-glow)] border border-[var(--mate-border)] hover:border-[var(--mate-accent)]/30 transition-colors duration-200 group"
+        >
+          <span className="text-sm">{'\uD83D\uDD17'}</span>
+          <span className="text-xs text-white/50 group-hover:text-white/70 transition-colors font-display">
+            Active channels ({channels.length})
+          </span>
+        </button>
+      )}
 
       {/* Prompt */}
       <div className="mt-4 text-center">
