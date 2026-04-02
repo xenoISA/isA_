@@ -126,6 +126,17 @@ export function getMessageContent(message: ChatMessage): string {
   return `Generated ${message.artifact.widgetName ?? message.artifact.widgetType} content`;
 }
 
+// Delegation state — tracks when Mate delegates to a sub-team tool
+export interface DelegationState {
+  toolCallId: string;
+  teamId: string;
+  status: 'delegating' | 'working' | 'completed' | 'failed';
+  startedAt: string;
+  completedAt?: string;
+  result?: unknown;
+  error?: string;
+}
+
 // 流式消息状态枚举
 export type StreamingStatus = 
   | 'connecting'

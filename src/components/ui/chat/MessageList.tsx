@@ -39,6 +39,9 @@ import { ScheduleConfirmationCard } from './ScheduleConfirmationCard';
 import { ScheduleResultCard } from './ScheduleResultCard';
 import type { RegularMessage } from '../../../types/chatTypes';
 
+import { DelegationCard } from './DelegationCard';
+import { useMessageStore } from '../../../stores/useMessageStore';
+
 // MessageActions will be implemented later
 
 // Smart time formatting function
@@ -155,7 +158,7 @@ const useVirtualScrolling = (
 };
 
 /**
- * MemoryRecallSection — Shows up to 3 MemoryCards with "Show N more" expansion.
+* MemoryRecallSection — Shows up to 3 MemoryCards with "Show N more" expansion.
  */
 const MAX_VISIBLE_RECALLS = 3;
 
@@ -187,6 +190,22 @@ const MemoryRecallSection = memo<{ recalls: MemoryRecallData[] }>(({ recalls }) 
 });
 
 MemoryRecallSection.displayName = 'MemoryRecallSection';
+
+* DelegationCards — renders active delegations from the message store.
+ * Only displayed after the last assistant message in the stream.
+ */
+const DelegationCards = memo(() => {
+  const activeDelegations = useMessageStore((s) => s.activeDelegations);
+  if (activeDelegations.length === 0) return null;
+  return (
+    <>
+      {activeDelegations.map((d) => (
+        <DelegationCard key={d.toolCallId} delegation={d} />
+      ))}
+    </>
+  );
+});
+DelegationCards.displayName = 'DelegationCards';
 
 /**
  * MessageList - Pure UI component for displaying chat messages
@@ -407,7 +426,7 @@ export const MessageList = memo<MessageListProps>(({
         {message.role === 'assistant' && (
           <div className="flex items-center mb-3">
             {showAvatars && (
-              <div className="relative">
+<div className="relative">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg ${
                   isStreaming
                     ? 'bg-gradient-to-br from-[#7c8cf5] to-[#a78bfa] shadow-[#7c8cf5]/30'
@@ -422,7 +441,16 @@ export const MessageList = memo<MessageListProps>(({
               </div>
             )}
             <span className="ml-2 text-sm font-display font-semibold text-[var(--mate-accent)]">Mate</span>
-            
+
+<div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm backdrop-blur-sm border border-white/20 text-white/90 shadow-lg ${
+                isStreaming
+                  ? 'bg-gradient-to-br from-blue-500 to-purple-500 shadow-blue-500/30'
+                  : 'bg-white/10'
+              }`}>
+                🤖
+              </div>
+            )}
+            <span className="ml-2 text-sm font-medium text-white/90">AI Assistant</span>
             {/* Streaming Status */}
             {isStreaming && (
               <div className="ml-3 flex items-center space-x-2 bg-blue-500/20 px-3 py-1.5 rounded-full border border-blue-400/40 shadow-lg">
@@ -436,10 +464,10 @@ export const MessageList = memo<MessageListProps>(({
                 </span>
               </div>
             )}
-            
+
             {/* Task Progress for ALL AI messages */}
             <div className="ml-3">
-              <TaskProgressMessage 
+              <TaskProgressMessage
                 messageId={message.id}
                 compact={true}
                 showControls={false}
@@ -450,7 +478,7 @@ export const MessageList = memo<MessageListProps>(({
             </div>
           </div>
         )}
-        
+
         {/* Message Content */}
         <div className={message.role === 'assistant' ? 'ml-12' : ''}>
           <GlassMessageBubble
@@ -468,6 +496,9 @@ export const MessageList = memo<MessageListProps>(({
             onCopy={() => navigator.clipboard.writeText(message.content)}
           />
         </div>
+
+        {/* Delegation Cards — show after the last assistant message */}
+        {message.role === 'assistant' && <DelegationCards />}
       </div>
     );
   };
