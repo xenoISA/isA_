@@ -407,6 +407,13 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
         </div>
       )}
 
+      {/* Mate status line */}
+      <div className="mb-2 px-1">
+        <span className="text-xs font-display text-[var(--mate-accent)]/60">
+          {isLoading ? 'Mate is thinking...' : 'Mate is here'}
+        </span>
+      </div>
+
       {/* Main Glass Chat Input */}
       <GlassChatInput
         value={inputValue}

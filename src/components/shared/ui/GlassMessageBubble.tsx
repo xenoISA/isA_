@@ -129,12 +129,11 @@ export const GlassMessageBubble: React.FC<GlassMessageBubbleProps> = ({
         `;
       case 'assistant':
         return `
-          ${isDark ? 'bg-white/10' : 'bg-white/40'} 
-          backdrop-blur-md border border-white/20 dark:border-white/10
+          bg-[var(--mate-surface)] border border-[var(--mate-border)]
           text-gray-900 dark:text-gray-100
           rounded-3xl rounded-bl-xl
           shadow-xl shadow-black/10
-          hover:shadow-2xl hover:bg-white/50 dark:hover:bg-white/15
+          hover:shadow-2xl hover:border-[var(--mate-accent)]/20
         `;
       case 'system':
         return `
@@ -204,26 +203,30 @@ export const GlassMessageBubble: React.FC<GlassMessageBubbleProps> = ({
         <div
           className={`
             glass-message-bubble relative group/bubble
-            px-6 py-4 max-w-fit
+            ${role === 'assistant' ? 'px-7 py-5' : 'px-6 py-4'} max-w-fit
             transition-all duration-300 ease-out
             ${getBubbleStyles()}
             ${getVariantStyles()}
           `}
         >
-          {/* Advanced Glass Overlay */}
-          <div className={`
-            absolute inset-0 rounded-3xl pointer-events-none
-            bg-gradient-to-br from-white/20 via-transparent to-white/5
-            ${role === 'user' ? 'rounded-br-xl' : 'rounded-bl-xl'}
-          `} />
-          
-          {/* Shimmer Effect */}
-          <div className={`
-            absolute inset-0 rounded-3xl pointer-events-none opacity-0 group-hover/bubble:opacity-100 transition-opacity
-            bg-gradient-to-r from-transparent via-white/10 to-transparent
-            ${role === 'user' ? 'rounded-br-xl' : 'rounded-bl-xl'}
-            animate-pulse
-          `} />
+          {/* Advanced Glass Overlay — suppressed for assistant (companion surface) */}
+          {role !== 'assistant' && (
+            <div className={`
+              absolute inset-0 rounded-3xl pointer-events-none
+              bg-gradient-to-br from-white/20 via-transparent to-white/5
+              ${role === 'user' ? 'rounded-br-xl' : 'rounded-bl-xl'}
+            `} />
+          )}
+
+          {/* Shimmer Effect — suppressed for assistant */}
+          {role !== 'assistant' && (
+            <div className={`
+              absolute inset-0 rounded-3xl pointer-events-none opacity-0 group-hover/bubble:opacity-100 transition-opacity
+              bg-gradient-to-r from-transparent via-white/10 to-transparent
+              ${role === 'user' ? 'rounded-br-xl' : 'rounded-bl-xl'}
+              animate-pulse
+            `} />
+          )}
           
           <div className="relative text-[15px] leading-relaxed break-words font-medium">
             {parsedContent ? (

@@ -386,15 +386,21 @@ export const MessageList = memo<MessageListProps>(({
         {message.role === 'assistant' && (
           <div className="flex items-center mb-3">
             {showAvatars && (
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm backdrop-blur-sm border border-white/20 text-white/90 shadow-lg ${
-                isStreaming 
-                  ? 'bg-gradient-to-br from-blue-500 to-purple-500 shadow-blue-500/30' 
-                  : 'bg-white/10'
-              }`}>
-                🤖
+              <div className="relative">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg ${
+                  isStreaming
+                    ? 'bg-gradient-to-br from-[#7c8cf5] to-[#a78bfa] shadow-[#7c8cf5]/30'
+                    : 'bg-gradient-to-br from-[#7c8cf5] to-[#a78bfa]'
+                }`}>
+                  M
+                </div>
+                {/* Breathing status dot */}
+                {!isStreaming && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-[var(--mate-surface)] animate-mate-breathe" />
+                )}
               </div>
             )}
-            <span className="ml-2 text-sm font-medium text-white/90">AI Assistant</span>
+            <span className="ml-2 text-sm font-display font-semibold text-[var(--mate-accent)]">Mate</span>
             
             {/* Streaming Status */}
             {isStreaming && (

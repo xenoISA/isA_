@@ -7,6 +7,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // Display font — DM Sans for Mate companion identity
+      fontFamily: {
+        display: ['DM Sans', 'system-ui', 'sans-serif'],
+      },
       // Design System Colors
       colors: {
         // Primary brand colors using CSS variables

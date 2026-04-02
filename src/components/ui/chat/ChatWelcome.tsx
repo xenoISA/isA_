@@ -111,16 +111,23 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   return (
     <div className={`flex flex-col items-center justify-center min-h-[60vh] px-4 sm:px-6 lg:px-8 py-8 md:py-16 ${className}`}>
       <div className="w-full max-w-2xl mx-auto">
-        {/* Heading — left-aligned on desktop per taste anti-center rule */}
+        {/* Mate avatar glyph */}
+        <div className="mb-6 flex justify-center md:justify-start">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#7c8cf5] to-[#a78bfa] flex items-center justify-center text-white text-xl font-bold font-display shadow-lg shadow-[#7c8cf5]/20">
+            M
+          </div>
+        </div>
+
+        {/* Heading — Mate voice */}
         <div className="mb-8 md:mb-12 text-center md:text-left">
           <h1
-            className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-3 text-balance"
+            className="text-2xl sm:text-3xl md:text-4xl font-display font-semibold mb-3 text-balance"
             style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: '1.15' }}
           >
-            {welcomeConfig.title}
+            Hey, what are we working on?
           </h1>
           <p
-            className="text-sm sm:text-base leading-relaxed max-w-[50ch] text-pretty"
+            className="text-sm sm:text-base leading-relaxed max-w-[50ch] text-pretty font-display"
             style={{ color: 'var(--text-muted)' }}
           >
             {welcomeConfig.subtitle}
