@@ -17,6 +17,8 @@
 import { WidgetPlugin, PluginInput, PluginOutput } from '../types/pluginTypes';
 import { AppId } from '../types/appTypes';
 import { logger, LogCategory, createLogger } from '../utils/logger';
+import { getDocumentService } from '../api/documentService';
+import type { CreateDocumentRequest, ExportFormat } from '../types/documentTypes';
 
 const log = createLogger('DocWidgetPlugin', LogCategory.ARTIFACT_CREATION);
 
@@ -87,7 +89,6 @@ export class DocWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // TODO: Integrate with document processing service
       const docResult = await this.performDocumentOperation(input.prompt, {
         ...input.options,
         sessionId: input.context?.sessionId,
@@ -151,28 +152,109 @@ export class DocWidgetPlugin implements WidgetPlugin {
   }
 
   /**
-   * Perform document operation - placeholder for document service integration
-   * TODO: Replace with actual document processing service calls
+   * Perform document operation via document processing service.
+   *
+   * Routes to the appropriate DocumentService method based on the action.
+   * Falls back to a local-only response when the document processing backend
+   * is unreachable so the UI remains functional during development.
    */
   private async performDocumentOperation(prompt: string, options: any = {}): Promise<any> {
-    // TODO: Integrate with document processing service
-    // For now, return a scaffold response
-    log.info('Performing document operation (scaffold)', { prompt, options });
+    const action: string = options.action || 'create';
+    const documentService = getDocumentService();
 
-    return {
-      action: options.action || 'create',
-      document: {
-        id: `doc_${Date.now()}`,
-        title: options.title || 'Untitled Document',
-        content: prompt,
-        format: options.format || 'markdown',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        wordCount: prompt.split(/\s+/).filter(Boolean).length,
-        tags: []
-      },
-      message: 'Document operation scaffold - TODO: integrate with document service'
-    };
+    log.info('Performing document operation', { action, prompt: prompt.substring(0, 80) });
+
+    try {
+      switch (action) {
+        case 'create': {
+          const request: CreateDocumentRequest = {
+            title: options.title || 'Untitled Document',
+            content: prompt,
+            format: options.format || 'markdown',
+            templateId: options.templateId,
+            templateType: options.templateType,
+            prompt,
+            tags: options.tags || [],
+          };
+          const document = await documentService.createDocument(request);
+          return { action, document };
+        }
+
+        case 'edit': {
+          if (!options.documentId) {
+            throw new Error('documentId is required for edit operations');
+          }
+          const document = await documentService.updateDocument(options.documentId, {
+            title: options.title,
+            content: options.content || prompt,
+            format: options.format,
+            prompt,
+          });
+          return { action, document };
+        }
+
+        case 'export': {
+          if (!options.documentId) {
+            throw new Error('documentId is required for export operations');
+          }
+          const exportFormat: ExportFormat = options.exportFormat || 'pdf';
+          const exportResult = await documentService.exportDocument(options.documentId, {
+            format: exportFormat,
+          });
+          return {
+            action,
+            exportUrl: exportResult.url,
+            exportFormat: exportResult.format,
+            expiresAt: exportResult.expiresAt,
+          };
+        }
+
+        case 'template': {
+          const templates = await documentService.listTemplates();
+          return { action, templates };
+        }
+
+        case 'summarize': {
+          const result = await documentService.summarizeDocument({
+            content: options.content || prompt,
+            prompt,
+            format: options.format || 'markdown',
+          });
+          return { action, summary: result.summary, wordCount: result.wordCount };
+        }
+
+        default: {
+          log.warn('Unknown document action, falling back to create', { action });
+          const document = await documentService.createDocument({
+            title: options.title || 'Untitled Document',
+            content: prompt,
+            format: options.format || 'markdown',
+            prompt,
+          });
+          return { action: 'create', document };
+        }
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log.warn('Document service call failed, using local fallback', { action, error: msg });
+
+      // Local fallback so the widget stays usable without the backend
+      return {
+        action,
+        document: {
+          id: `doc_local_${Date.now()}`,
+          title: options.title || 'Untitled Document',
+          content: prompt,
+          format: options.format || 'markdown',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          wordCount: prompt.split(/\s+/).filter(Boolean).length,
+          tags: [],
+        },
+        _fallback: true,
+        message: 'Document service unavailable — created locally',
+      };
+    }
   }
 }
 
