@@ -20,6 +20,8 @@ import React, { ReactNode } from 'react';
 import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useAppStore } from '../../stores/useAppStore';
+import { useUserStore } from '../../stores/useUserStore';
+import { getStorageService } from '../../api/storageService';
 import { createLogger } from '../../utils/logger';
 const log = createLogger('DigitalHubWidget');
 
@@ -82,7 +84,6 @@ interface DigitalHubWidgetModuleProps {
  */
 
 // DigitalHub action to MCP template mapping
-// TODO: Map to actual MCP prompt templates when StorageService is integrated
 const DIGITALHUB_TEMPLATE_MAPPING = {
   'upload': {
     template_id: 'storage_upload_prompt',
@@ -221,9 +222,22 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
       id: 'download_file',
       label: 'Download',
       icon: '💾',
-      onClick: (content) => {
-        // TODO: Integrate with StorageService for file download
-        log.info('Downloading file', { content });
+      onClick: async (content) => {
+        try {
+          const fileId = typeof content === 'object' ? content?.id || content?.file_id : content;
+          const userId = useUserStore.getState().externalUser?.auth0_id || '';
+          if (!fileId || !userId) {
+            log.warn('Cannot download: missing fileId or userId');
+            return;
+          }
+          const storageService = getStorageService();
+          const downloadUrl = await storageService.getDownloadUrl(fileId, userId);
+          window.open(downloadUrl, '_blank');
+          log.info('File download initiated', { fileId });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('File download failed', { error: msg });
+        }
       }
     },
     {
@@ -242,9 +256,29 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
       id: 'share_file',
       label: 'Share',
       icon: '🔗',
-      onClick: (content) => {
-        // TODO: Generate sharing link via StorageService
-        log.info('Sharing file');
+      onClick: async (content) => {
+        try {
+          const fileId = typeof content === 'object' ? content?.id || content?.file_id : content;
+          const userId = useUserStore.getState().externalUser?.auth0_id || '';
+          if (!fileId || !userId) {
+            log.warn('Cannot share: missing fileId or userId');
+            return;
+          }
+          const storageService = getStorageService();
+          const shareResult = await storageService.shareFile({
+            file_id: fileId,
+            shared_by: userId,
+            permissions: { view: true, download: true, delete: false },
+            expires_hours: 24,
+          });
+          if (shareResult.share_url) {
+            await navigator.clipboard.writeText(shareResult.share_url);
+            log.info('Share link copied to clipboard', { shareId: shareResult.share_id });
+          }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('File sharing failed', { error: msg });
+        }
       }
     }
   ],
@@ -255,7 +289,36 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
       label: 'Upload',
       icon: '📤',
       onClick: () => {
-        // TODO: Open file upload dialog
+        // Trigger hidden file input for upload
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.onchange = async (e) => {
+          const target = e.target as HTMLInputElement;
+          const files = target.files;
+          if (!files || files.length === 0) return;
+          const userId = useUserStore.getState().externalUser?.auth0_id || '';
+          if (!userId) {
+            log.warn('Cannot upload: user not authenticated');
+            return;
+          }
+          try {
+            const storageService = getStorageService();
+            const uploadPromises = Array.from(files).map(file =>
+              storageService.uploadFile(file, {
+                user_id: userId,
+                access_level: 'private',
+                tags: [],
+              } as any)
+            );
+            const results = await Promise.all(uploadPromises);
+            log.info('Files uploaded successfully', { count: results.length });
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            log.error('File upload failed', { error: msg });
+          }
+        };
+        input.click();
         log.info('Opening file upload dialog');
       },
       variant: 'primary' as const,
@@ -265,9 +328,25 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
       id: 'browse_files',
       label: 'Browse',
       icon: '📁',
-      onClick: () => {
-        // TODO: Open file browser
-        log.info('Opening file browser');
+      onClick: async () => {
+        // List files at root path via StorageService
+        const userId = useUserStore.getState().externalUser?.auth0_id || '';
+        if (!userId) {
+          log.warn('Cannot browse: user not authenticated');
+          return;
+        }
+        try {
+          const storageService = getStorageService();
+          const files = await storageService.listFiles({
+            user_id: userId,
+            prefix: '/',
+            limit: 50,
+          });
+          log.info('Files listed for browse', { count: files.length });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('File browse failed', { error: msg });
+        }
       },
       disabled: false
     },
@@ -276,7 +355,11 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
       label: 'Search',
       icon: '🔍',
       onClick: () => {
-        // TODO: Focus search input
+        // Focus the widget search input if available
+        const searchInput = document.querySelector<HTMLInputElement>('[data-digitalhub-search]');
+        if (searchInput) {
+          searchInput.focus();
+        }
         log.info('Activating file search');
       },
       disabled: false
@@ -286,8 +369,8 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
       label: 'Tags',
       icon: '🏷️',
       onClick: () => {
-        // TODO: Open tag management
-        log.info('Opening tag management');
+        // Requires StorageService backend tag management endpoints
+        log.info('Tag management not yet available');
       },
       disabled: true
     }
@@ -298,7 +381,7 @@ const digitalHubWidgetConfig = createWidgetConfig<DigitalHubWidgetParams, Digita
  * DigitalHub Widget Module - Uses BaseWidgetModule with DigitalHub-specific configuration
  *
  * Provides file organization, browsing, searching, and upload capabilities.
- * Uses StorageService for backend file operations (TODO: integrate).
+ * Uses StorageService for backend file operations.
  */
 export const DigitalHubWidgetModule: React.FC<DigitalHubWidgetModuleProps> = ({
   triggeredInput,
@@ -358,6 +441,44 @@ export const DigitalHubWidgetModule: React.FC<DigitalHubWidgetModuleProps> = ({
               const { recordWidgetUsage } = useAppStore.getState();
               recordWidgetUsage('digitalhub');
 
+              const userId = useUserStore.getState().externalUser?.auth0_id || '';
+
+              try {
+                const storageService = getStorageService();
+                const uploadResults = await Promise.all(
+                  uploadFiles.map(file =>
+                    storageService.uploadFile(file, {
+                      user_id: userId,
+                      access_level: 'private',
+                      tags: [],
+                    } as any)
+                  )
+                );
+
+                log.info('Files uploaded via StorageService', { count: uploadResults.length });
+
+                // Refresh file listing after upload
+                const updatedFiles = await storageService.listFiles({
+                  user_id: userId,
+                  prefix: currentPath,
+                  limit: 50,
+                });
+                setFiles(updatedFiles.map((f: any) => ({
+                  id: f.file_id || f.id,
+                  name: f.file_name || f.name,
+                  type: f.file_type || 'file',
+                  size: f.file_size || 0,
+                  path: f.file_path || currentPath,
+                  mimeType: f.mime_type,
+                  createdAt: f.created_at || new Date().toISOString(),
+                  updatedAt: f.updated_at || new Date().toISOString(),
+                  tags: f.tags || [],
+                })));
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                log.error('Upload via StorageService failed', { error: msg });
+              }
+
               const templateParams = prepareDigitalHubTemplateParams({
                 action: 'upload',
                 files: uploadFiles,
@@ -371,14 +492,37 @@ export const DigitalHubWidgetModule: React.FC<DigitalHubWidgetModuleProps> = ({
                 templateParams
               };
 
-              // TODO: Integrate with StorageService for actual upload
-              log.debug('Sending enriched upload params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
             },
             onListFiles: async (path: string = '/') => {
               log.info('Listing files', { path });
 
               setCurrentPath(path);
+              const userId = useUserStore.getState().externalUser?.auth0_id || '';
+
+              try {
+                const storageService = getStorageService();
+                const listedFiles = await storageService.listFiles({
+                  user_id: userId,
+                  prefix: path,
+                  limit: 50,
+                });
+                setFiles(listedFiles.map((f: any) => ({
+                  id: f.file_id || f.id,
+                  name: f.file_name || f.name,
+                  type: f.file_type || 'file',
+                  size: f.file_size || 0,
+                  path: f.file_path || path,
+                  mimeType: f.mime_type,
+                  createdAt: f.created_at || new Date().toISOString(),
+                  updatedAt: f.updated_at || new Date().toISOString(),
+                  tags: f.tags || [],
+                })));
+                log.info('Files listed via StorageService', { count: listedFiles.length });
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                log.error('List files via StorageService failed', { error: msg });
+              }
 
               const templateParams = prepareDigitalHubTemplateParams({
                 action: 'list',
@@ -391,7 +535,6 @@ export const DigitalHubWidgetModule: React.FC<DigitalHubWidgetModuleProps> = ({
                 templateParams
               };
 
-              // TODO: Integrate with StorageService for file listing
               await moduleProps.startProcessing(enrichedParams);
             },
             onSearchFiles: async (query: string) => {
@@ -399,6 +542,38 @@ export const DigitalHubWidgetModule: React.FC<DigitalHubWidgetModuleProps> = ({
 
               const { recordWidgetUsage } = useAppStore.getState();
               recordWidgetUsage('digitalhub');
+
+              const userId = useUserStore.getState().externalUser?.auth0_id || '';
+
+              try {
+                const storageService = getStorageService();
+                const searchResponse = await storageService.semanticSearch({
+                  user_id: userId,
+                  query,
+                  top_k: 20,
+                });
+                const results = (searchResponse.results || []).map((r: any) => ({
+                  file: {
+                    id: r.file_id || r.id,
+                    name: r.file_name || r.name,
+                    type: r.file_type || 'file',
+                    size: r.file_size || 0,
+                    path: r.file_path || currentPath,
+                    mimeType: r.mime_type,
+                    createdAt: r.created_at || new Date().toISOString(),
+                    updatedAt: r.updated_at || new Date().toISOString(),
+                    tags: r.tags || [],
+                  },
+                  relevanceScore: r.score || 0,
+                  matchedField: r.content_snippet || 'name',
+                }));
+                setSearchResults(results);
+                setFiles(results.map((r: any) => r.file));
+                log.info('Search completed via StorageService', { count: results.length });
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                log.error('Search via StorageService failed', { error: msg });
+              }
 
               const templateParams = prepareDigitalHubTemplateParams({
                 action: 'search',
@@ -413,7 +588,6 @@ export const DigitalHubWidgetModule: React.FC<DigitalHubWidgetModuleProps> = ({
                 templateParams
               };
 
-              // TODO: Integrate with StorageService for file search
               await moduleProps.startProcessing(enrichedParams);
             },
             onNavigate: (path: string) => {

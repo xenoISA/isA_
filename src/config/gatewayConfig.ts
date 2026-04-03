@@ -79,6 +79,9 @@ export const GATEWAY_SERVICES = {
   ORGANIZATION: 'api/v1/organization', // 组织服务 (8212)
   INVITATION: 'api/v1/invitation',   // 邀请服务 (8213)
 
+  // 文档服务
+  DOCUMENTS: 'api/v1/documents',     // 文档处理服务 (8214)
+
   // 基础服务
   NOTIFICATION: 'api/v1/notification', // 通知服务 (8206)
   STORAGE: 'api/v1/storage',         // 存储服务 (8208)
@@ -258,6 +261,22 @@ export const GATEWAY_ENDPOINTS = {
     STATS: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/organizations/{organizationId}/stats'),
     SWITCH_CONTEXT: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/context/switch'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.ORGANIZATION, '/health'),
+  },
+
+  // ==== 文档处理服务端点 ====
+  DOCUMENTS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents'),
+    GET: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/{documentId}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/{documentId}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/{documentId}'),
+    LIST: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents'),
+    EXPORT: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/{documentId}/export'),
+    SUMMARIZE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/summarize'),
+    TEMPLATES: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/templates'),
+    TEMPLATE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/templates/{templateId}'),
+    AI_ASSIST: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/{documentId}/ai-assist'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/health'),
   },
 
   // ==== 邀请服务端点 ====
