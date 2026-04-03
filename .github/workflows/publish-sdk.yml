@@ -1,0 +1,63 @@
+# Publish @isa/* SDK packages to GitHub Packages
+#
+# Triggers:
+#   - Manual dispatch (workflow_dispatch)
+#   - Push to isA_App_SDK main branch via repository_dispatch
+#
+# Each package is published under the @xenoisa npm scope so consumers
+# can install them from GitHub Packages with a single .npmrc entry.
+
+name: Publish SDK Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0). Leave empty to use package.json versions."
+        required: false
+        type: string
+  repository_dispatch:
+    types: [sdk-release]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [core, transport, ui-web]
+    steps:
+      - name: Checkout isA_App_SDK
+        uses: actions/checkout@v4
+        with:
+          repository: xenoISA/isA_App_SDK
+          path: sdk
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: "@xenoisa"
+
+      - name: Install dependencies
+        working-directory: sdk/packages/${{ matrix.package }}
+        run: npm ci --ignore-scripts
+
+      - name: Build package
+        working-directory: sdk/packages/${{ matrix.package }}
+        run: npm run build --if-present
+
+      - name: Set version (if provided)
+        if: inputs.version != ''
+        working-directory: sdk/packages/${{ matrix.package }}
+        run: npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
+
+      - name: Publish to GitHub Packages
+        working-directory: sdk/packages/${{ matrix.package }}
+        run: npm publish --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
