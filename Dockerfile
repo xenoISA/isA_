@@ -3,16 +3,12 @@
 # =============================================================================
 # Build context: this directory (isA_/)
 #
-# The @isa/core and @isa/transport packages are referenced as file: deps in
-# package.json. For Docker builds, the SDK packages must be available.
-# Option A (default): Copy SDK packages into the build context before building.
-#   mkdir -p .sdk/core .sdk/transport
-#   cp -r ../isA_App_SDK/packages/core/* .sdk/core/
-#   cp -r ../isA_App_SDK/packages/transport/* .sdk/transport/
-# Option B: Publish packages to a registry and update package.json.
+# SDK packages (@isa/core, @isa/transport, @isa/ui-web) are installed from
+# GitHub Packages. The .npmrc at the project root configures the @xenoisa
+# registry scope. Pass NPM_TOKEN as a build arg for private registry auth.
 #
 # Usage:
-#   docker build -t isa-app .
+#   docker build --build-arg NPM_TOKEN=$NPM_TOKEN -t isa-app .
 #   docker run -p 4100:4100 --env-file deployment/environments/production.env isa-app
 # =============================================================================
 
@@ -25,18 +21,17 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copy SDK packages (must be staged into .sdk/ before docker build)
-COPY .sdk/core/ ./sdk/core/
-COPY .sdk/transport/ ./sdk/transport/
+# Registry auth for @xenoisa packages from GitHub Packages
+ARG NPM_TOKEN
+COPY .npmrc .npmrc
 
-# Copy package files with patched file: paths for containerised layout
+# Copy package files
 COPY package.json package-lock.json ./
 
-# Rewrite file: references to point to the staged SDK directories
-RUN sed -i 's|"file:../isA_App_SDK/packages/core"|"file:./sdk/core"|g' package.json && \
-    sed -i 's|"file:../isA_App_SDK/packages/transport"|"file:./sdk/transport"|g' package.json
-
 RUN npm ci --ignore-scripts
+
+# Remove .npmrc after install (don't leak token into later stages)
+RUN rm -f .npmrc
 
 # ---------------------------------------------------------------------------
 # Stage 2: Build the Next.js application
@@ -46,7 +41,6 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/sdk ./sdk
 COPY --from=deps /app/package.json ./
 
 # Copy application source
