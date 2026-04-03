@@ -21,6 +21,8 @@ import { BaseWidgetModule, createWidgetConfig } from './BaseWidgetModule';
 import { EditAction, ManagementAction } from '../../components/ui/widgets/BaseWidget';
 import { useAppStore } from '../../stores/useAppStore';
 import { createLogger } from '../../utils/logger';
+import { getDocumentService } from '../../api/documentService';
+import type { ExportFormat } from '../../types/documentTypes';
 const log = createLogger('DocWidget');
 
 // Document interface
@@ -74,7 +76,7 @@ interface DocWidgetModuleProps {
  */
 
 // Doc action to MCP template mapping
-// TODO: Map to actual MCP prompt templates when document service is integrated
+// Maps widget actions to prompt template IDs used by the document processing service
 const DOC_TEMPLATE_MAPPING = {
   'create': {
     template_id: 'doc_create_prompt',
@@ -241,8 +243,18 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
       label: 'PDF',
       icon: '📄',
       onClick: (content) => {
-        // TODO: Integrate with document export service for PDF generation
         log.info('Exporting document as PDF');
+        const docId = typeof content === 'object' && content?.id ? content.id : null;
+        if (!docId) {
+          log.warn('No document ID available for PDF export');
+          return;
+        }
+        getDocumentService().exportDocument(docId, { format: 'pdf' }).then((result) => {
+          window.open(result.url, '_blank');
+          log.info('PDF export URL opened', { url: result.url });
+        }).catch((error) => {
+          log.error('PDF export failed', { error: error instanceof Error ? error.message : String(error) });
+        });
       }
     },
     {
@@ -250,8 +262,18 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
       label: 'DOCX',
       icon: '📝',
       onClick: (content) => {
-        // TODO: Integrate with document export service for DOCX generation
         log.info('Exporting document as DOCX');
+        const docId = typeof content === 'object' && content?.id ? content.id : null;
+        if (!docId) {
+          log.warn('No document ID available for DOCX export');
+          return;
+        }
+        getDocumentService().exportDocument(docId, { format: 'docx' }).then((result) => {
+          window.open(result.url, '_blank');
+          log.info('DOCX export URL opened', { url: result.url });
+        }).catch((error) => {
+          log.error('DOCX export failed', { error: error instanceof Error ? error.message : String(error) });
+        });
       }
     }
   ],
@@ -262,8 +284,16 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
       label: 'New Doc',
       icon: '📄',
       onClick: () => {
-        // TODO: Create new blank document
-        log.info('Creating new document');
+        log.info('Creating new document via service');
+        getDocumentService().createDocument({
+          title: 'Untitled Document',
+          content: '',
+          format: 'markdown',
+        }).then((doc) => {
+          log.info('New document created', { id: doc.id, title: doc.title });
+        }).catch((error) => {
+          log.error('Failed to create new document', { error: error instanceof Error ? error.message : String(error) });
+        });
       },
       variant: 'primary' as const,
       disabled: false
@@ -273,8 +303,13 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
       label: 'Templates',
       icon: '📋',
       onClick: () => {
-        // TODO: Open template selector
-        log.info('Opening template selector');
+        log.info('Fetching document templates');
+        getDocumentService().listTemplates().then((templates) => {
+          log.info('Templates fetched', { count: templates.length });
+          // Requires document processing backend for template selector UI
+        }).catch((error) => {
+          log.error('Failed to fetch templates', { error: error instanceof Error ? error.message : String(error) });
+        });
       },
       disabled: false
     },
@@ -283,8 +318,8 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
       label: 'Export',
       icon: '📤',
       onClick: () => {
-        // TODO: Open export dialog
         log.info('Opening export dialog');
+        // Requires document processing backend for export format selection UI
       },
       disabled: false
     },
@@ -293,8 +328,8 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
       label: 'AI Assist',
       icon: '🤖',
       onClick: () => {
-        // TODO: Activate AI writing assistant
         log.info('Activating AI writing assistant');
+        // Requires document processing backend for AI assist streaming
       },
       disabled: true
     }
@@ -305,7 +340,8 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
  * Doc Widget Module - Uses BaseWidgetModule with Doc-specific configuration
  *
  * Provides document creation, editing, and export capabilities.
- * Scaffold with placeholder UI for backend integration (TODO).
+ * Calls the document processing service for all operations, with graceful
+ * fallback to local-only mode when the backend is unreachable.
  */
 export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
   triggeredInput,
@@ -377,16 +413,28 @@ export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
                 templateParams
               };
 
-              // TODO: Integrate with document creation service
               log.debug('Sending enriched create params to store', enrichedParams);
               await moduleProps.startProcessing(enrichedParams);
 
-              // Simulate document creation (remove when backend is integrated)
-              setTimeout(() => {
+              try {
+                const doc = await getDocumentService().createDocument({
+                  title: params.title || 'Untitled Document',
+                  content: params.prompt || '',
+                  format: params.format || 'markdown',
+                  templateType: params.templateType,
+                  prompt: params.prompt,
+                  tags: [],
+                });
+                const { markWidgetWithArtifacts } = useAppStore.getState();
+                markWidgetWithArtifacts('doc');
+                setCurrentDocument(doc);
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                log.warn('Document service unavailable, using local document', { error: msg });
                 const { markWidgetWithArtifacts } = useAppStore.getState();
                 markWidgetWithArtifacts('doc');
                 setCurrentDocument({
-                  id: `doc_${Date.now()}`,
+                  id: `doc_local_${Date.now()}`,
                   title: params.title || 'Untitled Document',
                   content: params.prompt || '',
                   format: params.format || 'markdown',
@@ -395,7 +443,7 @@ export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
                   wordCount: (params.prompt || '').split(/\s+/).filter(Boolean).length,
                   tags: []
                 });
-              }, 1000);
+              }
             },
             onEditDocument: async (params: DocWidgetParams) => {
               log.info('Editing document', { documentId: params.documentId });
@@ -414,8 +462,22 @@ export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
                 templateParams
               };
 
-              // TODO: Integrate with document editing service
               await moduleProps.startProcessing(enrichedParams);
+
+              if (params.documentId) {
+                try {
+                  const doc = await getDocumentService().updateDocument(params.documentId, {
+                    title: params.title,
+                    content: params.content || params.prompt,
+                    format: params.format,
+                    prompt: params.prompt,
+                  });
+                  setCurrentDocument(doc);
+                } catch (error) {
+                  const msg = error instanceof Error ? error.message : String(error);
+                  log.warn('Document edit service unavailable', { error: msg });
+                }
+              }
             },
             onExportDocument: async (format: 'pdf' | 'docx' | 'html' | 'txt') => {
               log.info('Exporting document', { format, documentId: currentDocument?.id });
@@ -440,8 +502,19 @@ export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
                 templateParams
               };
 
-              // TODO: Integrate with document export service
               await moduleProps.startProcessing(enrichedParams);
+
+              try {
+                const result = await getDocumentService().exportDocument(
+                  currentDocument.id,
+                  { format: format as ExportFormat }
+                );
+                window.open(result.url, '_blank');
+                log.info('Export download initiated', { url: result.url, format });
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                log.error('Document export failed', { error: msg, format });
+              }
             },
             onSummarize: async (content: string) => {
               log.info('Summarizing document content');

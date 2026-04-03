@@ -17,6 +17,7 @@
 import { WidgetPlugin, PluginInput, PluginOutput } from '../types/pluginTypes';
 import { AppId } from '../types/appTypes';
 import { logger, LogCategory, createLogger } from '../utils/logger';
+import { getStorageService } from '../api/storageService';
 
 const log = createLogger('DigitalHubWidgetPlugin', LogCategory.ARTIFACT_CREATION);
 
@@ -85,7 +86,6 @@ export class DigitalHubWidgetPlugin implements WidgetPlugin {
         context: input.context
       });
 
-      // TODO: Integrate with StorageService for actual file operations
       const operationResult = await this.performFileOperation(input.prompt, {
         ...input.options,
         sessionId: input.context?.sessionId,
@@ -149,22 +149,130 @@ export class DigitalHubWidgetPlugin implements WidgetPlugin {
   }
 
   /**
-   * Perform file operation - placeholder for StorageService integration
-   * TODO: Replace with actual StorageService calls
+   * Perform file operation via StorageService
    */
   private async performFileOperation(query: string, options: any = {}): Promise<any> {
-    // TODO: Integrate with StorageService for real file operations
-    // For now, return a scaffold response
-    log.info('Performing file operation (scaffold)', { query, options });
+    log.info('Performing file operation via StorageService', { query, options });
 
-    return {
-      action: 'search',
-      query,
-      files: [],
-      totalCount: 0,
-      currentPath: '/',
-      message: 'DigitalHub file operation scaffold - TODO: integrate with StorageService'
-    };
+    const storageService = getStorageService();
+    const userId = options.userId || 'anonymous';
+    const action = this.detectAction(query);
+
+    try {
+      switch (action) {
+        case 'list': {
+          const files = await storageService.listFiles({
+            user_id: userId,
+            prefix: options.path || '/',
+            limit: options.limit || 50,
+            offset: options.offset || 0,
+          });
+          return {
+            action: 'list',
+            query,
+            files,
+            totalCount: files.length,
+            currentPath: options.path || '/',
+          };
+        }
+
+        case 'search': {
+          const searchResults = await storageService.semanticSearch({
+            user_id: userId,
+            query,
+            top_k: options.limit || 10,
+          });
+          return {
+            action: 'search',
+            query,
+            files: searchResults.results || [],
+            totalCount: searchResults.total_results || 0,
+            currentPath: options.path || '/',
+          };
+        }
+
+        case 'upload': {
+          // Upload requires files to be provided in options
+          if (!options.files || options.files.length === 0) {
+            return {
+              action: 'upload',
+              query,
+              files: [],
+              totalCount: 0,
+              currentPath: options.path || '/',
+              message: 'No files provided for upload',
+            };
+          }
+          const uploadResults = await Promise.all(
+            options.files.map((file: File) =>
+              storageService.uploadFile(file, {
+                user_id: userId,
+                access_level: 'private',
+                tags: options.tags || [],
+              } as any)
+            )
+          );
+          return {
+            action: 'upload',
+            query,
+            files: uploadResults,
+            totalCount: uploadResults.length,
+            currentPath: options.path || '/',
+          };
+        }
+
+        case 'delete': {
+          if (!options.fileId) {
+            return {
+              action: 'delete',
+              query,
+              files: [],
+              totalCount: 0,
+              currentPath: options.path || '/',
+              message: 'No file ID provided for deletion',
+            };
+          }
+          const deleteResult = await storageService.deleteFile(options.fileId, userId);
+          return {
+            action: 'delete',
+            query,
+            files: [],
+            totalCount: 0,
+            currentPath: options.path || '/',
+            message: deleteResult.message || 'File deleted successfully',
+          };
+        }
+
+        default:
+          // Default to listing files
+          const defaultFiles = await storageService.listFiles({
+            user_id: userId,
+            limit: 50,
+          });
+          return {
+            action: 'list',
+            query,
+            files: defaultFiles,
+            totalCount: defaultFiles.length,
+            currentPath: '/',
+          };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error('StorageService operation failed', { action, error: errorMessage });
+      throw new Error(`StorageService ${action} failed: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Detect the intended file action from a natural-language query
+   */
+  private detectAction(query: string): 'upload' | 'list' | 'search' | 'delete' {
+    const lower = query.toLowerCase();
+    if (lower.includes('upload') || lower.includes('add file')) return 'upload';
+    if (lower.includes('delete') || lower.includes('remove')) return 'delete';
+    if (lower.includes('list') || lower.includes('browse') || lower.includes('show files')) return 'list';
+    return 'search';
   }
 }
 
