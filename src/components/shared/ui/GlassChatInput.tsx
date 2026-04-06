@@ -340,13 +340,13 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
 
   return (
     <div className={`glass-chat-input-container ${className}`}>
-      <div className="relative p-4">
-        
+      <div className="relative">
+
         {/* Main Input Container */}
-        <div 
+        <div
           className={`
             relative flex items-center gap-3
-            rounded-2xl p-4
+            rounded-xl px-3 py-2.5
             transition-all duration-300 ease-out
             ${getVariantStyles()}
           `}
@@ -420,8 +420,6 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
             />
             
             
-            {/* Glass Shimmer Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none opacity-0 hover:opacity-100 transition-opacity" />
           </div>
 
           {/* Right Actions - Only Send Button */}
@@ -431,22 +429,21 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
               onClick={handleSend}
               disabled={!canSend}
               className={`
-                w-10 h-10 flex items-center justify-center
-                rounded-xl backdrop-blur-sm
-                transition-all duration-200
-                disabled:opacity-50 disabled:cursor-not-allowed
-                ${canSend 
-                  ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50/20 dark:hover:bg-blue-500/10' 
-                  : 'text-gray-400 dark:text-gray-500'
+                size-8 flex items-center justify-center
+                rounded-lg transition-colors duration-150
+                disabled:opacity-40 disabled:cursor-not-allowed
+                ${canSend
+                  ? 'text-white/70 hover:text-white hover:bg-white/[0.08]'
+                  : 'text-white/20'
                 }
               `}
-              title={canSend ? 'Send message' : 'Type a message to send'}
+              aria-label={canSend ? 'Send message' : 'Type a message to send'}
             >
               {isLoading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <div className="size-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg className="size-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                 </svg>
               )}
             </button>
@@ -466,19 +463,19 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
           </div>
         )}
 
-        {/* Hint Text — adaptive for touch vs keyboard devices */}
+        {/* Hint Text */}
         {allowShiftEnter && !disabled && variant !== 'compact' && (
-          <div className="mt-3 text-xs text-center text-gray-500/60 dark:text-gray-400/60">
+          <div className="mt-2 text-[11px] text-center text-white/25">
             {isTouchDevice ? (
-              <>Tap the send button to send</>
+              <>Tap send button</>
             ) : (
               <>
                 Press{' '}
-                <kbd className="px-2 py-0.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded text-xs backdrop-blur-sm">
+                <kbd className="px-1.5 py-0.5 bg-white/[0.06] border border-white/[0.08] rounded text-[10px]">
                   Enter
                 </kbd>{' '}
-                to send, {' '}
-                <kbd className="px-2 py-0.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded text-xs backdrop-blur-sm">
+                to send,{' '}
+                <kbd className="px-1.5 py-0.5 bg-white/[0.06] border border-white/[0.08] rounded text-[10px]">
                   Shift + Enter
                 </kbd>{' '}
                 for new line

@@ -2,32 +2,44 @@
  * ============================================================================
  * 任务管理状态管理 (useTaskStore.ts) - 专注于任务状态管理
  * ============================================================================
- * 
+ *
  * 【核心职责】
- * - 管理任务列表和状态
+ * - 管理任务列表和状态 (local UI tasks + backend-synced tasks)
  * - 处理任务操作（开始、暂停、继续、取消等）
  * - 提供任务进度更新
  * - 管理任务UI状态
- * 
+ * - Sync with backend via TaskService adapter when available
+ *
  * 【架构定位】
  * 这是任务的"控制中心"，负责协调任务的生命周期管理，
  * 与聊天系统、工具执行系统集成。
+ * Backend operations are best-effort — the store remains functional
+ * even when the task microservice is unavailable.
  */
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { 
-  TaskItem, 
-  TaskStatus, 
-  TaskAction, 
-  TaskProgress, 
-  TaskResult, 
-  TaskType, 
+import {
+  TaskItem,
+  TaskStatus,
+  TaskAction,
+  TaskProgress,
+  TaskResult,
+  TaskType,
   TaskPriority,
   TaskManagerState,
   TaskActionEvent
 } from '../types/taskTypes';
 import { logger, LogCategory } from '../utils/logger';
+import {
+  getTaskService,
+  type TaskResponse,
+  type TaskListResponse,
+  SdkTaskType,
+  SdkTaskPriority,
+  SdkTaskStatus,
+} from '../api/taskService';
+import type { TaskService } from '../api/taskService';
 
 // ================================================================================
 // 任务管理Actions接口
@@ -72,6 +84,12 @@ interface TaskActions {
   getActiveTasks: () => TaskItem[];
   getCompletedTasks: () => TaskItem[];
   getTaskCount: () => { total: number; active: number; completed: number; failed: number };
+
+  // Backend sync (best-effort — failures are logged, not thrown)
+  fetchRemoteTasks: () => Promise<void>;
+  syncTaskToBackend: (taskId: string) => Promise<string | null>;
+  deleteRemoteTask: (remoteTaskId: string) => Promise<void>;
+  executeRemoteTask: (remoteTaskId: string) => Promise<void>;
 }
 
 export type TaskStore = TaskManagerState & TaskActions;
@@ -483,9 +501,154 @@ export const useTaskStore = create<TaskStore>()(
         completed: completedTasks.filter(t => t.status === 'completed').length,
         failed: failedTasksCount
       };
-    }
+    },
+
+    // ================================================================================
+    // Backend Sync (best-effort)
+    // ================================================================================
+
+    fetchRemoteTasks: async () => {
+      try {
+        const svc = getTaskService();
+        const result: TaskListResponse = await svc.listTasks({ limit: 200 });
+
+        // Merge remote tasks into store. Remote tasks are identified by
+        // metadata.remoteTaskId so we can reconcile.
+        const existingIds = new Set(get().tasks.map(t => t.metadata?.remoteTaskId as string).filter(Boolean));
+        const remoteTasks: TaskItem[] = result.tasks
+          .filter(rt => !existingIds.has(rt.task_id))
+          .map(rt => mapRemoteToLocal(rt));
+
+        if (remoteTasks.length > 0) {
+          set(state => ({
+            tasks: [...state.tasks, ...remoteTasks],
+            totalTasks: state.totalTasks + remoteTasks.length,
+          }));
+          logger.info(LogCategory.TASK_MANAGEMENT, 'Fetched remote tasks', { count: remoteTasks.length });
+        }
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to fetch remote tasks (best-effort)', { error: err });
+      }
+    },
+
+    syncTaskToBackend: async (taskId: string): Promise<string | null> => {
+      const task = get().getTask(taskId);
+      if (!task) return null;
+
+      try {
+        const svc = getTaskService();
+        const response: TaskResponse = await svc.createTask({
+          name: task.title,
+          description: task.description,
+          task_type: mapLocalTypeToSdk(task.type),
+          priority: mapLocalPriorityToSdk(task.priority),
+          metadata: { ...task.metadata, localTaskId: task.id },
+          tags: [],
+        });
+
+        // Store the remote ID in metadata for future reconciliation
+        get().updateTask(taskId, {
+          metadata: { ...task.metadata, remoteTaskId: response.task_id },
+        });
+
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Task synced to backend', { taskId, remoteTaskId: response.task_id });
+        return response.task_id;
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to sync task to backend (best-effort)', { taskId, error: err });
+        return null;
+      }
+    },
+
+    deleteRemoteTask: async (remoteTaskId: string) => {
+      try {
+        const svc = getTaskService();
+        await svc.deleteTask(remoteTaskId);
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Remote task deleted', { remoteTaskId });
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to delete remote task (best-effort)', { remoteTaskId, error: err });
+      }
+    },
+
+    executeRemoteTask: async (remoteTaskId: string) => {
+      try {
+        const svc = getTaskService();
+        const execution = await svc.executeTask(remoteTaskId);
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Remote task executed', { remoteTaskId, executionId: execution.execution_id });
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to execute remote task (best-effort)', { remoteTaskId, error: err });
+      }
+    },
   }))
 );
+
+// ================================================================================
+// Mapping helpers — local task types ↔ SDK enums
+// ================================================================================
+
+function mapRemoteToLocal(rt: TaskResponse): TaskItem {
+  const statusMap: Record<string, TaskStatus> = {
+    pending: 'pending',
+    scheduled: 'pending',
+    running: 'running',
+    completed: 'completed',
+    failed: 'failed',
+    cancelled: 'cancelled',
+    paused: 'paused',
+  };
+
+  const priorityMap: Record<string, TaskPriority> = {
+    low: 'low',
+    medium: 'normal',
+    high: 'high',
+    urgent: 'urgent',
+  };
+
+  return {
+    id: `remote_${rt.task_id}`,
+    title: rt.name,
+    description: rt.description,
+    type: 'custom',
+    status: statusMap[rt.status] || 'pending',
+    priority: priorityMap[rt.priority] || 'normal',
+    progress: {
+      currentStep: rt.status === 'completed' ? 1 : 0,
+      totalSteps: 1,
+      percentage: rt.status === 'completed' ? 100 : 0,
+      currentStepName: rt.status,
+    },
+    createdAt: rt.created_at,
+    updatedAt: rt.updated_at,
+    canPause: rt.status === 'running',
+    canResume: rt.status === 'paused',
+    canCancel: !['completed', 'failed', 'cancelled'].includes(rt.status),
+    canRetry: ['failed', 'cancelled'].includes(rt.status),
+    metadata: { ...rt.metadata, remoteTaskId: rt.task_id },
+  };
+}
+
+function mapLocalTypeToSdk(localType: TaskType): SdkTaskType {
+  const map: Record<TaskType, SdkTaskType> = {
+    chat_response: SdkTaskType.CUSTOM,
+    tool_execution: SdkTaskType.CUSTOM,
+    plan_execution: SdkTaskType.CUSTOM,
+    image_generation: SdkTaskType.CUSTOM,
+    web_search: SdkTaskType.CUSTOM,
+    data_analysis: SdkTaskType.CUSTOM,
+    content_creation: SdkTaskType.CUSTOM,
+    custom: SdkTaskType.CUSTOM,
+  };
+  return map[localType] ?? SdkTaskType.CUSTOM;
+}
+
+function mapLocalPriorityToSdk(localPriority: TaskPriority): SdkTaskPriority {
+  const map: Record<TaskPriority, SdkTaskPriority> = {
+    low: SdkTaskPriority.LOW,
+    normal: SdkTaskPriority.MEDIUM,
+    high: SdkTaskPriority.HIGH,
+    urgent: SdkTaskPriority.URGENT,
+  };
+  return map[localPriority] ?? SdkTaskPriority.MEDIUM;
+}
 
 // ================================================================================
 // 导出选择器和操作
@@ -527,5 +690,10 @@ export const useTaskActions = () => useTaskStore(state => ({
   getTask: state.getTask,
   getActiveTasks: state.getActiveTasks,
   getCompletedTasks: state.getCompletedTasks,
-  getTaskCount: state.getTaskCount
+  getTaskCount: state.getTaskCount,
+  // Backend sync
+  fetchRemoteTasks: state.fetchRemoteTasks,
+  syncTaskToBackend: state.syncTaskToBackend,
+  deleteRemoteTask: state.deleteRemoteTask,
+  executeRemoteTask: state.executeRemoteTask,
 })); 

@@ -1,44 +1,71 @@
 /**
  * ============================================================================
- * Notification Types (notificationTypes.ts) - Notification-related type definitions
+ * Notification Types - SDK re-exports + app-specific types
  * ============================================================================
  *
- * Core Responsibilities:
- * - Define notification data structures
- * - Define notification API request/response types
- * - Define notification preference types
- *
- * Separation of Concerns:
- * ✅ Responsible for:
- *   - Notification data interfaces
- *   - Notification CRUD operation types
- *   - Notification subscription/preference types
- *   - API request/response types
- *
- * ❌ Not responsible for:
- *   - UI rendering logic (handled by NotificationToolbar.tsx)
- *   - Transport layer (handled by BaseApiService)
- *   - Chat types (handled by chatTypes.ts)
+ * SDK types imported via NotificationTypes namespace from @isa/core.
+ * App-specific types (preferences, UI-facing) remain here for backward compat.
  */
 
+import { NotificationTypes } from '@isa/core';
+
 // ================================================================================
-// Core Notification Types
+// Re-export SDK Enums
 // ================================================================================
 
-export type NotificationType = 'info' | 'warning' | 'success' | 'error' | 'assistant';
+export const NotificationType = NotificationTypes.NotificationType;
+export type NotificationType = NotificationTypes.NotificationType;
 
-export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
+export const NotificationPriority = NotificationTypes.NotificationPriority;
+export type NotificationPriority = NotificationTypes.NotificationPriority;
 
-export type NotificationStatus = 'unread' | 'read' | 'dismissed' | 'archived';
+export const NotificationStatus = NotificationTypes.NotificationStatus;
+export type NotificationStatus = NotificationTypes.NotificationStatus;
+
+export const TemplateStatus = NotificationTypes.TemplateStatus;
+export type TemplateStatus = NotificationTypes.TemplateStatus;
+
+export const RecipientType = NotificationTypes.RecipientType;
+export type RecipientType = NotificationTypes.RecipientType;
+
+export const PushPlatform = NotificationTypes.PushPlatform;
+export type PushPlatform = NotificationTypes.PushPlatform;
+
+// ================================================================================
+// Re-export SDK Types
+// ================================================================================
+
+export type SDKNotification = NotificationTypes.Notification;
+export type InAppNotification = NotificationTypes.InAppNotification;
+export type NotificationTemplate = NotificationTypes.NotificationTemplate;
+export type NotificationBatch = NotificationTypes.NotificationBatch;
+export type PushSubscription = NotificationTypes.PushSubscription;
+export type SendNotificationRequest = NotificationTypes.SendNotificationRequest;
+export type SendBatchRequest = NotificationTypes.SendBatchRequest;
+export type CreateTemplateRequest = NotificationTypes.CreateTemplateRequest;
+export type UpdateTemplateRequest = NotificationTypes.UpdateTemplateRequest;
+export type RegisterPushSubscriptionRequest = NotificationTypes.RegisterPushSubscriptionRequest;
+export type NotificationResponse = NotificationTypes.NotificationResponse;
+export type TemplateResponse = NotificationTypes.TemplateResponse;
+export type BatchResponse = NotificationTypes.BatchResponse;
+export type NotificationStatsResponse = NotificationTypes.NotificationStatsResponse;
+
+// ================================================================================
+// App-Specific Types (backward compatibility for existing UI consumers)
+// ================================================================================
+
+export type AppNotificationType = 'info' | 'warning' | 'success' | 'error' | 'assistant';
+export type AppNotificationStatus = 'unread' | 'read' | 'dismissed' | 'archived';
+export type AppNotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export interface Notification {
   id: string;
   user_id: string;
   title: string;
   message: string;
-  type: NotificationType;
-  priority: NotificationPriority;
-  status: NotificationStatus;
+  type: AppNotificationType;
+  priority: AppNotificationPriority;
+  status: AppNotificationStatus;
   created_at: string;
   updated_at: string;
   read_at?: string;
@@ -56,28 +83,16 @@ export interface NotificationAction {
 }
 
 // ================================================================================
-// API Request Types
+// API Request/Response Types (app-level)
 // ================================================================================
 
 export interface GetNotificationsOptions {
-  status?: NotificationStatus;
-  type?: NotificationType;
-  priority?: NotificationPriority;
+  status?: AppNotificationStatus;
+  type?: AppNotificationType;
+  priority?: AppNotificationPriority;
   limit?: number;
   offset?: number;
 }
-
-export interface MarkNotificationReadRequest {
-  notification_ids: string[];
-}
-
-export interface DismissNotificationRequest {
-  notification_ids: string[];
-}
-
-// ================================================================================
-// API Response Types
-// ================================================================================
 
 export interface NotificationListResponse {
   notifications: Notification[];
@@ -88,7 +103,7 @@ export interface NotificationListResponse {
 export interface NotificationCountResponse {
   total: number;
   unread: number;
-  by_type: Record<NotificationType, number>;
+  by_type: Record<AppNotificationType, number>;
 }
 
 export interface NotificationUpdateResponse {
@@ -96,18 +111,14 @@ export interface NotificationUpdateResponse {
   updated_count: number;
 }
 
-// ================================================================================
-// Subscription/Preference Types
-// ================================================================================
-
 export interface NotificationPreferences {
   email_enabled: boolean;
   push_enabled: boolean;
   in_app_enabled: boolean;
   quiet_hours?: {
     enabled: boolean;
-    start: string; // HH:mm format
-    end: string;   // HH:mm format
+    start: string;
+    end: string;
   };
-  type_preferences: Record<NotificationType, boolean>;
+  type_preferences: Record<AppNotificationType, boolean>;
 }

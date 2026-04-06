@@ -88,6 +88,7 @@ export const GATEWAY_SERVICES = {
   WALLET: 'api/v1/wallet',           // 钱包服务 (8209)
   TASK: 'api/v1/task_service',       // 任务服务 (8211)
   AUDIT: 'api/v1/audit',             // 审计服务 (8204)
+  CALENDAR: 'api/v1/calendar',       // 日历服务 (8215)
 
   // 区块链服务
   BLOCKCHAIN: 'api/v1/blockchain',   // 区块链网关
@@ -217,6 +218,8 @@ export const GATEWAY_ENDPOINTS = {
   // ==== 通知服务端点 ====
   NOTIFICATION: {
     BASE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION),
+
+    // Notification List & Detail (legacy app endpoints)
     LIST: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications'),
     GET: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/{notificationId}'),
     MARK_READ: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/mark-read'),
@@ -224,6 +227,37 @@ export const GATEWAY_ENDPOINTS = {
     COUNT: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/count'),
     PREFERENCES: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/preferences'),
     SUBSCRIBE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/api/v1/notifications/subscribe'),
+
+    // Notification Sending (SDK-aligned)
+    SEND: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/send'),
+    BATCH: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/batch'),
+    CANCEL: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/{notificationId}/cancel'),
+
+    // Template Management (SDK-aligned)
+    CREATE_TEMPLATE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/templates'),
+    GET_TEMPLATE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/templates/{templateId}'),
+    LIST_TEMPLATES: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/templates'),
+    UPDATE_TEMPLATE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/templates/{templateId}'),
+    DELETE_TEMPLATE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/templates/{templateId}'),
+
+    // In-App Notifications (SDK-aligned)
+    LIST_USER_NOTIFICATIONS: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/in-app/{userId}'),
+    MARK_ARCHIVED: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/in-app/{notificationId}/archive'),
+    DELETE_IN_APP: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/in-app/{notificationId}'),
+    UNREAD_COUNT: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/in-app/{userId}/unread-count'),
+
+    // Push Subscriptions (SDK-aligned)
+    PUSH_SUBSCRIBE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/push/subscribe'),
+    PUSH_SUBSCRIPTIONS: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/push/subscriptions/{userId}'),
+    PUSH_UNSUBSCRIBE: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/push/unsubscribe'),
+
+    // Batch Operations (SDK-aligned)
+    GET_BATCH: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/batches/{batchId}'),
+    BATCH_NOTIFICATIONS: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/batches/{batchId}/notifications'),
+
+    // Statistics (SDK-aligned)
+    STATS: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/stats'),
+
     HEALTH: buildEndpoint(GATEWAY_SERVICES.NOTIFICATION, '/health'),
   },
 
@@ -277,6 +311,35 @@ export const GATEWAY_ENDPOINTS = {
     TEMPLATE: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/templates/{templateId}'),
     AI_ASSIST: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/documents/{documentId}/ai-assist'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.DOCUMENTS, '/health'),
+  },
+
+  // ==== 任务服务端点 ====
+  TASK: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.TASK),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks'),
+    GET: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks/{task_id}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks/{task_id}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks/{task_id}'),
+    LIST: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks'),
+    EXECUTE: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks/{task_id}/execute'),
+    GET_EXECUTIONS: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks/{task_id}/executions'),
+    LIST_TEMPLATES: buildEndpoint(GATEWAY_SERVICES.TASK, '/templates'),
+    CREATE_FROM_TEMPLATE: buildEndpoint(GATEWAY_SERVICES.TASK, '/tasks/from-template'),
+    GET_ANALYTICS: buildEndpoint(GATEWAY_SERVICES.TASK, '/analytics'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.TASK, '/health'),
+    DETAILED_HEALTH: buildEndpoint(GATEWAY_SERVICES.TASK, '/health/detailed'),
+  },
+
+  // ==== 日历服务端点 ====
+  CALENDAR: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.CALENDAR),
+    EVENTS: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/events'),
+    EVENT: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/events/{eventId}'),
+    UPCOMING: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/upcoming'),
+    SYNC: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/sync'),
+    SYNC_STATUS: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/sync/status'),
+    INFO: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/info'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.CALENDAR, '/health'),
   },
 
   // ==== 邀请服务端点 ====

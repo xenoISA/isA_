@@ -32,7 +32,7 @@ export const ResponsiveChatLayout: React.FC<ResponsiveChatLayoutProps> = ({
 }) => {
   return (
     <div
-      className={`responsive-chat-layout w-full h-full ${className}`}
+      className={`responsive-chat-layout absolute inset-0 ${className}`}
       style={style}
     >
       <ChatLayout

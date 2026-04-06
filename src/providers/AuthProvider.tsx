@@ -61,6 +61,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(GATEWAY_CONFIG.AUTH.API_KEY);
     }
 
+    // Dev mode: auto-authenticate with test user when NEXT_PUBLIC_DEV_AUTH=true
+    // Skip if user explicitly logged out this session
+    // Uses env vars for dev user identity (defaults to alice test user)
+    const devAuth = process.env.NEXT_PUBLIC_DEV_AUTH === 'true';
+    if (devAuth && !sessionStorage.getItem('dev-auth-logged-out')) {
+      const devEmail = process.env.NEXT_PUBLIC_DEV_USER_EMAIL || 'alice@example.com';
+      const devName = process.env.NEXT_PUBLIC_DEV_USER_NAME || 'Alice';
+      const devSub = process.env.NEXT_PUBLIC_DEV_USER_ID || 'test_user_001';
+
+      setAuthUser({
+        sub: devSub,
+        email: devEmail,
+        name: devName,
+      });
+      // Use a token the backend recognizes for this test user
+      saveAuthToken(process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-for-testing');
+      logger.info(LogCategory.USER_AUTH, `Dev mode: auto-authenticated as ${devEmail}`);
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -159,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: user.email || data.email || email,
         name: user.name || data.name || email,
       });
+      sessionStorage.removeItem('dev-auth-logged-out');
       logger.info(LogCategory.USER_AUTH, 'Login successful');
     } catch (err: any) {
       const msg = err.message || 'Login failed';
@@ -259,6 +281,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearAuthCookies();
     setAuthUser(null);
     setError(null);
+    // Prevent dev auto-auth from re-authenticating after explicit logout
+    if (process.env.NEXT_PUBLIC_DEV_AUTH === 'true') {
+      sessionStorage.setItem('dev-auth-logged-out', 'true');
+    }
     logger.info(LogCategory.USER_AUTH, 'User logged out');
   }, []);
 

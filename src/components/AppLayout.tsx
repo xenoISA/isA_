@@ -21,15 +21,14 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { PlatformNav as PlatformNavOriginal } from '@isa/ui-web';
 import { AppHeader } from './ui/AppHeader';
 import { LoginScreen } from './ui/LoginScreen';
 import { useAuthContext } from '../providers/AuthProvider';
-import { surfaceUrls } from '../config/surfaceConfig';
 
-// Cast needed: @isa/ui-web bundles its own @types/react (v19) which conflicts
-// with this app's React types. The component works correctly at runtime.
-const PlatformNav = PlatformNavOriginal as React.FC<any>;
+// PlatformNav from @isa/ui-web is temporarily disabled due to React version
+// mismatch (@isa/ui-web bundles React 19, this app uses React 18).
+// Re-enable once both apps are on the same React version.
+// import { PlatformNav } from '@isa/ui-web';
 
 export interface AppLayoutProps {
   className?: string;
@@ -108,21 +107,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
     <div
       className={`min-h-dvh w-full flex flex-col bg-[var(--surface-bg,#0f172a)] text-[var(--text-primary,#fff)] relative ${className}`}
     >
-      {/* Platform Navigation - Surface switcher for authenticated users
-           Cast needed: @isa/ui-web's React types differ from app's @types/react version */}
-      {isAuthenticated && (
-        (PlatformNav as React.FC<any>)({
-          activeSurface: "app",
-          user: authUser ? { name: authUser.name, email: authUser.email } : null,
-          urls: {
-            app: surfaceUrls.app,
-            console: surfaceUrls.console,
-            docs: surfaceUrls.docs,
-            marketing: surfaceUrls.marketing,
-          },
-          onLogout: logout,
-        })
-      )}
+      {/* Platform Navigation - temporarily disabled (React version mismatch) */}
       {/* Application Header - responsive on all viewports */}
       <div className="h-14 md:h-16 flex-shrink-0 p-1.5 md:p-2">
         <AppHeader
@@ -134,7 +119,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden w-full">
+      <div className="flex-1 overflow-hidden w-full relative">
         {/* Render Chat Module with sidebar state injected */}
         {React.isValidElement(chatModule)
           ? React.cloneElement(chatModule as React.ReactElement<any>, {

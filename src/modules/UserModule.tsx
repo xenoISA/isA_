@@ -247,13 +247,31 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         auth0_id: authUser.sub,
         executionTime: Date.now() - startTime + 'ms'
       });
-      
-      logger.error(LogCategory.USER_AUTH, 'User initialization failed', { 
+
+      logger.error(LogCategory.USER_AUTH, 'User initialization failed', {
         error: errorMessage,
-        auth0_id: authUser.sub 
+        auth0_id: authUser.sub
       });
-      
-      throw error; // 重新抛出错误供调用者处理
+
+      // Dev mode fallback: seed user data locally when backend is unavailable
+      if (process.env.NEXT_PUBLIC_DEV_AUTH === 'true') {
+        const devCredits = parseInt(process.env.NEXT_PUBLIC_DEV_USER_CREDITS || '100000', 10);
+        const fallbackUser = {
+          auth0_id: authUser.sub,
+          email: authUser.email,
+          name: authUser.name,
+          credits: devCredits,
+          credits_total: devCredits,
+          plan: 'pro',
+          is_active: true,
+        };
+        log.info('Dev mode: using fallback user data', { credits: devCredits });
+        const userStore = useUserStore.getState();
+        userStore.setExternalUser(fallbackUser);
+        return;
+      }
+
+      throw error;
     }
   }, [authUser?.sub, authUser?.email, authUser?.name, isAuthenticated, userService]);
 
@@ -430,9 +448,9 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
     // 🚪 情况2：未认证 - 清理状态
     if (!isAuthenticated) {
       log.info('User not authenticated, clearing state');
-      if (initializationStatus !== 'idle') {
-        setInitializationStatus('idle');
+      if (initializationRef.current !== null) {
         initializationRef.current = null;
+        setInitializationStatus('idle');
         userHook.clearUser();
       }
       return;
@@ -469,15 +487,16 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
           setInitializationStatus('error');
         });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    authLoading, 
-    isAuthenticated, 
-    authUser?.sub, 
-    authUser?.email, 
+    authLoading,
+    isAuthenticated,
+    authUser?.sub,
+    authUser?.email,
     authUser?.name,
-    initializationStatus,
+    // Intentionally exclude initializationStatus to prevent re-trigger loops.
+    // The effect manages this state internally via the ref guard.
     initializeUser,
-    userHook
   ]);
 
   // ================================================================================
