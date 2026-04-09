@@ -294,6 +294,21 @@ case 'memory_recall': {
       break;
     }
 
+    // A2UI surface protocol events — pass through for AgentSurfaceRenderer
+    case 'createSurface':
+    case 'updateComponents':
+    case 'updateDataModel':
+    case 'deleteSurface': {
+      results.push({
+        type: 'a2ui_surface',
+        data: {
+          messageType: event.type,
+          payload: event,
+        },
+      });
+      break;
+    }
+
     default: {
       // Unknown events — silently ignore (no spurious AGUI events)
       break;
