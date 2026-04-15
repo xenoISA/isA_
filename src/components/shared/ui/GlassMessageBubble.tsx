@@ -29,6 +29,7 @@ export interface GlassMessageBubbleProps {
   onLike?: () => void;
   onDislike?: () => void;
   onRegenerate?: () => void;
+  onEdit?: () => void;
   hasTasks?: boolean;
 }
 
@@ -50,6 +51,7 @@ export const GlassMessageBubble: React.FC<GlassMessageBubbleProps> = ({
   onLike,
   onDislike,
   onRegenerate,
+  onEdit,
   hasTasks = false
 }) => {
   const [showActionButtons, setShowActionButtons] = useState(false);
@@ -318,6 +320,17 @@ export const GlassMessageBubble: React.FC<GlassMessageBubbleProps> = ({
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ transform: 'rotate(180deg)' }}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                    </svg>
+                  </button>
+                )}
+                {role === 'user' && onEdit && (
+                  <button
+                    onClick={onEdit}
+                    className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 rounded-full transition-all duration-200"
+                    title="Edit message"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                   </button>
                 )}
