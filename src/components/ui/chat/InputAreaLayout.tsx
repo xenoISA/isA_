@@ -6,6 +6,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { useMatePresence } from '../../../hooks/useMatePresence';
 import { useMessageStore } from '../../../stores/useMessageStore';
 import { useStreamingStore } from '../../../stores/useStreamingStore';
+import { ModelSelectorDropdown } from './ModelSelectorDropdown';
 const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {
@@ -434,6 +435,11 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
             Active on {channels.length} channel{channels.length !== 1 ? 's' : ''}
           </span>
         )}
+      </div>
+
+      {/* Model Selector — above input, Claude-style (#194) */}
+      <div className="flex items-center mb-1">
+        <ModelSelectorDropdown />
       </div>
 
       {/* Main Glass Chat Input */}

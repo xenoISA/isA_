@@ -48,6 +48,8 @@ import type { ThinkingStep, DeepThinkingProps } from '@isa/ui-web';
 const DeepThinking = DeepThinkingOriginal as React.FC<DeepThinkingProps>;
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';
+import { EditableMessage } from './EditableMessage';
+import { BranchNavigator } from './BranchNavigator';
 import { SkillActivationCard } from './SkillActivationCard';
 import type { SkillActivationStatus } from './SkillActivationCard';
 import { useMessageStore } from '../../../stores/useMessageStore';
@@ -154,6 +156,8 @@ export interface MessageListProps {
   currentTasks?: any[];
   /** Callback to regenerate a response — receives the user message content to re-send (#188) */
   onRegenerateMessage?: (userContent: string, assistantMessageId: string) => void;
+  /** Callback to edit a user message and re-send (#187) */
+  onEditMessage?: (editedContent: string, originalMessageId: string) => void;
 }
 
 // Virtual scrolling hook for performance optimization
@@ -369,7 +373,10 @@ export const MessageList = memo<MessageListProps>(({
   // Task information
   currentTasks = [],
   onRegenerateMessage,
+  onEditMessage,
 }) => {
+  // Editing state for message edit + branching (#187)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   // Virtual scrolling setup
   const virtualScroll = useVirtualScrolling(
     messages,
@@ -747,33 +754,44 @@ export const MessageList = memo<MessageListProps>(({
           </div>
         )}
 
-        {/* Message Content */}
+        {/* Message Content — editable for user messages (#187) */}
         <div className={message.role === 'assistant' ? 'ml-12' : ''}>
-          <GlassMessageBubble
-            content={message.content}
-            parsedContent={message.type === 'regular' ? message.parsedContent : undefined}
-            role={message.role as 'user' | 'assistant' | 'system'}
-            timestamp={message.timestamp}
-            isStreaming={isStreaming}
-            streamingStatus={message.streamingStatus}
-            showAvatar={message.role !== 'assistant'} // Don't show avatar again for assistant
-            showTimestamp={showTimestamps}
-            showActions={true}
-            variant="default"
-            hasTasks={currentTasks.length > 0}
-            onCopy={() => navigator.clipboard.writeText(message.content)}
-            onRegenerate={message.role === 'assistant' && onRegenerateMessage ? () => {
-              // Find the preceding user message to re-send
-              const msgIndex = messages.findIndex(m => m.id === message.id);
-              for (let i = msgIndex - 1; i >= 0; i--) {
-                const prev = messages[i];
-                if (prev.role === 'user' && 'content' in prev) {
-                  onRegenerateMessage(prev.content, message.id);
-                  break;
+          {editingMessageId === message.id ? (
+            <EditableMessage
+              initialContent={message.content}
+              onSubmit={(newContent) => {
+                setEditingMessageId(null);
+                onEditMessage?.(newContent, message.id);
+              }}
+              onCancel={() => setEditingMessageId(null)}
+            />
+          ) : (
+            <GlassMessageBubble
+              content={message.content}
+              parsedContent={message.type === 'regular' ? message.parsedContent : undefined}
+              role={message.role as 'user' | 'assistant' | 'system'}
+              timestamp={message.timestamp}
+              isStreaming={isStreaming}
+              streamingStatus={message.streamingStatus}
+              showAvatar={message.role !== 'assistant'}
+              showTimestamp={showTimestamps}
+              showActions={true}
+              variant="default"
+              hasTasks={currentTasks.length > 0}
+              onCopy={() => navigator.clipboard.writeText(message.content)}
+              onEdit={message.role === 'user' && onEditMessage ? () => setEditingMessageId(message.id) : undefined}
+              onRegenerate={message.role === 'assistant' && onRegenerateMessage ? () => {
+                const msgIndex = messages.findIndex(m => m.id === message.id);
+                for (let i = msgIndex - 1; i >= 0; i--) {
+                  const prev = messages[i];
+                  if (prev.role === 'user' && 'content' in prev) {
+                    onRegenerateMessage(prev.content, message.id);
+                    break;
+                  }
                 }
-              }
-            } : undefined}
-          />
+              } : undefined}
+            />
+          )}
         </div>
 
         {/* Channel origin badge — shows when message came from another channel */}

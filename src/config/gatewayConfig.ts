@@ -92,6 +92,9 @@ export const GATEWAY_SERVICES = {
   // 区块链服务
   BLOCKCHAIN: 'api/v1/blockchain',   // 区块链网关
 
+  // AI模型服务
+  MODELS: 'api/v1/models',           // 模型管理服务 (8082)
+
   // 网关管理
   GATEWAY: 'gateway'                 // 网关自身管理
 } as const;
@@ -158,6 +161,12 @@ export const GATEWAY_ENDPOINTS = {
       AUTONOMOUS_EVENTS: buildMateEndpoint('/v1/autonomous/events'),
     };
   })(),
+
+  // ==== Model服务端点 (模型管理) ====
+  MODELS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.MODELS),
+    AVAILABLE: buildEndpoint(GATEWAY_SERVICES.MODELS, '/available'),
+  },
 
   // ==== MCP服务端点 (工具调用) ====
   MCP: {
