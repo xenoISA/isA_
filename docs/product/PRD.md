@@ -242,6 +242,73 @@ Portal contexts require different access levels:
 
 Depends on shared SSO (Issue #2) being in place first.
 
+### Epic: Claude App Feature Parity — Match Consumer AI App Standard
+
+**Priority**: P0-Critical → P2-Medium (phased)
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for design / dev
+
+isA_ must match the feature set of Claude's consumer apps (claude.ai web + Claude Desktop) as a baseline, then differentiate with capabilities Claude doesn't offer. Many components already exist in @isa/ui-web (isA_App_SDK) but aren't integrated — DeepThinking, ModelSelector, VoiceUI, CodeSandbox, AppShell, ChatLayout, dark/light themes. The primary work is integration + building missing reusable components.
+
+#### Sub-Epics
+
+**A. Chat Interaction Parity (P0)**
+Message editing with conversation branching, response regeneration, stop/cancel streaming, extended thinking visibility with collapsible blocks + toggle. SDK already has `DeepThinking` component — integrate it. Build edit/regen/stop in isA_, branching data model in @isa/core.
+
+**B. Projects & Knowledge System (P0-P1)**
+Claude-style project workspaces grouping conversations with persistent knowledge base and custom instructions. Requires: Project data model (isA_Data), CRUD API (isA_user), ProjectService in @isa/core, ProjectSwitcher + KnowledgeBaseManager + CustomInstructionsEditor components in @isa/ui-web, integration in isA_.
+
+**C. Search, Navigation & Settings (P0-P1)**
+Global conversation search via Cmd+K CommandPalette, model selection (ModelSelector exists in SDK), appearance settings using @isa/theme dark/light tokens, profile-level custom instructions, keyboard shortcuts overlay.
+
+**D. Artifacts, Code Execution & File Creation (P1)**
+Sandboxed React/HTML/JS execution (CodeSandbox exists in SDK), document generation (Excel/Word/PDF) via MCP tools, iterative artifact editing. Backend: code sandbox MCP tool, document generation MCP tool.
+
+**E. Sharing, Memory Management & Collaboration (P2)**
+Conversation sharing via public snapshot links, memory CRUD UI (MemoryManager component), user-creatable skills/workflows (SkillBuilder component), connector marketplace browser.
+
+**F. Voice & Research Mode (P1)**
+Two-way voice (VoiceUI exists in SDK), speech-to-text via Whisper, TTS with voice selection, multi-step autonomous research mode with citation display.
+
+**G. SDK UI Claude Parity (P1)**
+Update all @isa/ui-web components to match Claude's clean, minimal design language — typography, spacing, animations, glass effects. Audit and modernize: ChatMessage, ChatInput, ArtifactViewer, SessionList, AppShell, all A2UI standard components.
+
+**H. A2UI Agentic Experience Enhancement (P1)**
+Enhance the A2UI (Agent-to-UI) framework for richer interactive agent surfaces — this is a key differentiator Claude doesn't have. Agents can render dynamic custom UI, not just text. Improve A2UIRenderer, add more standard components, polish agent surface rendering.
+
+#### Cross-Repo Impact
+
+| Repo | Role |
+|------|------|
+| isA_ | 22 integration stories — wire SDK components, app-specific features |
+| isA_App_SDK | 16 stories — reusable components, SDK services, A2UI enhancements, design system |
+| isA_OS | 4 stories — thinking API, project context, memory CRUD, research mode |
+| isA_Model | 2 stories — extended thinking, models list API |
+| isA_MCP | 4 stories — code sandbox, document generation, STT, TTS tools |
+| isA_user | 4 stories — project CRUD, search API, sharing API, custom instructions |
+| isA_Data | 1 story — project data model |
+
+#### isA_ Differentiators (Features Claude Doesn't Have)
+
+These existing capabilities set isA_ apart and should be preserved/enhanced, not replaced:
+
+1. **A2UI Dynamic Agent Surfaces** — Agents render custom interactive UI (forms, cards, lists), not just text
+2. **Cross-Channel Presence** — Telegram, Discord, Slack, WhatsApp, 10 channels with seamless context
+3. **Autonomous Background Agents** — Scheduled tasks, trigger responses, proactive notifications
+4. **Multi-Agent Delegation** — 4 specialist teams (vibe, trade, creative, marketing) with live progress
+5. **Widget System** — Dream (image gen), Hunt (search), Data Scientist, Knowledge, Custom Automation
+6. **Human-in-the-Loop** — Checkpoints, rollback, approval workflows for agent actions
+7. **Task Management** — Multi-step task planning with progress tracking
+8. **Companion Memory** — 5 memory types (factual, episodic, semantic, procedural, working)
+
+#### Out of Scope
+
+- Mobile native apps (iOS/Android)
+- Desktop native app (Electron)
+- Chrome extension
+- Computer use / screen control
+- Dispatch (phone → desktop)
+
 ## Technical Constraints
 
 - Next.js 14 with pages router

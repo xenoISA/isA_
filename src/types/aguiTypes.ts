@@ -88,6 +88,11 @@ export type AGUIEventType =
   | 'user_feedback'
   | 'ui_state_change'
   
+  // Thinking Events (Extended Thinking / Chain-of-Thought)
+  | 'thinking_start'
+  | 'thinking_content'
+  | 'thinking_end'
+
   // 🆕 HIL Events (Human-in-the-Loop Extension)
   | 'hil_interrupt_detected'
   | 'hil_approval_required'
@@ -187,6 +192,27 @@ export interface TextMessageEndEvent extends AGUIBaseEvent {
     language?: string;
     sentiment?: string;
   };
+}
+
+// ================================================================================
+// Thinking Events - Extended Thinking / Chain-of-Thought
+// ================================================================================
+
+export interface ThinkingStartEvent extends AGUIBaseEvent {
+  type: 'thinking_start';
+  message_id: string;
+}
+
+export interface ThinkingContentEvent extends AGUIBaseEvent {
+  type: 'thinking_content';
+  message_id: string;
+  delta: string;
+}
+
+export interface ThinkingEndEvent extends AGUIBaseEvent {
+  type: 'thinking_end';
+  message_id: string;
+  final_thinking?: string;
 }
 
 // ================================================================================
@@ -352,7 +378,7 @@ export interface HILExecutionResumedEvent extends AGUIBaseEvent {
 // Union Types and Utilities
 // ================================================================================
 
-export type AGUIEvent = 
+export type AGUIEvent =
   | RunStartedEvent
   | RunFinishedEvent
   | RunErrorEvent
@@ -362,6 +388,9 @@ export type AGUIEvent =
   | TextMessageStartEvent
   | TextMessageContentEvent
   | TextMessageEndEvent
+  | ThinkingStartEvent
+  | ThinkingContentEvent
+  | ThinkingEndEvent
   | ToolCallStartEvent
   | ToolCallArgsEvent
   | ToolCallResultEvent
@@ -392,6 +421,11 @@ export interface AGUIEventCallbacks {
   onTextMessageContent?: (event: TextMessageContentEvent) => void;
   onTextMessageEnd?: (event: TextMessageEndEvent) => void;
   
+  // Thinking callbacks
+  onThinkingStart?: (event: ThinkingStartEvent) => void;
+  onThinkingContent?: (event: ThinkingContentEvent) => void;
+  onThinkingEnd?: (event: ThinkingEndEvent) => void;
+
   // Tool call callbacks
   onToolCallStart?: (event: ToolCallStartEvent) => void;
   onToolCallArgs?: (event: ToolCallArgsEvent) => void;
