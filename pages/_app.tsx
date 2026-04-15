@@ -1,6 +1,7 @@
 import '../styles/globals.css'
 import type { AppProps } from 'next/app'
 import { useEffect } from 'react'
+import { ThemeProvider } from '../src/providers/ThemeProvider'
 import { AnalyticsProvider } from '../src/providers/AnalyticsProvider'
 import { isMarketingHostname } from '../src/config/surfaceConfig'
 import { createLogger } from '@/utils/logger'
@@ -18,10 +19,12 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [])
 
   // Auth is handled by AuthProvider in src/app.tsx — not duplicated here
-  
+
   return (
-    <AnalyticsProvider>
-      <Component {...pageProps} />
-    </AnalyticsProvider>
+    <ThemeProvider>
+      <AnalyticsProvider>
+        <Component {...pageProps} />
+      </AnalyticsProvider>
+    </ThemeProvider>
   )
 }
