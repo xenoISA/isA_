@@ -93,6 +93,7 @@ interface ChatStoreState {
 interface ChatActions {
   // 消息操作
   addMessage: (message: ChatMessage) => void;
+  removeMessage: (messageId: string) => void;
   clearMessages: () => void;
   loadMessagesFromSession: (sessionId?: string) => void;
   
@@ -188,6 +189,13 @@ export const useChatStore = create<ChatStore>()(
         role: message.role,
         contentLength: ('content' in message && message.content) ? message.content.length : 0
       });
+    },
+
+    removeMessage: (messageId: string) => {
+      set((state) => ({
+        messages: state.messages.filter(m => m.id !== messageId),
+      }));
+      logger.info(LogCategory.CHAT_FLOW, 'Message removed from chat store', { messageId });
     },
 
     clearMessages: () => {

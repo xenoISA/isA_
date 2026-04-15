@@ -94,7 +94,8 @@ export class ChatService {
       proactive_predictions?: any;
     },
     token: string,
-    callbacks: ChatServiceCallbacks
+    callbacks: ChatServiceCallbacks,
+    options?: { signal?: AbortSignal }
   ): Promise<void> {
     // Starting message processing
     
@@ -149,13 +150,20 @@ export class ChatService {
         headers,
         body: JSON.stringify(payload)
       });
-      
+
+      // If an external abort signal is provided, close the connection when it fires
+      if (options?.signal) {
+        options.signal.addEventListener('abort', () => {
+          connection.close();
+        }, { once: true });
+      }
+
       // Connection established, starting data processing
-      
+
       // 4. 处理数据流
       return new Promise<void>((resolve, reject) => {
         let streamEnded = false;
-        
+
         // 处理完成时关闭连接
         const handleComplete = async (finalContent?: string) => {
           if (!streamEnded) {
@@ -165,7 +173,7 @@ export class ChatService {
             resolve();
           }
         };
-        
+
         // 处理错误时关闭连接
         const handleError = async (error: Error) => {
           if (!streamEnded) {

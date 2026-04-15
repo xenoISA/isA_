@@ -42,6 +42,10 @@ import { AwayActivityGroup } from './AwayActivityGroup';
 
 import { ChannelOriginBadge } from './ChannelOriginBadge';
 import { DelegationCard } from './DelegationCard';
+import { DeepThinking as DeepThinkingOriginal } from '@isa/ui-web';
+import type { ThinkingStep, DeepThinkingProps } from '@isa/ui-web';
+// Cast to work around React types version mismatch between packages
+const DeepThinking = DeepThinkingOriginal as React.FC<DeepThinkingProps>;
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';
 import { SkillActivationCard } from './SkillActivationCard';
@@ -148,6 +152,8 @@ export interface MessageListProps {
   overscan?: number;
   // Task information for status display
   currentTasks?: any[];
+  /** Callback to regenerate a response — receives the user message content to re-send (#188) */
+  onRegenerateMessage?: (userContent: string, assistantMessageId: string) => void;
 }
 
 // Virtual scrolling hook for performance optimization
@@ -362,6 +368,7 @@ export const MessageList = memo<MessageListProps>(({
   overscan = 5,
   // Task information
   currentTasks = [],
+  onRegenerateMessage,
 }) => {
   // Virtual scrolling setup
   const virtualScroll = useVirtualScrolling(
@@ -728,6 +735,18 @@ export const MessageList = memo<MessageListProps>(({
           </div>
         )}
 
+        {/* Deep Thinking — collapsible reasoning block above assistant response (#185) */}
+        {message.role === 'assistant' && message.type === 'regular' && (message as RegularMessage).thinkingSteps && (message as RegularMessage).thinkingSteps!.length > 0 && (
+          <div className="ml-12 mb-3">
+            <DeepThinking
+              steps={(message as RegularMessage).thinkingSteps!.map((s): ThinkingStep => ({
+                ...s,
+                timestamp: new Date(s.timestamp),
+              }))}
+            />
+          </div>
+        )}
+
         {/* Message Content */}
         <div className={message.role === 'assistant' ? 'ml-12' : ''}>
           <GlassMessageBubble
@@ -743,6 +762,17 @@ export const MessageList = memo<MessageListProps>(({
             variant="default"
             hasTasks={currentTasks.length > 0}
             onCopy={() => navigator.clipboard.writeText(message.content)}
+            onRegenerate={message.role === 'assistant' && onRegenerateMessage ? () => {
+              // Find the preceding user message to re-send
+              const msgIndex = messages.findIndex(m => m.id === message.id);
+              for (let i = msgIndex - 1; i >= 0; i--) {
+                const prev = messages[i];
+                if (prev.role === 'user' && 'content' in prev) {
+                  onRegenerateMessage(prev.content, message.id);
+                  break;
+                }
+              }
+            } : undefined}
           />
         </div>
 

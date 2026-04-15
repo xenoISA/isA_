@@ -53,6 +53,12 @@ export interface StreamingStoreState {
   isTyping: boolean;
   /** Generic loading flag for chat operations */
   chatLoading: boolean;
+  /** AbortController for the active SSE connection (set by chat module) */
+  activeAbortController: AbortController | null;
+  /** Whether the model is currently streaming thinking/chain-of-thought content */
+  isThinking: boolean;
+  /** Accumulated thinking content for the current streaming message */
+  thinkingBuffer: string;
 }
 
 export interface StreamingActions {
@@ -63,6 +69,15 @@ export interface StreamingActions {
   appendToStreamingMessage: (content: string) => void;
   finishStreamingMessage: () => void;
   updateStreamingStatus: (status: string) => void;
+  /** Abort the active SSE connection and finalize the partial response as-is. */
+  stopStreaming: () => void;
+  /** Register the AbortController for the current SSE connection so stopStreaming can abort it. */
+  setActiveAbortController: (controller: AbortController | null) => void;
+
+  // Thinking (extended thinking / chain-of-thought) lifecycle
+  startThinking: () => void;
+  appendThinkingContent: (delta: string) => void;
+  finishThinking: () => void;
 }
 
 export type StreamingStore = StreamingStoreState & StreamingActions;
@@ -78,6 +93,9 @@ export const useStreamingStore = create<StreamingStore>()(
     streamingLastFlush: {},
     isTyping: false,
     chatLoading: false,
+    activeAbortController: null,
+    isThinking: false,
+    thinkingBuffer: '',
 
     setIsTyping: (typing) => {
       set({ isTyping: typing });
@@ -312,6 +330,29 @@ export const useStreamingStore = create<StreamingStore>()(
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message finished');
     },
 
+    setActiveAbortController: (controller) => {
+      set({ activeAbortController: controller });
+    },
+
+    stopStreaming: () => {
+      const state = get();
+
+      // 1. Abort the SSE connection
+      if (state.activeAbortController) {
+        state.activeAbortController.abort();
+        set({ activeAbortController: null });
+      }
+
+      // 2. Finalize the partial streaming message as-is
+      const { finishStreamingMessage } = get();
+      finishStreamingMessage();
+
+      // 3. Reset typing and loading states
+      set({ isTyping: false, chatLoading: false });
+
+      log.info('Streaming stopped by user');
+    },
+
     updateStreamingStatus: (status) => {
       const messageStore = useMessageStore.getState();
       const messages = messageStore.messages;
@@ -323,6 +364,34 @@ export const useStreamingStore = create<StreamingStore>()(
       useMessageStore.setState({ messages: updatedMessages });
 
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming status updated', { status });
+    },
+
+    // Thinking lifecycle (#186)
+    startThinking: () => {
+      set({ isThinking: true, thinkingBuffer: '' });
+    },
+
+    appendThinkingContent: (delta) => {
+      set((state) => ({ thinkingBuffer: state.thinkingBuffer + delta }));
+    },
+
+    finishThinking: () => {
+      const { thinkingBuffer } = get();
+      // Attach thinking content to the current streaming message
+      if (thinkingBuffer) {
+        const messageStore = useMessageStore.getState();
+        const messages = messageStore.messages;
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage && lastMessage.isStreaming && lastMessage.type === 'regular') {
+          const updatedMessages = [...messages];
+          updatedMessages[updatedMessages.length - 1] = {
+            ...lastMessage,
+            thinkingContent: thinkingBuffer,
+          } as typeof lastMessage;
+          useMessageStore.setState({ messages: updatedMessages });
+        }
+      }
+      set({ isThinking: false, thinkingBuffer: '' });
     }
   }))
 );

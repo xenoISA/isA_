@@ -244,6 +244,10 @@ export interface GlassChatInputProps {
   onMagicAction?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  /** Whether the assistant is actively streaming a response */
+  isStreaming?: boolean;
+  /** Callback to stop/cancel the active streaming response */
+  onStop?: () => void;
   isRecording?: boolean;
   // 智能模式设置
   intelligentMode?: IntelligentModeSettings;
@@ -276,7 +280,9 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
   onBlur,
   isRecording = false,
   intelligentMode = { mode: 'reactive', confidence_threshold: 0.7, enable_predictions: false },
-  onIntelligentModeChange
+  onIntelligentModeChange,
+  isStreaming = false,
+  onStop
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -424,32 +430,50 @@ export const GlassChatInput: React.FC<GlassChatInputProps> = ({
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none opacity-0 hover:opacity-100 transition-opacity" />
           </div>
 
-          {/* Right Actions - Only Send Button */}
+          {/* Right Actions - Send or Stop Button */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Send Button */}
-            <button
-              onClick={handleSend}
-              disabled={!canSend}
-              className={`
-                w-10 h-10 flex items-center justify-center
-                rounded-xl backdrop-blur-sm
-                transition-all duration-200
-                disabled:opacity-50 disabled:cursor-not-allowed
-                ${canSend 
-                  ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50/20 dark:hover:bg-blue-500/10' 
-                  : 'text-gray-400 dark:text-gray-500'
-                }
-              `}
-              title={canSend ? 'Send message' : 'Type a message to send'}
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            {isStreaming ? (
+              /* Stop Button — shown during active streaming (#189) */
+              <button
+                onClick={onStop}
+                className="
+                  w-10 h-10 flex items-center justify-center
+                  rounded-xl backdrop-blur-sm
+                  transition-all duration-200
+                  text-gray-500 hover:text-red-500 hover:bg-red-50/20 dark:hover:bg-red-500/10
+                "
+                title="Stop generating"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
-              )}
-            </button>
+              </button>
+            ) : (
+              /* Send Button */
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className={`
+                  w-10 h-10 flex items-center justify-center
+                  rounded-xl backdrop-blur-sm
+                  transition-all duration-200
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  ${canSend
+                    ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50/20 dark:hover:bg-blue-500/10'
+                    : 'text-gray-400 dark:text-gray-500'
+                  }
+                `}
+                title={canSend ? 'Send message' : 'Type a message to send'}
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
 

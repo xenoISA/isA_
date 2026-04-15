@@ -59,6 +59,8 @@ export interface RegularMessage extends BaseMessage {
     }>;
     [key: string]: unknown;
   };
+  // Extended thinking content — populated when the model streams chain-of-thought
+  thinkingContent?: string;
   // Memory recall references attached by the memory_recall event pipeline
   memoryRecalls?: import('./memoryTypes').MemoryRecallData[];
   // Store相关字段
@@ -71,6 +73,15 @@ export interface RegularMessage extends BaseMessage {
   // Schedule fields — present when the message confirms a scheduled job
   scheduleData?: ScheduleConfirmationData;
   jobId?: string;
+  // Thinking steps — present when the assistant performed deep thinking/reasoning
+  thinkingSteps?: Array<{
+    id: string;
+    title: string;
+    content: string;
+    timestamp: string; // ISO string, converted to Date when passed to DeepThinking
+    status: 'pending' | 'active' | 'complete';
+    sources?: string[];
+  }>;
   // Cross-channel origin — present when the message originated from another channel
   channelOrigin?: {
     channel: string; // 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'web' etc

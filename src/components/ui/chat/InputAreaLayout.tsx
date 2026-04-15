@@ -5,6 +5,7 @@ import { GlassChatInput, GlassCard, GlassButton, IntelligentModeSettings } from 
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useMatePresence } from '../../../hooks/useMatePresence';
 import { useMessageStore } from '../../../stores/useMessageStore';
+import { useStreamingStore } from '../../../stores/useStreamingStore';
 const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {
@@ -55,6 +56,10 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
 }) => {
   const { t } = useTranslation();
   const { isOnline, isWorking, channels } = useMatePresence();
+  const stopStreaming = useStreamingStore((s) => s.stopStreaming);
+  const allMessages = useMessageStore((s) => s.messages);
+  const lastMsg = allMessages[allMessages.length - 1];
+  const isActivelyStreaming = !!(lastMsg && 'isStreaming' in lastMsg && lastMsg.isStreaming);
   const activeDelegationCount = useMessageStore(
     (s) => s.activeDelegations.filter((d) => d.status === 'delegating' || d.status === 'working').length
   );
@@ -449,6 +454,8 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
         onMagicAction={onShowWidgetSelector}
         intelligentMode={intelligentMode}
         onIntelligentModeChange={setIntelligentMode}
+        isStreaming={isActivelyStreaming}
+        onStop={stopStreaming}
         className="w-full"
       />
       
