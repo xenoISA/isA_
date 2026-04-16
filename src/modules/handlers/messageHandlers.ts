@@ -6,6 +6,7 @@
  */
 import { useChatStore } from '../../stores/useChatStore';
 import { useMessageStore } from '../../stores/useMessageStore';
+import { useBranchStore } from '../../stores/useBranchStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
 import { ArtifactMessage } from '../../types/chatTypes';
@@ -390,12 +391,21 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
   };
 
   /**
-   * Edit a user message — removes messages from that point and re-sends (wiring gap fix)
+   * Edit a user message — saves the old chain as a branch, removes messages
+   * from that point, and re-sends with the edited content (#190 branch support).
    */
   const handleEditMessage = (editedContent: string, originalMessageId: string) => {
     const { messages } = useMessageStore.getState();
     const idx = messages.findIndex(m => m.id === originalMessageId);
     if (idx < 0) return;
+
+    // Snapshot the message chain from the edit point onward (inclusive)
+    const chainFromPoint = messages.slice(idx);
+
+    // Save the current chain as a branch before removing
+    const branchStore = useBranchStore.getState();
+    const isFirstEdit = !branchStore.branchPoints[originalMessageId];
+    branchStore.saveBranch(originalMessageId, chainFromPoint, isFirstEdit);
 
     // Remove the edited message and everything after it
     const { removeMessage } = useChatStore.getState();
@@ -403,8 +413,20 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
       removeMessage(messages[i].id);
     }
 
-    // Re-send with edited content
-    handleSendMessage(editedContent);
+    // Re-send with edited content — after the response completes,
+    // the new chain will be captured by a subscription in the store.
+    handleSendMessage(editedContent).then(() => {
+      // Capture the new branch after the response is added
+      // Use a short delay to ensure the streaming message is finalized
+      setTimeout(() => {
+        const currentMessages = useMessageStore.getState().messages;
+        const newChainStart = currentMessages.findIndex(m => m.timestamp > chainFromPoint[0].timestamp);
+        if (newChainStart >= 0) {
+          const newChain = currentMessages.slice(newChainStart);
+          branchStore.addNewBranch(originalMessageId, newChain);
+        }
+      }, 500);
+    });
   };
 
   /**

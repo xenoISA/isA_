@@ -53,6 +53,8 @@ import { BranchNavigator } from './BranchNavigator';
 import { SkillActivationCard } from './SkillActivationCard';
 import type { SkillActivationStatus } from './SkillActivationCard';
 import { useMessageStore } from '../../../stores/useMessageStore';
+import { useChatStore } from '../../../stores/useChatStore';
+import { useBranchStore } from '../../../stores/useBranchStore';
 
 // MessageActions will be implemented later
 
@@ -377,6 +379,54 @@ export const MessageList = memo<MessageListProps>(({
 }) => {
   // Editing state for message edit + branching (#187)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+
+  // Branch navigation state (#190)
+  const branchPoints = useBranchStore((s) => s.branchPoints);
+  const setActiveBranch = useBranchStore((s) => s.setActiveBranch);
+
+  /**
+   * Switch to a different branch — replaces messages from the branch point
+   * onward with the selected branch's snapshot.
+   */
+  const handleSwitchBranch = useCallback((originalMessageId: string, newIndex: number) => {
+    const branchPoint = useBranchStore.getState().branchPoints[originalMessageId];
+    if (!branchPoint) return;
+
+    const branch = branchPoint.branches[newIndex];
+    if (!branch) return;
+
+    // Find the branch point in current messages
+    const currentMessages = useMessageStore.getState().messages;
+    const idx = currentMessages.findIndex(m => m.id === originalMessageId);
+
+    // Also check if the original message was replaced by a new user msg
+    // (branches store snapshots — the first msg may have a different ID)
+    let branchIdx = idx;
+    if (branchIdx < 0) {
+      // The original message ID may no longer be in the list; find by timestamp
+      // of the earliest branch point message
+      const earliest = branchPoint.branches[0]?.messages[0];
+      if (earliest) {
+        branchIdx = currentMessages.findIndex(m => m.timestamp >= earliest.timestamp);
+      }
+    }
+
+    if (branchIdx < 0) branchIdx = currentMessages.length; // append if not found
+
+    // Remove everything from branch point onward
+    const { removeMessage } = useChatStore.getState();
+    for (let i = currentMessages.length - 1; i >= branchIdx; i--) {
+      removeMessage(currentMessages[i].id);
+    }
+
+    // Re-add the selected branch's messages
+    const { addMessage } = useChatStore.getState();
+    for (const msg of branch.messages) {
+      addMessage(msg);
+    }
+
+    setActiveBranch(originalMessageId, newIndex);
+  }, [setActiveBranch]);
   // Virtual scrolling setup
   const virtualScroll = useVirtualScrolling(
     messages,
@@ -791,6 +841,17 @@ export const MessageList = memo<MessageListProps>(({
                 }
               } : undefined}
             />
+          )}
+          {/* Branch navigator — shows when a user message has been edited (#190) */}
+          {message.role === 'user' && branchPoints[message.id] && branchPoints[message.id].branches.length > 1 && (
+            <div className="mt-1 flex justify-end">
+              <BranchNavigator
+                current={branchPoints[message.id].activeBranchIndex + 1}
+                total={branchPoints[message.id].branches.length}
+                onPrev={() => handleSwitchBranch(message.id, branchPoints[message.id].activeBranchIndex - 1)}
+                onNext={() => handleSwitchBranch(message.id, branchPoints[message.id].activeBranchIndex + 1)}
+              />
+            </div>
           )}
         </div>
 
