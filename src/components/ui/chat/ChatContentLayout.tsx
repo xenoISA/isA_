@@ -34,6 +34,8 @@ export interface ChatContentLayoutProps {
   isTyping?: boolean;        // Accept typing state as prop
   onSendMessage?: (message: string) => void;
   currentTasks?: any[];      // Accept current tasks for status display
+  onEditMessage?: (editedContent: string, originalMessageId: string) => void;
+  onRegenerateMessage?: (userContent: string, assistantMessageId: string) => void;
 }
 
 /**
@@ -55,7 +57,9 @@ export const ChatContentLayout: React.FC<ChatContentLayoutProps> = ({
   isLoading = false,
   isTyping = false,
   onSendMessage,
-  currentTasks = []
+  currentTasks = [],
+  onEditMessage,
+  onRegenerateMessage,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -101,6 +105,8 @@ export const ChatContentLayout: React.FC<ChatContentLayoutProps> = ({
         isLoading={isLoading}
         isTyping={isTyping}
         onSendMessage={onSendMessage}
+        onEditMessage={onEditMessage}
+        onRegenerateMessage={onRegenerateMessage}
       />
 
       {/* Auto-scroll anchor */}

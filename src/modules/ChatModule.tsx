@@ -497,6 +497,8 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         onSendMultimodal={messageHandlers.handleSendMultimodal}
         onMessageClick={messageHandlers.handleMessageClick}
         onNewChat={messageHandlers.handleNewChat}
+        onEditMessage={messageHandlers.handleEditMessage}
+        onRegenerateMessage={messageHandlers.handleRegenerateMessage}
 
         // Sidebar state (injected from AppLayout via useSidebar)
         sidebarOpen={sidebarOpen}

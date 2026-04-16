@@ -32,8 +32,21 @@ export const MemoryManager: React.FC = () => {
   const [editContent, setEditContent] = useState('');
 
   useEffect(() => {
-    // Fetch memories from API (placeholder — will connect to #386 when ready)
-    setLoading(false);
+    // Fetch memories from Mate API (isA_OS #386)
+    (async () => {
+      try {
+        const mateUrl = process.env.NEXT_PUBLIC_MATE_URL || 'http://localhost:18789';
+        const res = await fetch(`${mateUrl}/api/v1/memories`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setMemories(Array.isArray(data) ? data : data.memories || []);
+        }
+      } catch {
+        // Memory API not available — show empty state
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const filtered = memories.filter(m =>
