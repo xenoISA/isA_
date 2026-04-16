@@ -40,6 +40,10 @@ import { OrganizationModule } from './OrganizationModule';
 import { RightSidebarLayout } from '../components/ui/chat/RightSidebarLayout';
 import UserButtonContainer from '../components/ui/user/UserButtonContainer';
 import { UserPortal } from '../components/ui/user/UserPortal';
+import { CommandPalette } from '../components/ui/chat/CommandPalette';
+import { SettingsModal } from '../components/ui/settings/SettingsModal';
+import { KeyboardShortcutsOverlay } from '../components/ui/settings/KeyboardShortcutsOverlay';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 // Business logic hooks
 import { useChat } from '../hooks/useChat';
@@ -75,6 +79,18 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
   
   // Widget selector state
   const [showWidgetSelector, setShowWidgetSelector] = useState(false);
+
+  // Command palette, settings, and shortcuts overlay state (#193, #197, #198)
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Register global keyboard shortcuts (#198)
+  useKeyboardShortcuts(useMemo(() => [
+    { key: 'k', meta: true, description: 'Search conversations', category: 'Navigation', action: () => setShowCommandPalette(true) },
+    { key: ',', meta: true, description: 'Open settings', category: 'Navigation', action: () => setShowSettings(true) },
+    { key: '?', description: 'Show keyboard shortcuts', category: 'Help', action: () => setShowShortcuts(true) },
+  ], []));
   
   // Right panel state
   const [showRightPanel, setShowRightPanel] = useState(false);
@@ -324,6 +340,17 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
         )
       })}
         </AppLayout>
+
+        {/* Global overlays (#193, #197, #198) */}
+        <CommandPalette
+          open={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          onAction={(id) => {
+            if (id === 'settings') setShowSettings(true);
+          }}
+        />
+        <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+        <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       </OrganizationModule>
     </ContextModule>
   );

@@ -3,8 +3,9 @@
  */
 import React, { useState } from 'react';
 import { AppearanceSettings } from './AppearanceSettings';
+import { CustomInstructionsSettings } from './CustomInstructionsSettings';
 
-type SettingsTab = 'appearance' | 'general';
+type SettingsTab = 'general' | 'appearance';
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -61,11 +62,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) =
           </button>
 
           {activeTab === 'appearance' && <AppearanceSettings />}
-          {activeTab === 'general' && (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              General settings coming soon.
-            </div>
-          )}
+          {activeTab === 'general' && <CustomInstructionsSettings />}
         </div>
       </div>
     </div>
