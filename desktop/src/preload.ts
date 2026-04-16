@@ -14,7 +14,10 @@ contextBridge.exposeInMainWorld('isElectron', true);
 contextBridge.exposeInMainWorld('electronAPI', {
   /** Send a one-way message to the main process. */
   send: (channel: string, ...args: unknown[]) => {
-    const allowedChannels = ['app:ready', 'window:minimize', 'window:close'];
+    const allowedChannels = [
+      'app:ready', 'window:minimize', 'window:close',
+      'spotlight:hide', 'spotlight:resize', 'spotlight:open-main',
+    ];
     if (allowedChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args);
     }

@@ -49,8 +49,12 @@ export const detectNativeApp = (): NativeAppInfo => {
   // Check for Capacitor
   const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
   
-  // Check for Electron
-  const isElectron = typeof window !== 'undefined' && !!(window as any).require;
+  // Check for Electron — detect via preload-injected flag (sandbox disables window.require)
+  const isElectron = typeof window !== 'undefined' && (
+    !!(window as any).isElectron ||
+    !!(window as any).electronAPI ||
+    userAgent.includes('Electron')
+  );
   
   // Check for PWA
   const isPWA = isStandalone || isInWebAppiOS || isInWebAppChrome;
