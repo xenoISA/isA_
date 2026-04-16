@@ -9,6 +9,9 @@ import {
 } from 'electron';
 import path from 'node:path';
 import { toggleSpotlight, hideSpotlight, resizeSpotlight } from './spotlight';
+import { createTray, updateTrayStatus, setDockBadge } from './tray';
+import { showNotification } from './notifications';
+import { saveToken, loadToken, clearToken } from './keychain';
 
 // Handle Squirrel installer events on Windows
 if (require('electron-squirrel-startup')) app.quit();
@@ -176,17 +179,47 @@ function setupIPC(): void {
   ipcMain.on('spotlight:resize', (_e, height: number) => resizeSpotlight(height));
   ipcMain.on('spotlight:open-main', (_e, route?: string) => {
     hideSpotlight();
-    const mainWin = BrowserWindow.getAllWindows().find(
-      (w) => w.webContents.getURL().includes('localhost:4100') && !w.webContents.getURL().includes('/spotlight'),
-    );
-    if (mainWin) {
-      if (mainWin.isMinimized()) mainWin.restore();
-      mainWin.focus();
+    const win = getMainWindow();
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
       if (route) {
-        mainWin.webContents.executeJavaScript(`window.location.hash = '${route}'`);
+        win.webContents.executeJavaScript(`window.location.hash = '${route}'`);
       }
     }
   });
+
+  // Tray IPC
+  ipcMain.on('tray:update-status', (_e, status: 'online' | 'offline' | 'busy') => {
+    updateTrayStatus(status, trayDeps());
+  });
+  ipcMain.on('tray:set-badge', (_e, count: number) => {
+    setDockBadge(count);
+  });
+
+  // Notification IPC
+  ipcMain.on('notification:show', (_e, title: string, body: string, route?: string) => {
+    showNotification({ title, body, route }, getMainWindow);
+  });
+
+  // Auth keychain IPC
+  ipcMain.handle('auth:save-token', (_e, token: string) => saveToken(token));
+  ipcMain.handle('auth:load-token', () => loadToken());
+  ipcMain.handle('auth:clear-token', () => clearToken());
+}
+
+// Helper to get the main (non-spotlight) window
+function getMainWindow(): BrowserWindow | undefined {
+  return BrowserWindow.getAllWindows().find(
+    (w) => !w.isDestroyed() && w.webContents.getURL().includes('localhost:4100') && !w.webContents.getURL().includes('/spotlight'),
+  );
+}
+
+function trayDeps() {
+  return {
+    toggleSpotlight: () => toggleSpotlight(getPreloadPath()),
+    getMainWindow,
+  };
 }
 
 // ---------- Global shortcut ----------
@@ -206,6 +239,7 @@ app.whenReady().then(() => {
   buildMenu();
   setupIPC();
   registerGlobalShortcut();
+  createTray(trayDeps());
   createWindow();
 
   app.on('activate', () => {
