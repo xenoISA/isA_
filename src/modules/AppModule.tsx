@@ -42,6 +42,8 @@ import UserButtonContainer from '../components/ui/user/UserButtonContainer';
 import { UserPortal } from '../components/ui/user/UserPortal';
 import { CommandPalette } from '../components/ui/chat/CommandPalette';
 import { SettingsModal } from '../components/ui/settings/SettingsModal';
+import { ArtifactCanvas } from '../components/ui/chat/ArtifactCanvas';
+import { ArtifactSheet } from '../components/ui/chat/ArtifactSheet';
 import { KeyboardShortcutsOverlay } from '../components/ui/settings/KeyboardShortcutsOverlay';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
@@ -351,6 +353,10 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
         />
         <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
         <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+
+        {/* Artifact overlays — canvas (desktop full-screen) and sheet (mobile bottom) (#253, #254) */}
+        <ArtifactCanvas />
+        <ArtifactSheet />
       </OrganizationModule>
     </ContextModule>
   );
