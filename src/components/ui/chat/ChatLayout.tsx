@@ -96,6 +96,10 @@ export interface ChatLayoutProps {
   onSendMessage?: (content: string, metadata?: Record<string, any>) => Promise<void>;
   onSendMultimodal?: (content: string, files: File[], metadata?: Record<string, any>) => Promise<void>;
   onMessageClick?: (message: any) => void;
+  /** Edit a user message and re-send (wiring gap fix) */
+  onEditMessage?: (editedContent: string, originalMessageId: string) => void;
+  /** Regenerate an assistant response (wiring gap fix) */
+  onRegenerateMessage?: (userContent: string, assistantMessageId: string) => void;
   
   // 🆕 Widget System Integration
   showWidgetSelector?: boolean;
@@ -169,7 +173,9 @@ export const ChatLayout = memo<ChatLayoutProps>(({
   onSendMessage,
   onSendMultimodal,
   onMessageClick,
-  
+  onEditMessage,
+  onRegenerateMessage,
+
   // Widget System Integration
   showWidgetSelector = false,
   onCloseWidgetSelector,
@@ -331,6 +337,8 @@ export const ChatLayout = memo<ChatLayoutProps>(({
                 isTyping={isTyping}
                 currentTasks={currentTasks}
                 onMessageClick={onMessageClick}
+                onEditMessage={onEditMessage}
+                onRegenerateMessage={onRegenerateMessage}
                 {...conversationProps}
               />
             </div>

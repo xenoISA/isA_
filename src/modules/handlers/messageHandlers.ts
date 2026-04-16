@@ -183,9 +183,15 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
         const { getChatBackend } = await import('../../config/runtimeEnv');
         const useMate = getChatBackend() === 'mate';
+
+        // Include selected model in the request (wiring gap fix — #194)
+        const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('isa_selected_model') : null;
+        const matePayload: Record<string, any> = { session_id: enrichedMetadata.session_id };
+        if (selectedModel) matePayload.model = selectedModel;
+
         const sendFn = useMate
-          ? chatService.sendMessageViaMate.bind(chatService, content, { session_id: enrichedMetadata.session_id }, token)
-          : chatService.sendMessage.bind(chatService, content, enrichedMetadata, token);
+          ? chatService.sendMessageViaMate.bind(chatService, content, matePayload, token)
+          : chatService.sendMessage.bind(chatService, content, { ...enrichedMetadata, ...(selectedModel ? { model: selectedModel } : {}) }, token);
 
         await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
@@ -368,10 +374,39 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     }
   };
 
+  /**
+   * Edit a user message — removes messages from that point and re-sends (wiring gap fix)
+   */
+  const handleEditMessage = (editedContent: string, originalMessageId: string) => {
+    const { messages } = useMessageStore.getState();
+    const idx = messages.findIndex(m => m.id === originalMessageId);
+    if (idx < 0) return;
+
+    // Remove the edited message and everything after it
+    const { removeMessage } = useChatStore.getState();
+    for (let i = messages.length - 1; i >= idx; i--) {
+      removeMessage(messages[i].id);
+    }
+
+    // Re-send with edited content
+    handleSendMessage(editedContent);
+  };
+
+  /**
+   * Regenerate an assistant response — removes it and re-sends the prior user message (wiring gap fix)
+   */
+  const handleRegenerateMessage = (userContent: string, assistantMessageId: string) => {
+    const { removeMessage } = useChatStore.getState();
+    removeMessage(assistantMessageId);
+    handleSendMessage(userContent);
+  };
+
   return {
     handleNewChat,
     handleSendMessage,
     handleSendMultimodal,
     handleMessageClick,
+    handleEditMessage,
+    handleRegenerateMessage,
   };
 }
