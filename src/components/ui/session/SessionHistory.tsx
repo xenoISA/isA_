@@ -1,9 +1,25 @@
 import React, { useMemo } from 'react';
 import { createLogger } from '../../../utils/logger';
 import { ChatSession } from '../../../hooks/useSession';
-import { getMessageContent } from '../../../types/chatTypes';
+import { getMessageContent, RegularMessage } from '../../../types/chatTypes';
 
 const log = createLogger('SessionHistory');
+
+// Channel indicator for cross-channel sessions (#231)
+const CHANNEL_ICONS: Record<string, string> = {
+  telegram: '✈️', discord: '🎮', slack: '💬', whatsapp: '📱',
+  teams: '🏢', signal: '🔒', matrix: '🔗',
+};
+
+function getSessionChannel(session: any): string | null {
+  if (!session.messages || !Array.isArray(session.messages)) return null;
+  for (const msg of session.messages) {
+    if (msg && 'channelOrigin' in msg && (msg as RegularMessage).channelOrigin) {
+      return (msg as RegularMessage).channelOrigin!;
+    }
+  }
+  return null;
+}
 import { GlassButton } from '../../shared';
 import { useTranslation } from '../../../hooks/useTranslation';
 
@@ -228,6 +244,15 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                           {String(session.title || t('sessions.untitledSession'))}
                         </h4>
                       )}
+                      {/* Channel indicator for cross-channel sessions (#231) */}
+                      {(() => {
+                        const channel = getSessionChannel(session);
+                        return channel ? (
+                          <span className="text-xs flex-shrink-0" title={`From ${channel}`}>
+                            {CHANNEL_ICONS[channel] || '🌐'}
+                          </span>
+                        ) : null;
+                      })()}
                       {isActive && editingSessionId !== session.id && (
                         <div className="w-2 h-2 bg-blue-300 rounded-full animate-pulse flex-shrink-0 shadow-sm shadow-blue-400/50" />
                       )}

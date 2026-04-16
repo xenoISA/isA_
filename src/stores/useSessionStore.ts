@@ -64,6 +64,9 @@ interface SessionState {
   sessions: ChatSession[];
   currentSessionId: string;
 
+  // Starred sessions (#199)
+  starredSessionIds: Set<string>;
+
   // Search state
   searchQuery: string;
 
@@ -102,7 +105,12 @@ interface SessionActions {
   saveToStorageDebounced: () => void;
   loadFromAPI: (userId: string, authHeaders?: any) => Promise<void>;
   saveToAPI: (userId: string, authHeaders?: any) => Promise<void>;
-  
+
+  // Star operations (#199)
+  starSession: (sessionId: string) => void;
+  unstarSession: (sessionId: string) => void;
+  isSessionStarred: (sessionId: string) => boolean;
+
   // Computed getters
   getCurrentSession: () => ChatSession | null;
   getSessionById: (sessionId: string) => ChatSession | null;
@@ -115,6 +123,11 @@ export const useSessionStore = create<SessionStore>()(
     // Initial state
     sessions: [],
     currentSessionId: 'default',
+    starredSessionIds: new Set<string>(
+      typeof window !== 'undefined'
+        ? (() => { try { return JSON.parse(localStorage.getItem('isa_starred_sessions') || '[]'); } catch { return []; } })()
+        : []
+    ),
     searchQuery: '',
     isLoading: false,
     error: null,
@@ -476,6 +489,27 @@ export const useSessionStore = create<SessionStore>()(
       }, STORAGE_SAVE_DEBOUNCE_MS);
     },
     
+    // Star operations (#199)
+    starSession: (sessionId) => {
+      set((state) => {
+        const next = new Set(state.starredSessionIds);
+        next.add(sessionId);
+        return { starredSessionIds: next };
+      });
+      try { localStorage.setItem('isa_starred_sessions', JSON.stringify([...get().starredSessionIds])); } catch {}
+      fetch(`/api/v1/sessions/${sessionId}/star`, { method: 'POST', credentials: 'include' }).catch(() => {});
+    },
+    unstarSession: (sessionId) => {
+      set((state) => {
+        const next = new Set(state.starredSessionIds);
+        next.delete(sessionId);
+        return { starredSessionIds: next };
+      });
+      try { localStorage.setItem('isa_starred_sessions', JSON.stringify([...get().starredSessionIds])); } catch {}
+      fetch(`/api/v1/sessions/${sessionId}/star`, { method: 'DELETE', credentials: 'include' }).catch(() => {});
+    },
+    isSessionStarred: (sessionId) => get().starredSessionIds.has(sessionId),
+
     // Computed getters
     getCurrentSession: () => {
       const { sessions, currentSessionId } = get();
@@ -583,6 +617,14 @@ export const useCurrentSession = () => useSessionStore(state => state.getCurrent
 export const useSessionSearchQuery = () => useSessionStore(state => state.searchQuery);
 export const useSessionLoading = () => useSessionStore(state => state.isLoading);
 export const useSessionError = () => useSessionStore(state => state.error);
+
+// Star selector hooks (#199)
+export const useStarredSessionIds = () => useSessionStore(state => state.starredSessionIds);
+export const useStarActions = () => useSessionStore(state => ({
+  starSession: state.starSession,
+  unstarSession: state.unstarSession,
+  isSessionStarred: state.isSessionStarred,
+}));
 
 // Additional selector hooks for compatibility
 export const useSessionCount = () => useSessionStore(state => state.sessions.length);

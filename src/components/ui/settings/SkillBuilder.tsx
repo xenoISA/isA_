@@ -2,7 +2,7 @@
  * SkillBuilder — Create and manage user-defined skills (#205)
  * Skills are repeatable workflows triggered by phrase or command.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 
 interface UserSkill {
   id: string;
@@ -15,16 +15,39 @@ interface UserSkill {
 
 const STORAGE_KEY = 'isa_user_skills';
 
-function loadSkills(): UserSkill[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+async function loadSkills(): Promise<UserSkill[]> {
+  const local: UserSkill[] = (() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+  })();
+  // Try API, merge with local (#205)
+  try {
+    const res = await fetch('/api/v1/skills', { credentials: 'include' });
+    if (res.ok) {
+      const remote: UserSkill[] = await res.json();
+      const ids = new Set(remote.map((s) => s.id));
+      return [...remote, ...local.filter((s) => !ids.has(s.id))];
+    }
+  } catch {}
+  return local;
 }
 
 function saveSkills(skills: UserSkill[]) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(skills)); } catch {}
+  // Fire-and-forget API sync (#205)
+  fetch('/api/v1/skills', {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(skills),
+  }).catch(() => {});
 }
 
 export const SkillBuilder: React.FC = () => {
-  const [skills, setSkills] = useState<UserSkill[]>(loadSkills);
+  const [skills, setSkills] = useState<UserSkill[]>([]);
+
+  // Load skills from API + localStorage on mount
+  useEffect(() => {
+    loadSkills().then(setSkills);
+  }, []);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

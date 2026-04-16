@@ -2,7 +2,7 @@
  * ConnectorMarketplace — Browse available integrations (#206)
  * Shows available MCP tools and connectors (Google, Slack, Notion, etc.)
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Connector {
   id: string;
@@ -13,7 +13,7 @@ interface Connector {
   connected: boolean;
 }
 
-const CONNECTORS: Connector[] = [
+const FALLBACK_CONNECTORS: Connector[] = [
   { id: 'google-workspace', name: 'Google Workspace', icon: '🔷', description: 'Gmail, Docs, Calendar, Drive', category: 'Productivity', connected: false },
   { id: 'slack', name: 'Slack', icon: '💬', description: 'Channels, messages, notifications', category: 'Communication', connected: false },
   { id: 'notion', name: 'Notion', icon: '📓', description: 'Pages, databases, wikis', category: 'Productivity', connected: false },
@@ -27,12 +27,37 @@ const CONNECTORS: Connector[] = [
 ];
 
 export const ConnectorMarketplace: React.FC = () => {
+  const [connectors, setConnectors] = useState<Connector[]>(FALLBACK_CONNECTORS);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+  const [installing, setInstalling] = useState<string | null>(null);
 
-  const categories = [...new Set(CONNECTORS.map(c => c.category))];
+  // Fetch from API, fall back to hardcoded (#206)
+  useEffect(() => {
+    fetch('/api/v1/marketplace/connectors', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data: Connector[]) => { if (Array.isArray(data) && data.length > 0) setConnectors(data); })
+      .catch(() => {}); // Keep fallback
+  }, []);
 
-  const filtered = CONNECTORS.filter(c =>
+  const handleConnect = async (id: string) => {
+    setInstalling(id);
+    try {
+      const res = await fetch('/api/v1/marketplace/connectors/install', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: id }),
+      });
+      if (res.ok) {
+        setConnectors((prev) => prev.map((c) => c.id === id ? { ...c, connected: true } : c));
+      }
+    } catch {}
+    setInstalling(null);
+  };
+
+  const categories = [...new Set(connectors.map(c => c.category))];
+
+  const filtered = connectors.filter(c =>
     (!search || c.name.toLowerCase().includes(search.toLowerCase()) || c.description.toLowerCase().includes(search.toLowerCase())) &&
     (!category || c.category === category)
   );
@@ -85,12 +110,15 @@ export const ConnectorMarketplace: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{c.description}</p>
-            <button className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors ${
+            <button
+              onClick={() => !c.connected && handleConnect(c.id)}
+              disabled={c.connected || installing === c.id}
+              className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors ${
               c.connected
                 ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}>
-              {c.connected ? 'Connected' : 'Connect'}
+              {c.connected ? 'Connected' : installing === c.id ? 'Installing...' : 'Connect'}
             </button>
           </div>
         ))}

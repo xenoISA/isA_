@@ -20,11 +20,25 @@ export const ConversationShareDialog: React.FC<ConversationShareDialogProps> = (
   const generateLink = useCallback(async () => {
     setLoading(true);
     try {
-      // Will connect to isA_user sharing API (#261) when ready
-      // For now, generate a placeholder link
+      // Try real sharing API first (#204)
+      const res = await fetch(`/api/v1/sessions/${sessionId}/shares`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ permissions: 'view-only' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShareUrl(data.url || `${window.location.origin}/shared/${data.share_token}`);
+      } else {
+        // Fallback: generate local placeholder link
+        const token = btoa(sessionId).replace(/=/g, '');
+        setShareUrl(`${window.location.origin}/shared/${token}`);
+      }
+    } catch {
+      // API not available — use local fallback
       const token = btoa(sessionId).replace(/=/g, '');
-      const url = `${window.location.origin}/shared/${token}`;
-      setShareUrl(url);
+      setShareUrl(`${window.location.origin}/shared/${token}`);
     } finally {
       setLoading(false);
     }
