@@ -303,17 +303,138 @@ These existing capabilities set isA_ apart and should be preserved/enhanced, not
 
 #### Out of Scope
 
-- Mobile native apps (iOS/Android)
-- Desktop native app (Electron)
 - Chrome extension
 - Computer use / screen control
-- Dispatch (phone → desktop)
+
+## Cross-Platform Strategy
+
+> ADR: `docs/architecture/ADR-001-cross-platform-framework.md`
+
+isA_ targets **web + desktop + mobile** from a shared SDK core. Framework selection prioritizes production readiness, ecosystem consistency, and code reuse over single-framework purity.
+
+### Architecture
+
+```
+                    @isa/core + @isa/transport + @isa/hooks
+                    (shared business logic, auth, streaming)
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+         @isa/ui-web    @isa/ui-native    @isa/theme
+              │               │           (shared tokens)
+       ┌──────┴──────┐    ┌──┴───┐
+       │             │    │      │
+   Next.js      Electron  Expo   Expo
+   (web)       (desktop)  (iOS)  (Android)
+```
+
+### Shell per Platform
+
+| Platform | Shell | Runtime | Rationale |
+|----------|-------|---------|-----------|
+| Web | Next.js 14 | Browser | Existing, Vercel-deployed |
+| Desktop (Mac/Win/Linux) | Electron | Chromium + Node.js | Industry standard (Claude, ChatGPT, Cursor). Wraps existing web code. Node.js enables local MCP servers in-process |
+| iOS / Android | Expo (React Native) | Native | isA_Frame already uses Expo/RN. `@isa/ui-native` already exists. Native rendering for mobile UX quality |
+| isA_IDE | Tauri v2 | System WebView + Rust | Already shipped, lightweight dev tool. Stays as-is |
+
+### Shared Code Matrix
+
+| Layer | Web | Desktop | Mobile |
+|-------|:---:|:-------:|:------:|
+| @isa/core (auth, services, types) | Yes | Yes | Yes |
+| @isa/transport (HTTP, SSE, MQTT) | Yes | Yes | Yes |
+| @isa/hooks | Yes | Yes | Yes |
+| @isa/theme (design tokens) | Yes | Yes | Yes |
+| @isa/ui-web (React DOM) | Yes | Yes | No |
+| @isa/ui-native (React Native) | No | No | Yes |
+| @isa/desktop (Electron shell) | No | Yes | No |
+
+### Decision Rationale
+
+- **Tauri v2 rejected for mobile**: iOS support is alpha-quality (broken circular builds, sparse plugin ecosystem). Android is early. See ADR-001.
+- **Electron chosen over Tauri for desktop**: Production-proven (Claude Desktop, ChatGPT, Cursor all use Electron). `NativeAppUtils` already has Electron detection. Node.js runtime enables local MCP tool servers. Larger plugin ecosystem for system-level features.
+- **Expo/RN chosen for mobile**: isA_Frame (Expo SDK 54 + RN 0.81) already validates this path. `@isa/ui-native` already exists and is consumed. EAS Build handles App Store/Play Store distribution.
+- **Flutter rejected**: Would require full rewrite from React/TypeScript to Dart. Incompatible with existing @isa SDK.
+
+### Epic: Desktop Native App — Companion Beyond the Browser
+
+**Priority**: P1-High
+**Milestone**: v1.1 — Multi-Platform
+**Status**: Ready for design
+
+isA_ Desktop isn't just a web app in a window. It's an always-on AGI companion that lives on your machine — with deep local integration that cloud-only apps like Claude Desktop can't offer.
+
+#### Differentiators vs Claude Desktop
+
+| Capability | Claude Desktop | isA_ Desktop |
+|-----------|---------------|-------------|
+| Local file system | Drag-drop only | Deep integration — watch folders, index local docs |
+| Background agents | None | Autonomous agents surface results proactively |
+| System tray companion | Quit only | Always-on — quick-launch, status, upcoming tasks |
+| Local model inference | None | Route to Ollama/LM Studio for offline/private queries |
+| MCP tool servers | Built-in client | Client + local server hosting (Node.js in-process) |
+| Cross-channel continuity | None | Telegram/Discord/Slack threads continue seamlessly |
+| Global hotkey | None | Spotlight-style Mate input from anywhere |
+| Clipboard intelligence | None | Context-aware actions on copied content |
+| Screenshot analysis | None | Capture + analyze via Mate's vision |
+| Calendar/task native sync | None | System calendar sync, menu bar widget |
+| Offline mode | None | SQLite cache + local model fallback |
+
+#### Requirements
+
+**Phase 1 — Foundation (P0)**
+1. **Electron scaffold** — Tauri-style build for Mac (ARM + Intel), Windows (x64), Linux (x64). Platform installers (.dmg, .msi, .AppImage). Auto-updater.
+2. **Web app embedding** — Wrap isA_ Next.js (standalone build or dev server) in Electron BrowserWindow. All existing features work unchanged.
+3. **Global hotkey** — Cmd+Shift+Space summons a floating Mate chat input (spotlight-style). Escape dismisses. "Open in isA_" expands to main window.
+
+**Phase 2 — Local Intelligence (P1)**
+4. **System tray companion** — Menu bar icon with status (online/busy/offline). Click opens quick panel: tasks, agents, recent chats. Badge count for notifications.
+5. **Local filesystem access** — Sandboxed folder permissions. Mate can list, read, search files in permitted folders. File references in chat are clickable.
+6. **Local model routing** — Configure Ollama/LM Studio endpoints. Model selector includes local models. Auto-fallback when offline. Clear local/cloud indicator.
+7. **Screenshot capture + analysis** — System shortcut to capture screen region, send to Mate for vision analysis.
+8. **Native OS notifications** — Agent completions, scheduled tasks, cross-channel messages as OS notifications. Click navigates to source.
+9. **Secure auth (OS keychain)** — Refresh token in Keychain (macOS), DPAPI (Windows), Secret Service (Linux). Access token in memory only.
+10. **Local MCP server hosting** — Run MCP tool servers in Electron's Node.js process. Mate connects to local tools alongside cloud tools.
+
+**Phase 3 — Ambient Companion (P2)**
+11. **Clipboard intelligence** — Watch clipboard, offer context-aware actions (explain code, summarize text, translate).
+12. **Deep links** — `isaapp://` URI scheme. Links open app and navigate to session/resource.
+13. **Offline mode** — SQLite cache for conversation history. Sync on reconnect. Local model fallback for basic queries.
+14. **Calendar/task menu bar widget** — Upcoming events and tasks in menu bar dropdown. Syncs with Mate's scheduler.
+15. **Cross-channel continuity** — Telegram/Discord/Slack conversations visible and continuable in desktop app.
+16. **Auto-updater + crash reporting** — Electron autoUpdater with staged rollout. Sentry for crash reports. Analytics opt-out in settings.
+
+#### Cross-Repo Impact
+
+| Repo | Role |
+|------|------|
+| isA_Desktop (NEW) | Electron shell, native integrations, platform builds |
+| isA_App_SDK | New `@isa/desktop` package for Electron-specific hooks and utils |
+| isA_ | Standalone build configuration for Electron embedding |
+| isA_Model | Local model routing API (Ollama/LM Studio endpoint config) |
+| isA_MCP | Local MCP server hosting protocol |
+
+#### Out of Scope
+
+- Mobile native apps (separate epic: isA_Mobile via Expo/RN)
+- isA_IDE changes (stays Tauri v2)
+- Electron → Tauri migration (not planned; revisit if Tauri mobile matures)
+
+### Epic: Mobile Native App — Companion in Your Pocket
+
+**Priority**: P2-Medium
+**Milestone**: v1.2 — Mobile
+**Status**: Planned (blocked by Desktop Phase 1 completion for SDK stabilization)
+
+Expo/React Native app consuming `@isa/ui-native` (proven by isA_Frame). Separate epic to be specced when desktop Phase 1 ships.
 
 ## Technical Constraints
 
 - Next.js 14 with pages router
 - Frontend SDK: @isa/core, @isa/transport (from isA_App_SDK)
+- Desktop shell: Electron (Mac/Win/Linux)
+- Mobile shell: Expo/React Native (iOS/Android)
 - Backend: APISIX gateway → microservices
 - Auth: Custom JWT via gateway (Auth0 removed)
 - Analytics: RudderStack
-- Deployment target: Vercel (marketing) + containerized (platform)
+- Deployment target: Vercel (marketing) + containerized (platform) + Electron (desktop) + EAS Build (mobile)
