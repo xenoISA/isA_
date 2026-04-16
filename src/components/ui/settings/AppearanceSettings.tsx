@@ -23,7 +23,9 @@ const fontOptions: { value: ChatFont; label: string }[] = [
 ];
 
 export const AppearanceSettings: React.FC = () => {
-  const { preference, setTheme } = useThemeContext();
+  const themeCtx = useThemeContext();
+  const preference = themeCtx.preference;
+  const setTheme = themeCtx.setPreference ?? (themeCtx as any).setTheme;
   const { font, setFont, sendBehavior, setSendBehavior } = useAppearanceSettings();
 
   return (

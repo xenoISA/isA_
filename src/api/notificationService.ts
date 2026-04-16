@@ -30,6 +30,10 @@ import { BaseApiService } from './BaseApiService';
 import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { logger, LogCategory, createLogger } from '../utils/logger';
 
+// Re-export the SDK-aligned adapter for new consumers (#161)
+export * as NotificationAdapter from './adapters/NotificationAdapter';
+export type { NotificationSendRequest, NotificationPreferences as SDKNotificationPreferences } from './adapters/NotificationAdapter';
+
 import type {
   Notification,
   NotificationListResponse,
