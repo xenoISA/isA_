@@ -142,20 +142,20 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   return (
     <div className={`flex flex-col items-center justify-center min-h-[60vh] px-4 sm:px-6 lg:px-8 py-8 md:py-16 ${className}`}>
       <div className="w-full max-w-2xl mx-auto">
-        {/* Mate avatar glyph */}
+        {/* Mate avatar — clean circle, no gradient */}
         <div className="mb-6 flex justify-center md:justify-start">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#7c8cf5] to-[#a78bfa] flex items-center justify-center text-white text-xl font-bold font-display shadow-lg shadow-[#7c8cf5]/20">
+          <div className="w-12 h-12 rounded-full bg-[#111111] dark:bg-gray-100 flex items-center justify-center text-white dark:text-[#111111] text-lg font-bold shadow-sm">
             M
           </div>
         </div>
 
-        {/* Heading — Mate voice */}
+        {/* Heading — warm, personal greeting */}
         <div className="mb-8 md:mb-12 text-center md:text-left">
           <h1
-            className="text-2xl sm:text-3xl md:text-4xl font-display font-semibold mb-3 text-balance"
-            style={{ color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: '1.15' }}
+            className="text-2xl sm:text-3xl md:text-[2.25rem] font-semibold mb-3 text-balance"
+            style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: '1.2' }}
           >
-            Hey, what are we working on?
+            What can I help with?
           </h1>
           <p
             className="text-sm sm:text-base leading-relaxed max-w-[50ch] text-pretty font-display"
@@ -172,16 +172,14 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
               key={widget.id}
               className="flex items-start gap-3 p-4 rounded-xl text-left cursor-pointer group transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
               style={{
-                background: 'var(--color-neutral-800)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--glass-secondary)',
+                border: '1px solid var(--glass-border)',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
-                e.currentTarget.style.background = 'var(--color-neutral-700)';
+                e.currentTarget.style.borderColor = 'var(--glass-border-hover)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                e.currentTarget.style.background = 'var(--color-neutral-800)';
+                e.currentTarget.style.borderColor = 'var(--glass-border)';
               }}
               onClick={() => handleWidgetClick(widget)}
             >

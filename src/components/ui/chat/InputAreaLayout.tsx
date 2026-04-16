@@ -423,12 +423,12 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
       <div className="mb-2 px-1 flex items-center gap-2">
         <span className={`text-xs font-display ${!isOnline ? 'text-white/30' : 'text-[var(--mate-accent)]/60'}`}>
           {isLoading
-            ? 'Mate is thinking...'
+            ? 'Thinking...'
             : !isOnline
-              ? 'Mate is offline'
+              ? 'Connecting...'
               : isWorking
-                ? `Mate is working on ${activeDelegationCount} task${activeDelegationCount !== 1 ? 's' : ''}`
-                : 'Mate is here'}
+                ? `Working on ${activeDelegationCount} task${activeDelegationCount !== 1 ? 's' : ''}...`
+                : ''}
         </span>
         {isOnline && channels.length > 0 && !isLoading && (
           <span className="text-xs text-white/30">
