@@ -16,24 +16,29 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { 
-  TaskItem, 
-  TaskStatus, 
-  TaskAction, 
-  TaskProgress, 
-  TaskResult, 
-  TaskType, 
+import {
+  TaskItem,
+  TaskStatus,
+  TaskAction,
+  TaskProgress,
+  TaskResult,
+  TaskType,
   TaskPriority,
   TaskManagerState,
   TaskActionEvent
 } from '../types/taskTypes';
 import { logger, LogCategory } from '../utils/logger';
+import * as TaskAdapter from '../api/adapters/TaskAdapter';
 
 // ================================================================================
 // 任务管理Actions接口
 // ================================================================================
 
 interface TaskActions {
+  // Backend sync
+  syncTasks: () => Promise<void>;
+  addTask: (task: { id: string; title: string; description?: string; status: string; dueAt?: string; createdAt: string }) => void;
+
   // 任务创建和管理
   createTask: (title: string, type: TaskType, metadata?: Record<string, any>) => string;
   updateTask: (taskId: string, updates: Partial<TaskItem>) => void;
@@ -93,7 +98,70 @@ export const useTaskStore = create<TaskStore>()(
     failedTasksCount: 0,
     showTaskPanel: false,
     selectedTaskId: undefined,
-    
+
+    // ================================================================================
+    // Backend sync (#160)
+    // ================================================================================
+
+    syncTasks: async () => {
+      try {
+        const backendTasks = await TaskAdapter.getTasks();
+        const mapped: TaskItem[] = backendTasks.map((bt) => ({
+          id: bt.id,
+          title: bt.title,
+          type: 'background' as TaskType,
+          status: (bt.status === 'in_progress' ? 'running' : bt.status) as TaskStatus,
+          priority: (bt.priority || 'normal') as TaskPriority,
+          progress: { currentStep: 0, totalSteps: 1, percentage: bt.status === 'completed' ? 100 : 0 },
+          createdAt: bt.createdAt,
+          updatedAt: bt.updatedAt || bt.createdAt,
+          completedAt: bt.completedAt,
+          canPause: false,
+          canResume: false,
+          canCancel: bt.status === 'pending' || bt.status === 'in_progress',
+          canRetry: bt.status === 'failed',
+          metadata: { ...bt.metadata, description: bt.description, dueAt: bt.dueAt, synced: true },
+        }));
+        set({
+          tasks: mapped,
+          totalTasks: mapped.length,
+          activeTasks: mapped.filter((t) => ['running', 'pending'].includes(t.status)),
+          completedTasks: mapped.filter((t) => ['completed', 'failed', 'cancelled'].includes(t.status)),
+          completedTasksCount: mapped.filter((t) => t.status === 'completed').length,
+          failedTasksCount: mapped.filter((t) => t.status === 'failed').length,
+        });
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Tasks synced from backend', { count: mapped.length });
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to sync tasks from backend', { error: err });
+      }
+    },
+
+    addTask: (task) => {
+      const newTask: TaskItem = {
+        id: task.id,
+        title: task.title,
+        type: 'background' as TaskType,
+        status: (task.status === 'in_progress' ? 'running' : task.status || 'pending') as TaskStatus,
+        priority: 'normal',
+        progress: { currentStep: 0, totalSteps: 1, percentage: 0 },
+        createdAt: task.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        canPause: false,
+        canResume: false,
+        canCancel: true,
+        canRetry: false,
+        metadata: { description: task.description, dueAt: task.dueAt },
+      };
+      set((state) => ({
+        tasks: [...state.tasks, newTask],
+        totalTasks: state.totalTasks + 1,
+        activeTasks: [...state.activeTasks, newTask],
+      }));
+      // Fire-and-forget backend create
+      TaskAdapter.createTask({ title: task.title, description: task.description, dueAt: task.dueAt }).catch(() => {});
+      logger.info(LogCategory.TASK_MANAGEMENT, 'Task added (from chat)', { taskId: task.id });
+    },
+
     // ================================================================================
     // 任务创建和管理
     // ================================================================================
