@@ -18,6 +18,9 @@ export function useSidePanelContext() {
   const contextData = useSidePanelStore((s) => s.contextData);
 
   useEffect(() => {
+    // Don't auto-reset when the artifact sandbox is open (user triggered manually)
+    if (panelContext === 'artifact') return;
+
     // Check for active delegations (tasks that are running)
     const activeDelegations = currentTasks.filter(
       (t: any) => t.status === 'running' || t.status === 'in_progress' || t.status === 'pending'
@@ -58,7 +61,7 @@ export function useSidePanelContext() {
 
     // Default
     setPanelContext('idle');
-  }, [currentTasks, messages, setPanelContext]);
+  }, [currentTasks, messages, panelContext, setPanelContext]);
 
   return { panelContext, contextData };
 }

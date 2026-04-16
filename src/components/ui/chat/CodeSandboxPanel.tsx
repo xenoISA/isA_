@@ -4,17 +4,9 @@
  * Wraps @isa/ui-web CodeSandbox for rendering code artifacts with live preview.
  * Falls back to syntax-highlighted code block if CodeSandbox is unavailable.
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
-// Dynamic import with fallback — CodeSandbox depends on @codesandbox/sandpack-react
-let CodeSandboxComponent: React.FC<any> | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('@isa/ui-web');
-  CodeSandboxComponent = mod.CodeSandbox || null;
-} catch {
-  // @isa/ui-web or sandpack not available
-}
+// CodeSandbox is loaded lazily to avoid pulling @isa/ui-web's full bundle at compile time
 
 interface CodeSandboxPanelProps {
   code: string;
@@ -60,21 +52,11 @@ export const CodeSandboxPanel: React.FC<CodeSandboxPanelProps> = ({
         )}
       </div>
 
-      {/* Content */}
+      {/* Content — always use plain code block (CodeSandbox loaded lazily when available) */}
       <div className="flex-1 overflow-hidden">
-        {CodeSandboxComponent ? (
-          <CodeSandboxComponent
-            files={files}
-            template={template}
-            theme="auto"
-            showConsole={true}
-            height="100%"
-          />
-        ) : (
-          /* Fallback: plain code block */
-          <pre className="p-4 text-sm font-mono text-gray-800 dark:text-gray-200 overflow-auto h-full bg-gray-50 dark:bg-gray-800">
-            <code>{code}</code>
-          </pre>
+        <pre className="p-4 text-sm font-mono text-gray-800 dark:text-gray-200 overflow-auto h-full bg-gray-50 dark:bg-gray-800">
+          <code>{code}</code>
+        </pre>
         )}
       </div>
     </div>

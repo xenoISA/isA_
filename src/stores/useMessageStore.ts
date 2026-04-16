@@ -77,6 +77,9 @@ export interface MessageActions {
   // Memory recall
   attachMemoryRecall: (messageId: string, recall: MemoryRecallData) => void;
 
+  // Research steps (#208)
+  attachResearchStep: (messageId: string, step: { id: string; type: 'query' | 'source' | 'analysis' | 'citation'; content: string; url?: string; status: 'pending' | 'active' | 'complete' }) => void;
+
   // HIL
   setHILStatus: (status: 'idle' | 'waiting_for_human' | 'processing_response' | 'error') => void;
   setCurrentHILInterrupt: (interrupt: HILInterruptDetectedEvent | null) => void;
@@ -309,6 +312,40 @@ export const useMessageStore = create<MessageStore>()(
       logger.info(LogCategory.CHAT_FLOW, 'Memory recall attached to message', {
         messageId,
         memoryType: recall.memoryType,
+      });
+    },
+
+    // -------------------------------------------------------------------
+    // Research steps (#208)
+    // -------------------------------------------------------------------
+
+    attachResearchStep: (messageId, step) => {
+      set((state) => {
+        const idx = state.messages.findIndex(m => m.id === messageId);
+        if (idx < 0) return state;
+
+        const msg = state.messages[idx];
+        if (msg.type !== 'regular') return state;
+
+        const existing = (msg as import('../types/chatTypes').RegularMessage).researchSteps ?? [];
+        // Update existing step if same id, otherwise append
+        const existingIdx = existing.findIndex(s => s.id === step.id);
+        let updated: typeof existing;
+        if (existingIdx >= 0) {
+          updated = [...existing];
+          updated[existingIdx] = step;
+        } else {
+          updated = [...existing, step];
+        }
+        const newMsg = { ...msg, researchSteps: updated };
+        const newMessages = [...state.messages];
+        newMessages[idx] = newMsg;
+        return { messages: newMessages };
+      });
+      logger.info(LogCategory.CHAT_FLOW, 'Research step attached to message', {
+        messageId,
+        stepId: step.id,
+        stepType: step.type,
       });
     },
 

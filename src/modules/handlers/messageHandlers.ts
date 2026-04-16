@@ -6,11 +6,13 @@
  */
 import { useChatStore } from '../../stores/useChatStore';
 import { useMessageStore } from '../../stores/useMessageStore';
+import { useCustomInstructionsStore } from '../../stores/useCustomInstructionsStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
 import { ArtifactMessage } from '../../types/chatTypes';
 import { AppId } from '../../types/appTypes';
 import { isDelegationTool } from '../../constants/delegationTeams';
+import { useSidePanelStore } from '../../stores/useSidePanelStore';
 
 const log = createLogger('ChatModule:Message');
 
@@ -186,12 +188,16 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
         // Include selected model in the request (wiring gap fix — #194)
         const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('isa_selected_model') : null;
+        // Include custom instructions if the user has set them (#197)
+        const customInstructions = useCustomInstructionsStore.getState().instructions || undefined;
+
         const matePayload: Record<string, any> = { session_id: enrichedMetadata.session_id };
         if (selectedModel) matePayload.model = selectedModel;
+        if (customInstructions) matePayload.custom_instructions = customInstructions;
 
         const sendFn = useMate
           ? chatService.sendMessageViaMate.bind(chatService, content, matePayload, token)
-          : chatService.sendMessage.bind(chatService, content, { ...enrichedMetadata, ...(selectedModel ? { model: selectedModel } : {}) }, token);
+          : chatService.sendMessage.bind(chatService, content, { ...enrichedMetadata, ...(selectedModel ? { model: selectedModel } : {}), ...(customInstructions ? { custom_instructions: customInstructions } : {}) }, token);
 
         await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
@@ -336,6 +342,19 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
     if (message.type === 'artifact') {
       const artifactMessage = message as ArtifactMessage;
+      const { contentType, content, metadata } = artifactMessage.artifact;
+
+      // Code artifacts open in the CodeSandbox side panel
+      if (contentType === 'code') {
+        useSidePanelStore.getState().setPanelContext('artifact', {
+          code: typeof content === 'string' ? content : JSON.stringify(content),
+          language: metadata?.language || 'javascript',
+          filename: metadata?.filename || 'untitled',
+        });
+        setShowRightSidebar(true);
+        return;
+      }
+
       const widgetType = artifactMessage.artifact.widgetType;
 
       const widgetToAppMap = {

@@ -183,7 +183,9 @@ function createChatServiceCallbacks(
               thumbnail: artifact.thumbnail,
               metadata: {
                 processingTime: Date.now(),
-                createdBy: 'widget'
+                createdBy: 'widget',
+                ...(artifact.url ? { url: artifact.url } : {}),
+                ...(artifact.metadata || {}),
               }
             }
           };

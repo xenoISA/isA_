@@ -80,6 +80,9 @@ import { createHILHandlers } from './handlers/hilHandlers';
 import { createWidgetHandlers, mapPluginTypeToContentType } from './handlers/widgetHandlers';
 import { createMessageHandlers } from './handlers/messageHandlers';
 
+// Custom instructions store — pre-fetch so instructions are ready at send time (#197)
+import { useCustomInstructionsStore } from '../stores/useCustomInstructionsStore';
+
 // 🆕 Autonomous background message listener (#126)
 import { mateAutonomousListener } from '../api/mateAutonomousListener';
 

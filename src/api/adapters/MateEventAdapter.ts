@@ -256,6 +256,28 @@ case 'memory_recall': {
       break;
     }
 
+    case 'research_step': {
+      // Multi-step research progress from Mate (#208)
+      // Maps to a custom_event that the message store attaches as researchSteps.
+      const rsMeta = event.metadata || {};
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        message_id: currentMessageId || undefined,
+        metadata: {
+          custom_type: 'research_step',
+          step_id: rsMeta.step_id || generateId('rs'),
+          step_type: rsMeta.step_type || 'analysis',
+          content: event.content || '',
+          url: rsMeta.url,
+          status: rsMeta.status || 'active',
+        },
+      });
+      break;
+    }
+
     case 'schedule_created': {
       // A new scheduled job was created by Mate
       results.push({
@@ -347,12 +369,14 @@ export function createMateStreamContext(sessionId: string): {
 /**
  * Build the request payload for Mate's /v1/chat endpoint.
  */
-export function buildMateRequest(message: string, sessionId?: string): {
+export function buildMateRequest(message: string, sessionId?: string, customInstructions?: string): {
   prompt: string;
   session_id?: string;
+  custom_instructions?: string;
 } {
   return {
     prompt: message,
     ...(sessionId && { session_id: sessionId }),
+    ...(customInstructions && { custom_instructions: customInstructions }),
   };
 }

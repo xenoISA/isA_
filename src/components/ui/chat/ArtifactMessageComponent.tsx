@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ArtifactMessage } from '../../../types/chatTypes';
 import { ContentRenderer, StatusRenderer, Button } from '../../shared';
+import { FileCreationPanel } from './FileCreationPanel';
 
 /**
  * Pure UI component for displaying new Artifact Messages
@@ -35,6 +36,45 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   }, [artifact.id]);
+
+  // Derive downloadable files from artifact metadata (#201)
+  const downloadableFiles = useMemo(() => {
+    const files: Array<{ id: string; filename: string; type: string; size?: number; url: string }> = [];
+    const meta = artifact.metadata;
+
+    // Single file URL in metadata (from ArtifactCreatedEvent.artifact.url)
+    if (meta?.url && typeof meta.url === 'string') {
+      const url = meta.url as string;
+      const filename = (meta.filename as string) || url.split('/').pop() || 'download';
+      const ext = filename.split('.').pop()?.toLowerCase() || '';
+      files.push({
+        id: artifact.id,
+        filename,
+        type: ext,
+        size: typeof meta.fileSize === 'number' ? meta.fileSize : undefined,
+        url,
+      });
+    }
+
+    // Array of files in metadata (e.g. metadata.files)
+    if (Array.isArray(meta?.files)) {
+      for (const f of meta.files as Array<Record<string, unknown>>) {
+        if (f && typeof f.url === 'string') {
+          const fname = (f.filename as string) || (f.name as string) || (f.url as string).split('/').pop() || 'download';
+          const ext = fname.split('.').pop()?.toLowerCase() || '';
+          files.push({
+            id: (f.id as string) || `${artifact.id}-${files.length}`,
+            filename: fname,
+            type: ext,
+            size: typeof f.size === 'number' ? f.size : undefined,
+            url: f.url as string,
+          });
+        }
+      }
+    }
+
+    return files;
+  }, [artifact.id, artifact.metadata]);
 
   return (
     <div className="my-4 max-w-sm">
@@ -239,9 +279,42 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
           </div>
         )}
         
+        {/* Code content - Syntax-highlighted code block */}
+        {artifact.contentType === 'code' && artifact.content !== 'Loading...' && (
+          <div>
+            <div className="rounded-lg mb-2 max-h-96 overflow-y-auto" style={{
+              background: 'var(--glass-primary)',
+              border: '1px solid var(--glass-border)'
+            }}>
+              <div className="flex items-center justify-between px-3 py-1.5 border-b" style={{ borderColor: 'var(--glass-border)' }}>
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" style={{ color: 'var(--accent-soft)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {artifact.metadata?.language || 'Code'}
+                  </span>
+                </div>
+                <Button
+                  onClick={onReopen}
+                  variant="ghost"
+                  size="xs"
+                  style={{ background: 'transparent', color: 'var(--accent-soft)', border: 'none' }}
+                  title="Run in sandbox"
+                >
+                  Run
+                </Button>
+              </div>
+              <pre className="p-3 text-xs font-mono overflow-x-auto" style={{ color: 'var(--text-primary)' }}>
+                <code>{typeof artifact.content === 'string' ? artifact.content : JSON.stringify(artifact.content, null, 2)}</code>
+              </pre>
+            </div>
+          </div>
+        )}
+
         {/* Fallback for unknown content types or empty content */}
-        {artifact.content !== 'Loading...' && 
-         !['image', 'data', 'text', 'analysis', 'knowledge', 'search_results'].includes(artifact.contentType) && (
+        {artifact.content !== 'Loading...' &&
+         !['image', 'data', 'text', 'code', 'analysis', 'knowledge', 'search_results'].includes(artifact.contentType) && (
           <div className="text-center py-4">
             <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
               Unknown content type: {artifact.contentType}
@@ -261,6 +334,11 @@ export const ArtifactMessageComponent: React.FC<ArtifactMessageComponentProps> =
           </div>
         )}
       </div>
+
+      {/* Downloadable files panel (#201) */}
+      {downloadableFiles.length > 0 && (
+        <FileCreationPanel files={downloadableFiles} />
+      )}
 
       <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
         Created: {new Date(artifactMessage.timestamp).toLocaleString()}

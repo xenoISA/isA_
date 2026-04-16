@@ -82,6 +82,14 @@ export interface RegularMessage extends BaseMessage {
     status: 'pending' | 'active' | 'complete';
     sources?: string[];
   }>;
+  // Research steps — present when the assistant is performing multi-step research (#208)
+  researchSteps?: Array<{
+    id: string;
+    type: 'query' | 'source' | 'analysis' | 'citation';
+    content: string;
+    url?: string;
+    status: 'pending' | 'active' | 'complete';
+  }>;
   // Cross-channel origin — present when the message originated from another channel
   channelOrigin?: {
     channel: string; // 'telegram' | 'discord' | 'slack' | 'whatsapp' | 'web' etc
@@ -99,7 +107,7 @@ export interface ArtifactMessage extends BaseMessage {
     widgetType: string; // 'dream', 'hunt', 'omni', etc.
     widgetName?: string; // 显示名称
     version: number;
-    contentType: 'image' | 'text' | 'data' | 'analysis' | 'knowledge' | 'search_results';
+    contentType: 'image' | 'text' | 'code' | 'data' | 'analysis' | 'knowledge' | 'search_results';
     content: any; // 工件的实际内容 - can be 'Loading...' during streaming
     metadata?: {
       originalInput?: string;

@@ -52,6 +52,7 @@ import { EditableMessage } from './EditableMessage';
 import { BranchNavigator } from './BranchNavigator';
 import { SkillActivationCard } from './SkillActivationCard';
 import type { SkillActivationStatus } from './SkillActivationCard';
+import { ResearchModePanel } from './ResearchModePanel';
 import { useMessageStore } from '../../../stores/useMessageStore';
 
 // MessageActions will be implemented later
@@ -750,6 +751,16 @@ export const MessageList = memo<MessageListProps>(({
                 ...s,
                 timestamp: new Date(s.timestamp),
               }))}
+            />
+          </div>
+        )}
+
+        {/* Research Mode — multi-step research progress inline (#208) */}
+        {message.role === 'assistant' && message.type === 'regular' && (message as RegularMessage).researchSteps && (message as RegularMessage).researchSteps!.length > 0 && (
+          <div className="ml-12 mb-3">
+            <ResearchModePanel
+              steps={(message as RegularMessage).researchSteps!}
+              isActive={(message as RegularMessage).researchSteps!.some(s => s.status === 'active' || s.status === 'pending')}
             />
           </div>
         )}

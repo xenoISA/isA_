@@ -4,11 +4,13 @@
  */
 import React from 'react';
 import { useSidePanelContext } from '../../../hooks/useSidePanelContext';
+import { useSidePanelStore } from '../../../stores/useSidePanelStore';
 import { SidePanelIdle } from './SidePanelIdle';
 import { SidePanelDelegation } from './SidePanelDelegation';
 import { SidePanelMemory } from './SidePanelMemory';
 import { SidePanelKnowledge } from './SidePanelKnowledge';
 import { SidePanelChannels } from './SidePanelChannels';
+import { CodeSandboxPanel } from '../chat/CodeSandboxPanel';
 
 export const ContextPanel: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { panelContext, contextData } = useSidePanelContext();
@@ -23,6 +25,17 @@ export const ContextPanel: React.FC<{ className?: string }> = ({ className = '' 
         return <SidePanelKnowledge />;
       case 'channels':
         return <SidePanelChannels />;
+      case 'artifact':
+        return (
+          <CodeSandboxPanel
+            code={contextData?.code ?? ''}
+            language={contextData?.language}
+            filename={contextData?.filename}
+            onClose={() => {
+              useSidePanelStore.getState().setPanelContext('idle');
+            }}
+          />
+        );
       case 'idle':
       default:
         return <SidePanelIdle />;

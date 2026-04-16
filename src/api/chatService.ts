@@ -92,6 +92,7 @@ export class ChatService {
       collaborative_enabled?: boolean;
       confidence_threshold?: number;
       proactive_predictions?: any;
+      custom_instructions?: string;
     },
     token: string,
     callbacks: ChatServiceCallbacks,
@@ -101,7 +102,7 @@ export class ChatService {
     
     try {
       // 构建标准的Chat API payload (符合 how_to_chat.md)
-      const payload = {
+      const payload: Record<string, unknown> = {
         message,
         user_id: metadata.user_id,
         session_id: metadata.session_id,
@@ -110,7 +111,8 @@ export class ChatService {
         proactive_enabled: metadata.proactive_enabled || false,
         collaborative_enabled: metadata.collaborative_enabled || false,
         confidence_threshold: metadata.confidence_threshold || 0.7,
-        proactive_predictions: metadata.proactive_predictions || null
+        proactive_predictions: metadata.proactive_predictions || null,
+        ...(metadata.custom_instructions ? { custom_instructions: metadata.custom_instructions } : {}),
       };
 
       // Use centralized gateway Chat API endpoint
@@ -470,6 +472,30 @@ export class ChatService {
         break;
       }
 
+      case 'research_step': {
+        // Multi-step research progress — attach to current streaming message (#208)
+        const { useMessageStore: useMsgStoreRS } = require('../stores/useMessageStore');
+        const msgStoreRS = useMsgStoreRS.getState();
+        const streamingMsgRS = [...msgStoreRS.messages].reverse().find(
+          (m: any) => m.role === 'assistant' && m.isStreaming
+        );
+        const rsMsgId = streamingMsgRS?.id;
+        if (rsMsgId) {
+          msgStoreRS.attachResearchStep(rsMsgId, {
+            id: customData.step_id || event.metadata?.step_id || `rs_${Date.now()}`,
+            type: customData.step_type || event.metadata?.step_type || 'analysis',
+            content: customData.content || event.metadata?.content || '',
+            url: customData.url || event.metadata?.url,
+            status: customData.status || event.metadata?.status || 'active',
+          });
+        }
+        log.info('Research step event dispatched', {
+          stepType: customData.step_type || event.metadata?.step_type,
+          messageId: rsMsgId,
+        });
+        break;
+      }
+
       case 'autonomous_result': {
         // Background autonomous event received via the active chat stream.
         // Dispatch directly to the chat store so it appears in the timeline.
@@ -500,14 +526,14 @@ export class ChatService {
    */
   async sendMessageViaMate(
     message: string,
-    metadata: { session_id: string },
+    metadata: { session_id: string; custom_instructions?: string; model?: string },
     token: string,
     callbacks: ChatServiceCallbacks
   ): Promise<void> {
     log.info('Sending message via Mate backend');
 
     try {
-      const payload = buildMateRequest(message, metadata.session_id);
+      const payload = buildMateRequest(message, metadata.session_id, metadata.custom_instructions);
       const endpoint = GATEWAY_ENDPOINTS.MATE.CHAT;
 
       const transport = createSSETransport({

@@ -3,7 +3,7 @@
  */
 import { create } from 'zustand';
 
-export type PanelContext = 'idle' | 'delegation' | 'memory' | 'knowledge' | 'schedule' | 'task-progress' | 'channels';
+export type PanelContext = 'idle' | 'delegation' | 'memory' | 'knowledge' | 'schedule' | 'task-progress' | 'channels' | 'artifact';
 
 export interface SidePanelState {
   panelContext: PanelContext;

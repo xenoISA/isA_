@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { GATEWAY_ENDPOINTS } from '../../../config/gatewayConfig';
+import { useCustomInstructionsStore } from '../../../stores/useCustomInstructionsStore';
 
 const MAX_CHARS = 4000;
 
@@ -14,6 +15,8 @@ export const CustomInstructionsSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const { setInstructions: cacheInstructions } = useCustomInstructionsStore();
 
   // Fetch current instructions
   useEffect(() => {
@@ -27,6 +30,7 @@ export const CustomInstructionsSettings: React.FC = () => {
           const text = data.instructions || '';
           setInstructions(text);
           setSaved(text);
+          cacheInstructions(text);
         }
       } catch {
         // Silently fail
@@ -34,7 +38,7 @@ export const CustomInstructionsSettings: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [cacheInstructions]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -48,6 +52,7 @@ export const CustomInstructionsSettings: React.FC = () => {
       });
       if (res.ok) {
         setSaved(instructions);
+        cacheInstructions(instructions);
         setMessage({ type: 'success', text: 'Custom instructions saved' });
         setTimeout(() => setMessage(null), 3000);
       } else {

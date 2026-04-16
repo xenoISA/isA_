@@ -107,16 +107,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
       {/* Platform Navigation - Surface switcher for authenticated users */}
       {isAuthenticated && (
         <PlatformNav
-          activeSurface: "app",
-          user: authUser ? { name: authUser.name, email: authUser.email } : null,
-          urls: {
+          activeSurface="app"
+          user={authUser ? { name: authUser.name, email: authUser.email } : null}
+          urls={{
             app: surfaceUrls.app,
             console: surfaceUrls.console,
             docs: surfaceUrls.docs,
             marketing: surfaceUrls.marketing,
-          },
-          onLogout: logout,
-        })
+          }}
+          onLogout={logout}
+        />
       )}
       {/* Application Header - responsive on all viewports */}
       <div className="h-14 md:h-16 flex-shrink-0 p-1.5 md:p-2">
