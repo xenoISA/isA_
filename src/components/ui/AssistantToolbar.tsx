@@ -19,6 +19,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createLogger } from '../../utils/logger';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../../config/gatewayConfig';
 import { authTokenStore } from '../../stores/authTokenStore';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
 const log = createLogger('AssistantToolbar');
 
 // Glass Button Style Creator
@@ -77,7 +78,6 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentInput, setCurrentInput] = useState('');
-  const [isListening, setIsListening] = useState(false);
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
@@ -85,6 +85,14 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Wire real Web Speech API via useVoiceInput hook
+  const {
+    isListening,
+    transcript,
+    toggle: toggleVoiceInput,
+    supported: voiceSupported,
+  } = useVoiceInput();
 
   // Get user info (replace with actual auth)
   const userId = 'assistant_user_001';
@@ -133,18 +141,12 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
     }
   }, [isOpen, inputMode]);
 
-  // Voice input simulation (replace with Web Speech API)
-  const toggleVoiceInput = () => {
-    if (inputMode !== 'voice') return;
-    
-    setIsListening(!isListening);
-    if (!isListening) {
-      setTimeout(() => {
-        setCurrentInput('Create a daily reminder to drink water every 2 hours');
-        setIsListening(false);
-      }, 2000);
+  // Sync voice transcript into chat input
+  useEffect(() => {
+    if (transcript) {
+      setCurrentInput(transcript);
     }
-  };
+  }, [transcript]);
 
   // Send message to Chat API
   const sendMessage = async (message: string) => {
@@ -383,9 +385,14 @@ export const AssistantToolbar: React.FC<AssistantToolbarProps> = ({
               {/* Voice Input */}
               {inputMode === 'voice' && (
                 <div className="text-center space-y-3">
+                  {!voiceSupported && (
+                    <div className="text-xs text-yellow-400 mb-2">
+                      Speech recognition is not supported in this browser.
+                    </div>
+                  )}
                   <button
-                    onClick={toggleVoiceInput}
-                    disabled={isLoading}
+                    onClick={() => { if (inputMode === 'voice') toggleVoiceInput(); }}
+                    disabled={isLoading || !voiceSupported}
                     className={`w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all ${
                       isListening 
                         ? 'border-red-500 bg-red-500/20 animate-pulse' 
