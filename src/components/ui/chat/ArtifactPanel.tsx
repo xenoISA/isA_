@@ -10,6 +10,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { ArtifactNode } from '../../../types/artifactTypes';
 import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
 import { useArtifactManager } from '../../../stores/useArtifactManager';
+import { getRenderer, hasRenderer } from './ArtifactRendererRegistry';
 
 // Lazy-load A2UI renderer — only imported when an artifact has a2uiState
 let A2UIRendererModule: typeof import('./A2UISurfacePanel') | null = null;
@@ -373,15 +374,19 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
                 surfaceEvents={surfaceEvents}
                 onUserAction={onUserAction}
               />
-            ) : artifact.contentType === 'image' ? (
-              <img src={activeVersion.content} alt={artifact.title} className="max-w-full rounded-lg" />
-            ) : artifact.contentType === 'html' || artifact.contentType === 'svg' ? (
-              <div className="bg-white rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[200px]" dangerouslySetInnerHTML={{ __html: activeVersion.content }} />
-            ) : (
-              <div className="prose dark:prose-invert max-w-none text-[15px] leading-[1.6]">
-                <pre className="whitespace-pre-wrap">{activeVersion.content}</pre>
-              </div>
-            )}
+            ) : (() => {
+              // Use ArtifactRendererRegistry for content-type dispatch (#255)
+              const Renderer = getRenderer(artifact.contentType);
+              return (
+                <Renderer
+                  content={activeVersion.content}
+                  language={activeVersion.language}
+                  title={artifact.title}
+                  a2uiState={activeVersion.a2uiState}
+                  metadata={artifact.metadata}
+                />
+              );
+            })()}
           </div>
         )}
 
