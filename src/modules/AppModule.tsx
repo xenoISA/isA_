@@ -37,6 +37,7 @@ import { SessionModule } from './SessionModule';
 import { UserModule } from './UserModule';
 import { ContextModule } from './ContextModule';
 import { OrganizationModule } from './OrganizationModule';
+import { AlertModule } from './AlertModule';
 import { RightSidebarLayout } from '../components/ui/chat/RightSidebarLayout';
 import UserButtonContainer from '../components/ui/user/UserButtonContainer';
 import { UserPortal } from '../components/ui/user/UserPortal';
@@ -281,6 +282,7 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
   return (
     <ContextModule>
       <OrganizationModule>
+        <AlertModule />
         {/* 🆕 Session Artifact Tester - Development Only */}
         
         <AppLayout {...props}>

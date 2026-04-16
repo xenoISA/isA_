@@ -1812,7 +1812,7 @@ const enUS: Translations = {
   
   // Session management
   sessions: {
-    title: 'Session Management',
+    title: 'Chats',
     newChat: 'New Chat',
     new: 'New',
     newSession: 'New Session',

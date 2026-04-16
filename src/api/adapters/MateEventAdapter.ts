@@ -274,6 +274,24 @@ case 'memory_recall': {
       break;
     }
 
+    case 'task_created': {
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        metadata: {
+          custom_type: 'task_created',
+          task_id: event.task_id || event.id,
+          title: event.title || event.content || 'New task',
+          description: event.description,
+          due_at: event.due_at,
+          custom_data: event.metadata,
+        },
+      });
+      break;
+    }
+
     case 'autonomous_result': {
       // Background autonomous action result from Mate (scheduled tasks, triggers, etc.)
       // Mapped to a custom AGUI event that the autonomousEventService will handle.

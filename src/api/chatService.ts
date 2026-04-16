@@ -470,6 +470,20 @@ export class ChatService {
         break;
       }
 
+      case 'task_created': {
+        const { useTaskStore } = require('../stores/useTaskStore');
+        useTaskStore.getState().addTask({
+          id: event.metadata?.task_id || `task-${Date.now()}`,
+          title: event.metadata?.title || 'New task',
+          description: event.metadata?.description,
+          status: 'pending',
+          dueAt: event.metadata?.due_at,
+          createdAt: new Date().toISOString(),
+        });
+        log.info('Task created from conversation', { taskId: event.metadata?.task_id });
+        break;
+      }
+
       case 'autonomous_result': {
         // Background autonomous event received via the active chat stream.
         // Dispatch directly to the chat store so it appears in the timeline.
