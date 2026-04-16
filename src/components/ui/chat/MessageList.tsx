@@ -26,6 +26,7 @@ import { ChatMessage, ArtifactMessage, RegularMessage } from '../../../types/cha
 const log = createLogger('MessageList');
 import { ArtifactComponent } from './ArtifactComponent';
 import { ArtifactMessageComponent } from './ArtifactMessageComponent';
+import { ArtifactPeekCard } from './ArtifactPeekCard';
 import { ContentType } from '../../../types/appTypes';
 import { ContentRenderer, StatusRenderer, GlassMessageBubble } from '../../shared';
 import { ChatWelcome } from './ChatWelcome';
@@ -505,9 +506,9 @@ export const MessageList = memo<MessageListProps>(({
         const resultPreview = !isStreaming && artifactMessage.artifact.content && artifactMessage.artifact.content !== 'Loading...'
           ? (
             <div className="ml-12" style={{ width: 'calc(100% - 3rem)' }}>
-              <ArtifactMessageComponent
+              <ArtifactPeekCard
                 artifactMessage={artifactMessage}
-                onReopen={() => onMessageClick?.(artifactMessage)}
+                onFallbackOpen={() => onMessageClick?.(artifactMessage)}
               />
             </div>
           )
@@ -552,16 +553,11 @@ export const MessageList = memo<MessageListProps>(({
               </div>
             )}
             
-            {/* Use new ArtifactMessageComponent for new artifact messages */}
+            {/* Unified ArtifactPeekCard replaces ArtifactMessageComponent (#251) */}
             <div className="ml-12" style={{ width: 'calc(100% - 3rem)' }}>
-              <ArtifactMessageComponent
+              <ArtifactPeekCard
                 artifactMessage={artifactMessage}
-                onReopen={() => {
-                  // Handle artifact reopening - delegate to message click handler
-                  if (onMessageClick) {
-                    onMessageClick(artifactMessage);
-                  }
-                }}
+                onFallbackOpen={() => onMessageClick?.(artifactMessage)}
               />
             </div>
           </div>
