@@ -16,6 +16,9 @@ import { captureScreen, captureWindow, cleanupOldScreenshots } from './screensho
 import { initFilesystem, pickFolder, listFiles, readFile, searchFiles, addPermittedFolder, removePermittedFolder, getPermittedFolders } from './filesystem';
 import { getLocalModels, refreshLocalModels, startAutoDetect, stopAutoDetect } from './local-models';
 import { initMCPHost, addServer as mcpAddServer, removeServer as mcpRemoveServer, startServer as mcpStartServer, stopServer as mcpStopServer, restartServer as mcpRestartServer, getServerStatus, getServerLogs, listServers, shutdownAll as mcpShutdownAll } from './mcp-host';
+import { startClipboardWatch, stopClipboardWatch, getClipboardContent } from './clipboard';
+import { initOfflineCache, cacheConversation, getCachedConversations, getCachedConversation, clearOfflineCache, isOnline } from './offline-cache';
+import { initAutoUpdater, checkForUpdates, quitAndInstall, stopAutoUpdater } from './updater';
 
 // Handle Squirrel installer events on Windows
 if (require('electron-squirrel-startup')) app.quit();
@@ -25,12 +28,15 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) {
       if (win.isMinimized()) win.restore();
       win.focus();
     }
+    // Deep link handling on Windows/Linux (protocol URL comes as argv)
+    const deepLink = argv.find((a) => a.startsWith('isaapp://'));
+    if (deepLink) handleDeepLink(deepLink);
   });
 }
 
@@ -237,6 +243,24 @@ function setupIPC(): void {
   ipcMain.handle('mcp:start-server', (_e, name: string) => mcpStartServer(name));
   ipcMain.handle('mcp:stop-server', (_e, name: string) => { mcpStopServer(name); });
   ipcMain.handle('mcp:restart-server', (_e, name: string) => { mcpRestartServer(name); });
+
+  // Clipboard IPC
+  ipcMain.on('clipboard:start-watch', () => startClipboardWatch(getMainWindow));
+  ipcMain.on('clipboard:stop-watch', () => stopClipboardWatch());
+  ipcMain.handle('clipboard:get-content', () => getClipboardContent());
+
+  // Offline cache IPC
+  ipcMain.handle('offline:is-online', () => isOnline());
+  ipcMain.handle('offline:cache-conversation', (_e, id: string, title: string, messages: any[]) => {
+    cacheConversation(id, title, messages);
+  });
+  ipcMain.handle('offline:get-conversations', () => getCachedConversations());
+  ipcMain.handle('offline:get-conversation', (_e, id: string) => getCachedConversation(id));
+  ipcMain.handle('offline:clear-cache', () => { clearOfflineCache(); });
+
+  // Auto-updater IPC
+  ipcMain.on('updater:check-now', () => checkForUpdates());
+  ipcMain.on('updater:quit-and-install', () => quitAndInstall());
 }
 
 // Helper to get the main (non-spotlight) window
@@ -265,15 +289,50 @@ function registerGlobalShortcut(): void {
   }
 }
 
+// ---------- Deep link handler ----------
+function handleDeepLink(url: string): void {
+  try {
+    // Parse isaapp://chat/session-123 → /app?session=session-123
+    const parsed = new URL(url);
+    const pathParts = parsed.pathname.replace(/^\/+/, '').split('/');
+    let route = '/app';
+
+    if (pathParts[0] === 'chat' && pathParts[1]) {
+      route = `/app?session=${pathParts[1]}`;
+    } else if (pathParts[0] === 'settings') {
+      route = '/app?view=settings';
+    }
+
+    const win = getMainWindow();
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+      win.webContents.send('app:deep-link', route);
+    }
+  } catch (err) {
+    console.warn('[isA Desktop] Invalid deep link:', url, err);
+  }
+}
+
 // ---------- App lifecycle ----------
+app.setAsDefaultProtocolClient('isaapp');
+
+// macOS: deep link via open-url event
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
+
 app.whenReady().then(() => {
   buildMenu();
   setupIPC();
   registerGlobalShortcut();
   createTray(trayDeps());
   initFilesystem();
+  initOfflineCache();
   initMCPHost();
   startAutoDetect();
+  initAutoUpdater(getMainWindow);
   cleanupOldScreenshots();
   createWindow();
 
@@ -286,6 +345,7 @@ app.whenReady().then(() => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   stopAutoDetect();
+  stopAutoUpdater();
   mcpShutdownAll();
 });
 
