@@ -56,6 +56,8 @@ export interface LeftSidebarLayoutProps {
   
   // User content - provided by UserModule
   userContent?: React.ReactNode;
+  /** Content rendered above the session list (e.g., ProjectSwitcher) (#191) */
+  headerContent?: React.ReactNode;
 }
 
 /**
@@ -84,10 +86,14 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
   onEditingTitleChange,
   onSearchChange,
   
-  userContent
+  userContent,
+  headerContent
 }) => {
   return (
     <div className={`session-sidebar ${className} h-full flex flex-col`}>
+      {/* Header content — e.g., ProjectSwitcher (#191) */}
+      {headerContent}
+
       {/* Session Area - Takes up most space */}
       <div className="flex-1 flex flex-col min-h-0">
         <SessionHistory
