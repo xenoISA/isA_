@@ -6,14 +6,18 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { CustomInstructionsSettings } from './CustomInstructionsSettings';
 import { ProjectSettings } from './ProjectSettings';
 import { MemoryManager } from './MemoryManager';
+import { SkillBuilder } from './SkillBuilder';
+import { ConnectorMarketplace } from './ConnectorMarketplace';
 
-type SettingsTab = 'general' | 'appearance' | 'project' | 'memory';
+type SettingsTab = 'general' | 'appearance' | 'project' | 'memory' | 'skills' | 'integrations';
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'project', label: 'Project' },
   { id: 'memory', label: 'Memory' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'integrations', label: 'Integrations' },
 ];
 
 interface SettingsModalProps {
@@ -69,6 +73,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) =
           {activeTab === 'general' && <CustomInstructionsSettings />}
           {activeTab === 'project' && <ProjectSettings />}
           {activeTab === 'memory' && <MemoryManager />}
+          {activeTab === 'skills' && <SkillBuilder />}
+          {activeTab === 'integrations' && <ConnectorMarketplace />}
         </div>
       </div>
     </div>
