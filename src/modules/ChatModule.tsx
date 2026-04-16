@@ -73,7 +73,7 @@ import {
 // 🆕 Mobile-first responsive layout
 import { ResponsiveChatLayout } from '../components/ui/adaptive/ResponsiveChatLayout';
 import { ArtifactPanel } from '../components/ui/chat/ArtifactPanel';
-import { useArtifactPanel } from '../hooks/useArtifactPanel';
+import { useArtifactManager, usePanelLayout } from '../stores/useArtifactManager';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { useNativeApp } from '../hooks/useNativeApp';
 
@@ -107,8 +107,8 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   // Module state for upgrade modal
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Artifact panel state (#239)
-  const artifactPanel = useArtifactPanel();
+  // Artifact panel — store-driven (#249, #252)
+  const artifactPanelLayout = usePanelLayout();
 
   // Extract widget selector, panel state, and sidebar state from props (managed by parent)
   const {
@@ -505,15 +505,9 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         onEditMessage={messageHandlers.handleEditMessage}
         onRegenerateMessage={messageHandlers.handleRegenerateMessage}
 
-        // Artifact Panel (#239)
-        showArtifactPanel={artifactPanel.isOpen}
-        artifactPanelContent={
-          <ArtifactPanel
-            open={artifactPanel.isOpen}
-            artifact={artifactPanel.artifact}
-            onClose={artifactPanel.closeArtifact}
-          />
-        }
+        // Artifact Panel — store-driven (#249, #252)
+        showArtifactPanel={artifactPanelLayout !== 'closed'}
+        artifactPanelContent={<ArtifactPanel />}
 
         // Sidebar state (injected from AppLayout via useSidebar)
         sidebarOpen={sidebarOpen}
