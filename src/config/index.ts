@@ -116,7 +116,8 @@ export const config: AppConfiguration = {
 
   // 外部API配置 (使用现有的环境变量结构)
   externalApis: {
-    userServiceUrl: process.env.REACT_APP_USER_SERVICE_URL || `${GATEWAY_CONFIG.BASE_URL}/users`,
+    // Always route through gateway to avoid CORS — direct service URLs are deprecated
+    userServiceUrl: `${GATEWAY_CONFIG.BASE_URL}/api/v1/accounts`,
     aiServiceUrl: process.env.REACT_APP_MODEL_SERVICE_URL || `${GATEWAY_CONFIG.BASE_URL}/models`,
     imageServiceUrl: getEnvVar('REACT_APP_IMAGE_SERVICE_URL', 'https://api.replicate.com'),
     contentServiceUrl: getEnvVar('REACT_APP_CONTENT_SERVICE_URL', 'https://api.openai.com')
