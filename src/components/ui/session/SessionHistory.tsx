@@ -73,6 +73,34 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     });
   }, [sessions, searchQuery]);
 
+  // Group sessions by time period (#238)
+  const groupedSessions = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const prev7 = new Date(today.getTime() - 7 * 86400000);
+    const prev30 = new Date(today.getTime() - 30 * 86400000);
+
+    const groups: { label: string; sessions: typeof filteredSessions }[] = [
+      { label: 'Today', sessions: [] },
+      { label: 'Yesterday', sessions: [] },
+      { label: 'Previous 7 Days', sessions: [] },
+      { label: 'Previous 30 Days', sessions: [] },
+      { label: 'Older', sessions: [] },
+    ];
+
+    for (const s of filteredSessions) {
+      const d = new Date(s.timestamp || s.createdAt || 0);
+      if (d >= today) groups[0].sessions.push(s);
+      else if (d >= yesterday) groups[1].sessions.push(s);
+      else if (d >= prev7) groups[2].sessions.push(s);
+      else if (d >= prev30) groups[3].sessions.push(s);
+      else groups[4].sessions.push(s);
+    }
+
+    return groups.filter(g => g.sessions.length > 0);
+  }, [filteredSessions]);
+
   return (
     <div className={`session-history ${className} flex flex-col h-full`}>
       {/* Header */}
@@ -149,9 +177,15 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             </div>
           </div>
         ) : (
-          filteredSessions.filter(session => session && typeof session === 'object' && session.id).map((session) => {
+          groupedSessions.map((group) => (
+            <div key={group.label}>
+              {/* Time group header (#238) */}
+              <div className="px-1 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/40 select-none">
+                {group.label}
+              </div>
+              {group.sessions.filter(session => session && typeof session === 'object' && session.id).map((session) => {
             const isActive = session.id === currentSessionId;
-            
+
             return (
               <div
                 key={session.id}
@@ -276,7 +310,9 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 </div>
               </div>
             );
-          })
+          })}
+            </div>
+          ))
         )}
       </div>
     </div>
