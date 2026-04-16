@@ -1,0 +1,167 @@
+/**
+ * useArtifactManager — Central artifact state management (#250)
+ *
+ * Replaces useArtifactStore with version-aware, A2UI-native artifact management.
+ * All artifacts flow through this store — widgets create, panel displays, chat previews.
+ */
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
+import type {
+  ArtifactNode,
+  ArtifactContentType,
+} from '../types/artifactTypes';
+import {
+  createArtifactNode,
+  addArtifactVersion,
+  getActiveVersion,
+} from '../types/artifactTypes';
+
+interface ArtifactManagerState {
+  /** All artifacts indexed by ID */
+  artifacts: Record<string, ArtifactNode>;
+  /** Currently open artifact ID (shown in panel) */
+  openArtifactId: string | null;
+  /** Panel layout mode */
+  panelLayout: 'closed' | 'inspect' | 'canvas';
+}
+
+interface ArtifactManagerActions {
+  /** Create a new artifact and return its ID */
+  createArtifact: (params: {
+    title: string;
+    content: string;
+    contentType: ArtifactContentType;
+    language?: string;
+    widgetType?: string;
+    filename?: string;
+    sessionId?: string;
+    sourceMessageId?: string;
+  }) => string;
+
+  /** Add a new version to an existing artifact */
+  addVersion: (artifactId: string, content: string, instruction: string) => void;
+
+  /** Set the active version index */
+  setActiveVersion: (artifactId: string, versionIndex: number) => void;
+
+  /** Fork an artifact (creates a copy with parentId link) */
+  forkArtifact: (artifactId: string) => string | null;
+
+  /** Open an artifact in the panel */
+  openArtifact: (artifactId: string, layout?: 'inspect' | 'canvas') => void;
+
+  /** Close the artifact panel */
+  closePanel: () => void;
+
+  /** Remove an artifact */
+  removeArtifact: (artifactId: string) => void;
+
+  /** Get an artifact by ID */
+  getArtifact: (artifactId: string) => ArtifactNode | undefined;
+
+  /** Get all artifacts for a session */
+  getSessionArtifacts: (sessionId: string) => ArtifactNode[];
+}
+
+type ArtifactManagerStore = ArtifactManagerState & ArtifactManagerActions;
+
+export const useArtifactManager = create<ArtifactManagerStore>()(
+  subscribeWithSelector((set, get) => ({
+    artifacts: {},
+    openArtifactId: null,
+    panelLayout: 'closed',
+
+    createArtifact: (params) => {
+      const node = createArtifactNode(params);
+      set(state => ({
+        artifacts: { ...state.artifacts, [node.id]: node },
+      }));
+      return node.id;
+    },
+
+    addVersion: (artifactId, content, instruction) => {
+      set(state => {
+        const artifact = state.artifacts[artifactId];
+        if (!artifact) return state;
+        const updated = addArtifactVersion(artifact, content, instruction);
+        return {
+          artifacts: { ...state.artifacts, [artifactId]: updated },
+        };
+      });
+    },
+
+    setActiveVersion: (artifactId, versionIndex) => {
+      set(state => {
+        const artifact = state.artifacts[artifactId];
+        if (!artifact || versionIndex < 0 || versionIndex >= artifact.versions.length) return state;
+        return {
+          artifacts: {
+            ...state.artifacts,
+            [artifactId]: { ...artifact, activeVersionIndex: versionIndex },
+          },
+        };
+      });
+    },
+
+    forkArtifact: (artifactId) => {
+      const artifact = get().artifacts[artifactId];
+      if (!artifact) return null;
+      const activeVersion = getActiveVersion(artifact);
+      const forked = createArtifactNode({
+        title: `${artifact.title} (fork)`,
+        content: activeVersion.content,
+        contentType: artifact.contentType,
+        language: activeVersion.language,
+        widgetType: artifact.widgetType,
+        sessionId: artifact.sessionId,
+      });
+      const forkedWithParent = { ...forked, parentId: artifactId };
+      set(state => ({
+        artifacts: { ...state.artifacts, [forkedWithParent.id]: forkedWithParent },
+      }));
+      return forkedWithParent.id;
+    },
+
+    openArtifact: (artifactId, layout = 'inspect') => {
+      set({ openArtifactId: artifactId, panelLayout: layout });
+    },
+
+    closePanel: () => {
+      set({ openArtifactId: null, panelLayout: 'closed' });
+    },
+
+    removeArtifact: (artifactId) => {
+      set(state => {
+        const { [artifactId]: _, ...rest } = state.artifacts;
+        return {
+          artifacts: rest,
+          openArtifactId: state.openArtifactId === artifactId ? null : state.openArtifactId,
+          panelLayout: state.openArtifactId === artifactId ? 'closed' : state.panelLayout,
+        };
+      });
+    },
+
+    getArtifact: (artifactId) => get().artifacts[artifactId],
+
+    getSessionArtifacts: (sessionId) =>
+      Object.values(get().artifacts).filter(a => a.sessionId === sessionId),
+  }))
+);
+
+// Selectors
+export const useOpenArtifact = () => {
+  const id = useArtifactManager(s => s.openArtifactId);
+  const artifacts = useArtifactManager(s => s.artifacts);
+  return id ? artifacts[id] : null;
+};
+
+export const usePanelLayout = () => useArtifactManager(s => s.panelLayout);
+export const useArtifactActions = () => useArtifactManager(s => ({
+  createArtifact: s.createArtifact,
+  addVersion: s.addVersion,
+  setActiveVersion: s.setActiveVersion,
+  forkArtifact: s.forkArtifact,
+  openArtifact: s.openArtifact,
+  closePanel: s.closePanel,
+  removeArtifact: s.removeArtifact,
+}));

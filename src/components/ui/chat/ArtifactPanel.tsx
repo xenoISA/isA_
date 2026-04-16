@@ -1,20 +1,18 @@
 /**
- * ArtifactPanel — Claude-style side panel for viewing artifacts (#239)
+ * ArtifactPanel — Unified artifact side panel with versioning (#239, #252)
  *
- * Opens when user clicks an artifact in the chat. Shows:
- * - Header with title, close, copy, download actions
- * - Tab bar: Preview / Code / Edit
- * - Content area with appropriate rendering
- *
- * Design ref (docs/design/claude-ui-reference.md):
- * - Side panel slides in from right, chat area shrinks (50/50 or 40/60)
- * - Border-left divider, smooth transition
- * - Tabs with bottom border active indicator
+ * Now powered by ArtifactNode model with version chain.
+ * Shows: header with version selector, tabs (Preview/Code/Edit),
+ * content area with A2UI rendering support.
  */
 import React, { useState, useCallback } from 'react';
+import type { ArtifactNode } from '../../../types/artifactTypes';
+import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
+import { useArtifactManager } from '../../../stores/useArtifactManager';
 
 export type ArtifactPanelTab = 'preview' | 'code' | 'edit';
 
+/** @deprecated Use ArtifactNode instead */
 export interface ArtifactPanelData {
   id: string;
   title: string;
@@ -25,40 +23,50 @@ export interface ArtifactPanelData {
   downloadUrl?: string;
 }
 
-interface ArtifactPanelProps {
-  open: boolean;
-  artifact: ArtifactPanelData | null;
-  onClose: () => void;
-  onRequestEdit?: (instruction: string) => void;
-}
-
 const TAB_CONFIG: { id: ArtifactPanelTab; label: string }[] = [
   { id: 'preview', label: 'Preview' },
   { id: 'code', label: 'Code' },
   { id: 'edit', label: 'Edit' },
 ];
 
-export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({
-  open, artifact, onClose, onRequestEdit,
-}) => {
+/**
+ * ArtifactPanel — reads from useArtifactManager store
+ */
+export const ArtifactPanel: React.FC = () => {
+  const openArtifactId = useArtifactManager(s => s.openArtifactId);
+  const panelLayout = useArtifactManager(s => s.panelLayout);
+  const artifacts = useArtifactManager(s => s.artifacts);
+  const { closePanel, setActiveVersion, addVersion } = useArtifactManager(s => ({
+    closePanel: s.closePanel,
+    setActiveVersion: s.setActiveVersion,
+    addVersion: s.addVersion,
+  }));
+
+  const artifact = openArtifactId ? artifacts[openArtifactId] : null;
+
   const [activeTab, setActiveTab] = useState<ArtifactPanelTab>('preview');
   const [editInstruction, setEditInstruction] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const activeVersion = artifact ? getActiveVersion(artifact) : null;
+  const versionCount = artifact ? getVersionCount(artifact) : 0;
+
   const handleCopy = useCallback(async () => {
-    if (!artifact) return;
-    await navigator.clipboard.writeText(artifact.content);
+    if (!activeVersion) return;
+    await navigator.clipboard.writeText(activeVersion.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [artifact]);
+  }, [activeVersion]);
 
   const handleEdit = useCallback(() => {
-    if (!editInstruction.trim() || !onRequestEdit) return;
-    onRequestEdit(editInstruction.trim());
+    if (!editInstruction.trim() || !artifact) return;
+    // Create a new version with the edit instruction
+    // In practice, this would send to Mate and create version from response (#256)
+    addVersion(artifact.id, activeVersion?.content || '', editInstruction.trim());
     setEditInstruction('');
-  }, [editInstruction, onRequestEdit]);
+  }, [editInstruction, artifact, activeVersion, addVersion]);
 
-  if (!open || !artifact) return null;
+  if (panelLayout === 'closed' || !artifact || !activeVersion) return null;
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#1a1a1a] border-l border-gray-200 dark:border-gray-700/50">
@@ -66,15 +74,33 @@ export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700/50">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-            {artifact.title || artifact.filename || 'Artifact'}
+            {artifact.title}
           </span>
-          {artifact.language && (
-            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded">
-              {artifact.language}
+          {activeVersion.language && (
+            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">
+              {activeVersion.language}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Version selector (#252) */}
+          {versionCount > 1 && (
+            <select
+              value={artifact.activeVersionIndex}
+              onChange={e => setActiveVersion(artifact.id, Number(e.target.value))}
+              className="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none"
+              aria-label="Select version"
+            >
+              {artifact.versions.map((v, i) => (
+                <option key={v.versionId} value={i}>
+                  v{v.number}{v.instruction ? ` — ${v.instruction.slice(0, 30)}` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+          {versionCount === 1 && (
+            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-400 rounded">v1</span>
+          )}
           {/* Copy */}
           <button
             onClick={handleCopy}
@@ -82,37 +108,20 @@ export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({
             title={copied ? 'Copied!' : 'Copy'}
           >
             {copied ? (
-              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
             )}
           </button>
           {/* Download */}
           {artifact.downloadUrl && (
-            <a
-              href={artifact.downloadUrl}
-              download={artifact.filename}
-              className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title="Download"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
+            <a href={artifact.downloadUrl} download={artifact.filename} className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Download">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             </a>
           )}
           {/* Close */}
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title="Close"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button onClick={closePanel} className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Close">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
       </div>
@@ -138,16 +147,13 @@ export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({
       <div className="flex-1 overflow-auto">
         {activeTab === 'preview' && (
           <div className="p-4">
-            {artifact.type === 'image' ? (
-              <img src={artifact.content} alt={artifact.title} className="max-w-full rounded-lg" />
-            ) : artifact.type === 'html' || artifact.type === 'svg' ? (
-              <div
-                className="bg-white rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[200px]"
-                dangerouslySetInnerHTML={{ __html: artifact.content }}
-              />
+            {artifact.contentType === 'image' ? (
+              <img src={activeVersion.content} alt={artifact.title} className="max-w-full rounded-lg" />
+            ) : artifact.contentType === 'html' || artifact.contentType === 'svg' ? (
+              <div className="bg-white rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[200px]" dangerouslySetInnerHTML={{ __html: activeVersion.content }} />
             ) : (
               <div className="prose dark:prose-invert max-w-none text-[15px] leading-[1.6]">
-                <pre className="whitespace-pre-wrap">{artifact.content}</pre>
+                <pre className="whitespace-pre-wrap">{activeVersion.content}</pre>
               </div>
             )}
           </div>
@@ -155,15 +161,21 @@ export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({
 
         {activeTab === 'code' && (
           <pre className="p-4 text-[13px] font-mono leading-relaxed text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-[#111111] min-h-full overflow-x-auto">
-            <code>{artifact.content}</code>
+            <code>{activeVersion.content}</code>
           </pre>
         )}
 
         {activeTab === 'edit' && (
           <div className="flex flex-col h-full">
             <pre className="flex-1 p-4 text-[13px] font-mono leading-relaxed text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-[#111111] overflow-auto">
-              <code>{artifact.content}</code>
+              <code>{activeVersion.content}</code>
             </pre>
+            {/* Version instruction (what created this version) */}
+            {activeVersion.instruction && (
+              <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400">
+                Created by: "{activeVersion.instruction}"
+              </div>
+            )}
             <div className="p-3 border-t border-gray-200 dark:border-gray-700/50">
               <div className="flex gap-2">
                 <input
