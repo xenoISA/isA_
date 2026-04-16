@@ -184,6 +184,28 @@ export const useChatStore = create<ChatStore>()(
         }
       }
 
+      // Auto-register artifact messages in ArtifactManager store (wires peek card → panel)
+      if (message.type === 'artifact' && !message.isStreaming) {
+        import('../stores/useArtifactManager').then(({ useArtifactManager }) => {
+          const am = useArtifactManager.getState();
+          const art = (message as any).artifact;
+          if (art && art.content && art.content !== 'Loading...') {
+            // Only register if not already in the store
+            const existing = Object.values(am.artifacts).find(a => a.sourceMessageId === message.id);
+            if (!existing) {
+              am.createArtifact({
+                title: art.widgetName || art.widgetType || 'Artifact',
+                content: typeof art.content === 'string' ? art.content : JSON.stringify(art.content, null, 2),
+                contentType: art.contentType || 'text',
+                widgetType: art.widgetType,
+                sessionId: (message as any).sessionId,
+                sourceMessageId: message.id,
+              });
+            }
+          }
+        });
+      }
+
       logger.info(LogCategory.CHAT_FLOW, 'Message added/updated in chat store and session', {
         messageId: message.id,
         role: message.role,
