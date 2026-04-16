@@ -25,62 +25,63 @@ a {
  * DESIGN SYSTEM - Unified Design Tokens (Dark Theme Default)
  * ============================================================================ */
 :root {
-  /* Color System - Base Tokens */
-  --color-neutral-50: #f8fafc;
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-300: #cbd5e1;
-  --color-neutral-400: #94a3b8;
-  --color-neutral-500: #64748b;
-  --color-neutral-600: #475569;
-  --color-neutral-700: #334155;
-  --color-neutral-800: #1e293b;
-  --color-neutral-900: #0f172a;
-  --color-neutral-950: #020617;
+  /* Color System - Minimalist warm monochrome (#237) */
+  --color-neutral-50: #FBFBFA;
+  --color-neutral-100: #F7F6F3;
+  --color-neutral-200: #EAEAEA;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #787774;
+  --color-neutral-600: #5a5a58;
+  --color-neutral-700: #3d3d3b;
+  --color-neutral-800: #2F3437;
+  --color-neutral-900: #111111;
+  --color-neutral-950: #0a0a0a;
 
   --color-blue-400: #60a5fa;
   --color-blue-500: #3b82f6;
   --color-blue-600: #2563eb;
-  --color-indigo-500: #6366f1;
-  --color-indigo-600: #4f46e5;
-  --color-purple-500: #8b5cf6;
-  --color-purple-600: #7c3aed;
-  --color-violet-500: #a855f7;
-  --color-violet-600: #9333ea;
+  --color-indigo-500: #111111;
+  --color-indigo-600: #2F3437;
+  --color-purple-500: #525252;
+  --color-purple-600: #3d3d3b;
+  --color-violet-500: #787774;
+  --color-violet-600: #5a5a58;
 
-  /* Semantic Color Tokens */
-  --color-primary: var(--color-indigo-500);
-  --color-primary-hover: var(--color-indigo-600);
-  --color-secondary: var(--color-purple-500);
-  --color-secondary-hover: var(--color-purple-600);
-  --color-accent: var(--color-violet-500);
-  --color-accent-hover: var(--color-violet-600);
+  /* Semantic Color Tokens — minimalist charcoal accent (#237) */
+  --color-primary: #111111;
+  --color-primary-hover: #2F3437;
+  --color-secondary: #525252;
+  --color-secondary-hover: #3d3d3b;
+  --color-accent: #111111;
+  --color-accent-hover: #2F3437;
 
-  /* Background System — clean solid surfaces, no gradients */
-  --gradient-primary: #0f172a;
-  --gradient-secondary: #0f172a;
-  --gradient-tertiary: #0f172a;
+  /* Background System — minimalist flat surfaces (#237) */
+  --gradient-primary: #1a1a1a;
+  --gradient-secondary: #1a1a1a;
+  --gradient-tertiary: #1a1a1a;
   --gradient-surface: transparent;
   --gradient-overlay: transparent;
+  --surface-bg: #1a1a1a;
 
-  /* Surface System — replaces glass with solid surfaces */
-  --glass-primary: var(--color-neutral-900);
-  --glass-secondary: var(--color-neutral-800);
-  --glass-tertiary: rgba(30, 41, 59, 0.5);
+  /* Surface System — flat, solid, no glass (#237) */
+  --glass-primary: #1a1a1a;
+  --glass-secondary: #222222;
+  --glass-tertiary: #2a2a2a;
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-hover: rgba(255, 255, 255, 0.15);
-  --glass-border-active: rgba(255, 255, 255, 0.2);
-  --glass-border-focused: var(--color-indigo-500);
+  --glass-border-hover: rgba(255, 255, 255, 0.12);
+  --glass-border-active: rgba(255, 255, 255, 0.16);
+  --glass-border-focused: #e5e5e5;
   --glass-border-subtle: rgba(255, 255, 255, 0.04);
-  --glass-border-strong: rgba(255, 255, 255, 0.2);
+  --glass-border-strong: rgba(255, 255, 255, 0.15);
 
-  /* Text System */
-  --text-primary: var(--color-neutral-50);
-  --text-secondary: var(--color-neutral-200);
-  --text-muted: var(--color-neutral-400);
-  --text-disabled: var(--color-neutral-600);
+  /* Text System — warm neutrals (#237) */
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-disabled: #525252;
   --text-high-contrast: #ffffff;
-  --text-inverse: var(--color-neutral-900);
+  --text-inverse: #111111;
   --text-accent: var(--color-primary);
   --text-success: #10b981;
   --text-warning: #f59e0b;
