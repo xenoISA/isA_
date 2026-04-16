@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'spotlight:hide', 'spotlight:resize', 'spotlight:open-main',
       'tray:update-status', 'tray:set-badge',
       'notification:show',
+      'clipboard:start-watch', 'clipboard:stop-watch',
+      'updater:check-now', 'updater:quit-and-install',
     ];
     if (allowedChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args);
@@ -37,6 +39,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'mcp:list-servers', 'mcp:get-status', 'mcp:get-logs',
       'mcp:add-server', 'mcp:remove-server',
       'mcp:start-server', 'mcp:stop-server', 'mcp:restart-server',
+      'clipboard:get-content',
+      'offline:is-online', 'offline:cache-conversation', 'offline:get-conversations',
+      'offline:get-conversation', 'offline:clear-cache',
     ];
     if (allowedChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
@@ -46,7 +51,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /** Subscribe to messages from the main process. Returns an unsubscribe function. */
   on: (channel: string, callback: (...args: unknown[]) => void) => {
-    const allowedChannels = ['app:update-available', 'app:deep-link', 'notification:click'];
+    const allowedChannels = [
+      'app:update-available', 'app:deep-link', 'notification:click',
+      'clipboard:changed', 'updater:status',
+    ];
     if (allowedChannels.includes(channel)) {
       const listener = (_event: Electron.IpcRendererEvent, ...args: unknown[]) =>
         callback(...args);
