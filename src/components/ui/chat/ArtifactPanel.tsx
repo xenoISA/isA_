@@ -29,10 +29,15 @@ const TAB_CONFIG: { id: ArtifactPanelTab; label: string }[] = [
   { id: 'edit', label: 'Edit' },
 ];
 
+interface ArtifactPanelProps {
+  /** Called when user submits an edit instruction — sends to Mate for evolution (#256) */
+  onEditArtifact?: (artifactId: string, instruction: string, currentContent: string) => void;
+}
+
 /**
  * ArtifactPanel — reads from useArtifactManager store
  */
-export const ArtifactPanel: React.FC = () => {
+export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({ onEditArtifact }) => {
   const openArtifactId = useArtifactManager(s => s.openArtifactId);
   const panelLayout = useArtifactManager(s => s.panelLayout);
   const artifacts = useArtifactManager(s => s.artifacts);
@@ -59,10 +64,14 @@ export const ArtifactPanel: React.FC = () => {
   }, [activeVersion]);
 
   const handleEdit = useCallback(() => {
-    if (!editInstruction.trim() || !artifact) return;
-    // Create a new version with the edit instruction
-    // In practice, this would send to Mate and create version from response (#256)
-    addVersion(artifact.id, activeVersion?.content || '', editInstruction.trim());
+    if (!editInstruction.trim() || !artifact || !activeVersion) return;
+    if (onEditArtifact) {
+      // Send to Mate for evolution — new version created from response (#256)
+      onEditArtifact(artifact.id, editInstruction.trim(), activeVersion.content);
+    } else {
+      // Fallback: create local version (no backend)
+      addVersion(artifact.id, activeVersion.content, editInstruction.trim());
+    }
     setEditInstruction('');
   }, [editInstruction, artifact, activeVersion, addVersion]);
 
