@@ -261,6 +261,22 @@ function setupIPC(): void {
   // Auto-updater IPC
   ipcMain.on('updater:check-now', () => checkForUpdates());
   ipcMain.on('updater:quit-and-install', () => quitAndInstall());
+
+  // Calendar IPC (#230)
+  ipcMain.handle('calendar:get-today', async () => {
+    const win = getMainWindow();
+    if (!win) return [];
+    return win.webContents.executeJavaScript(
+      `fetch((window.__NEXT_DATA__?.runtimeConfig?.GATEWAY_URL || 'http://localhost:9080') + '/api/v1/calendar/events?start=' + new Date(new Date().setHours(0,0,0,0)).toISOString() + '&end=' + new Date(new Date().setHours(23,59,59,999)).toISOString(), { credentials: 'include' }).then(r => r.json()).catch(() => [])`
+    );
+  });
+  ipcMain.handle('calendar:get-tasks', async () => {
+    const win = getMainWindow();
+    if (!win) return [];
+    return win.webContents.executeJavaScript(
+      `fetch((window.__NEXT_DATA__?.runtimeConfig?.GATEWAY_URL || 'http://localhost:9080') + '/api/v1/tasks?status=pending&limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => [])`
+    );
+  });
 }
 
 // Helper to get the main (non-spotlight) window

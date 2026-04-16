@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'mcp:start-server', 'mcp:stop-server', 'mcp:restart-server',
       'clipboard:get-content',
       'offline:is-online', 'offline:cache-conversation', 'offline:get-conversations',
+      'calendar:get-today', 'calendar:get-tasks',
       'offline:get-conversation', 'offline:clear-cache',
     ];
     if (allowedChannels.includes(channel)) {

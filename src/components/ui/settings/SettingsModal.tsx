@@ -8,8 +8,9 @@ import { ProjectSettings } from './ProjectSettings';
 import { MemoryManager } from './MemoryManager';
 import { SkillBuilder } from './SkillBuilder';
 import { ConnectorMarketplace } from './ConnectorMarketplace';
+import { CalendarSyncSettings } from '../calendar/CalendarSyncSettings';
 
-type SettingsTab = 'general' | 'appearance' | 'project' | 'memory' | 'skills' | 'integrations';
+type SettingsTab = 'general' | 'appearance' | 'project' | 'memory' | 'skills' | 'calendar' | 'integrations';
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -17,6 +18,7 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'project', label: 'Project' },
   { id: 'memory', label: 'Memory' },
   { id: 'skills', label: 'Skills' },
+  { id: 'calendar', label: 'Calendar' },
   { id: 'integrations', label: 'Integrations' },
 ];
 
@@ -74,6 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) =
           {activeTab === 'project' && <ProjectSettings />}
           {activeTab === 'memory' && <MemoryManager />}
           {activeTab === 'skills' && <SkillBuilder />}
+          {activeTab === 'calendar' && <CalendarSyncSettings />}
           {activeTab === 'integrations' && <ConnectorMarketplace />}
         </div>
       </div>
