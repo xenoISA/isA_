@@ -104,20 +104,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
     <div
       className={`min-h-dvh w-full flex flex-col bg-[var(--surface-bg,#0f172a)] text-[var(--text-primary,#fff)] relative ${className}`}
     >
-      {/* Platform Navigation - Surface switcher for authenticated users */}
-      {isAuthenticated && (
-        <PlatformNav
-          activeSurface="app"
-          user={authUser ? { name: String(authUser.name || ''), email: String(authUser.email || '') } : null}
-          urls={{
-            app: surfaceUrls.app,
-            console: surfaceUrls.console,
-            docs: surfaceUrls.docs,
-            marketing: surfaceUrls.marketing,
-          }}
-          onLogout={logout}
-        />
-      )}
+      {/* Platform Navigation — disabled pending PlatformNav component fix
+          The compiled @isa/ui-web PlatformNav renders a React element where
+          a text node is expected, causing "Objects are not valid as React child".
+          The surface switcher (App/Console/Docs) is non-essential for the main app.
+          TODO: Fix PlatformNav in isA_App_SDK and re-enable.
+      */}
       {/* Application Header - responsive on all viewports */}
       <div className="h-14 md:h-16 flex-shrink-0 p-1.5 md:p-2">
         <AppHeader
