@@ -23,6 +23,14 @@ const themeInitScript = `
       d.style.colorScheme = 'light';
     }
   } catch(e) {}
+  // Detect Electron and set data attribute + titlebar CSS variable
+  try {
+    if (window.isElectron || window.electronAPI || navigator.userAgent.includes('Electron')) {
+      d.setAttribute('data-electron', 'true');
+      var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      d.style.setProperty('--electron-titlebar-height', isMac ? '38px' : '0px');
+    }
+  } catch(e2) {}
 })();
 `;
 
