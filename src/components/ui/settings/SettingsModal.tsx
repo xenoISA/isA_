@@ -4,12 +4,16 @@
 import React, { useState } from 'react';
 import { AppearanceSettings } from './AppearanceSettings';
 import { CustomInstructionsSettings } from './CustomInstructionsSettings';
+import { ProjectSettings } from './ProjectSettings';
+import { MemoryManager } from './MemoryManager';
 
-type SettingsTab = 'general' | 'appearance';
+type SettingsTab = 'general' | 'appearance' | 'project' | 'memory';
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'appearance', label: 'Appearance' },
+  { id: 'project', label: 'Project' },
+  { id: 'memory', label: 'Memory' },
 ];
 
 interface SettingsModalProps {
@@ -63,6 +67,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) =
 
           {activeTab === 'appearance' && <AppearanceSettings />}
           {activeTab === 'general' && <CustomInstructionsSettings />}
+          {activeTab === 'project' && <ProjectSettings />}
+          {activeTab === 'memory' && <MemoryManager />}
         </div>
       </div>
     </div>
