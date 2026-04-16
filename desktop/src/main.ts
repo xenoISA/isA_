@@ -12,6 +12,10 @@ import { toggleSpotlight, hideSpotlight, resizeSpotlight } from './spotlight';
 import { createTray, updateTrayStatus, setDockBadge } from './tray';
 import { showNotification } from './notifications';
 import { saveToken, loadToken, clearToken } from './keychain';
+import { captureScreen, captureWindow, cleanupOldScreenshots } from './screenshot';
+import { initFilesystem, pickFolder, listFiles, readFile, searchFiles, addPermittedFolder, removePermittedFolder, getPermittedFolders } from './filesystem';
+import { getLocalModels, refreshLocalModels, startAutoDetect, stopAutoDetect } from './local-models';
+import { initMCPHost, addServer as mcpAddServer, removeServer as mcpRemoveServer, startServer as mcpStartServer, stopServer as mcpStopServer, restartServer as mcpRestartServer, getServerStatus, getServerLogs, listServers, shutdownAll as mcpShutdownAll } from './mcp-host';
 
 // Handle Squirrel installer events on Windows
 if (require('electron-squirrel-startup')) app.quit();
@@ -206,6 +210,33 @@ function setupIPC(): void {
   ipcMain.handle('auth:save-token', (_e, token: string) => saveToken(token));
   ipcMain.handle('auth:load-token', () => loadToken());
   ipcMain.handle('auth:clear-token', () => clearToken());
+
+  // Screenshot IPC
+  ipcMain.handle('screenshot:capture-screen', () => captureScreen());
+  ipcMain.handle('screenshot:capture-window', () => captureWindow());
+
+  // Filesystem IPC
+  ipcMain.handle('fs:pick-folder', () => pickFolder());
+  ipcMain.handle('fs:list-files', (_e, folder: string, pattern?: string) => listFiles(folder, pattern));
+  ipcMain.handle('fs:read-file', (_e, filePath: string) => readFile(filePath));
+  ipcMain.handle('fs:search-files', (_e, folder: string, query: string) => searchFiles(folder, query));
+  ipcMain.handle('fs:add-permitted', (_e, folder: string) => { addPermittedFolder(folder); });
+  ipcMain.handle('fs:remove-permitted', (_e, folder: string) => { removePermittedFolder(folder); });
+  ipcMain.handle('fs:get-permitted', () => getPermittedFolders());
+
+  // Local models IPC
+  ipcMain.handle('models:get-local', () => getLocalModels());
+  ipcMain.handle('models:detect', () => refreshLocalModels());
+
+  // MCP host IPC
+  ipcMain.handle('mcp:list-servers', () => listServers());
+  ipcMain.handle('mcp:get-status', () => getServerStatus());
+  ipcMain.handle('mcp:get-logs', (_e, name: string) => getServerLogs(name));
+  ipcMain.handle('mcp:add-server', (_e, config: any) => { mcpAddServer(config); });
+  ipcMain.handle('mcp:remove-server', (_e, name: string) => { mcpRemoveServer(name); });
+  ipcMain.handle('mcp:start-server', (_e, name: string) => mcpStartServer(name));
+  ipcMain.handle('mcp:stop-server', (_e, name: string) => { mcpStopServer(name); });
+  ipcMain.handle('mcp:restart-server', (_e, name: string) => { mcpRestartServer(name); });
 }
 
 // Helper to get the main (non-spotlight) window
@@ -240,6 +271,10 @@ app.whenReady().then(() => {
   setupIPC();
   registerGlobalShortcut();
   createTray(trayDeps());
+  initFilesystem();
+  initMCPHost();
+  startAutoDetect();
+  cleanupOldScreenshots();
   createWindow();
 
   app.on('activate', () => {
@@ -250,6 +285,8 @@ app.whenReady().then(() => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  stopAutoDetect();
+  mcpShutdownAll();
 });
 
 app.on('window-all-closed', () => {

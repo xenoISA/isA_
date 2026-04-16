@@ -30,6 +30,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const allowedChannels = [
       'app:version', 'app:platform',
       'auth:save-token', 'auth:load-token', 'auth:clear-token',
+      'screenshot:capture-screen', 'screenshot:capture-window',
+      'fs:pick-folder', 'fs:list-files', 'fs:read-file', 'fs:search-files',
+      'fs:add-permitted', 'fs:remove-permitted', 'fs:get-permitted',
+      'models:get-local', 'models:detect',
+      'mcp:list-servers', 'mcp:get-status', 'mcp:get-logs',
+      'mcp:add-server', 'mcp:remove-server',
+      'mcp:start-server', 'mcp:stop-server', 'mcp:restart-server',
     ];
     if (allowedChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
