@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@isa/ui-web', '@isa/core', '@isa/theme', '@isa/transport'],
   // Produce a standalone build for Docker deployment
   output: 'standalone',
   env: {
@@ -16,6 +17,8 @@ const nextConfig = {
       fs: false,
       net: false,
       tls: false,
+      child_process: false,
+      dns: false,
     };
     return config;
   },
