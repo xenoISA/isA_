@@ -100,7 +100,11 @@ export interface ChatLayoutProps {
   onEditMessage?: (editedContent: string, originalMessageId: string) => void;
   /** Regenerate an assistant response (wiring gap fix) */
   onRegenerateMessage?: (userContent: string, assistantMessageId: string) => void;
-  
+
+  // Artifact Panel (#239)
+  artifactPanelContent?: React.ReactNode;
+  showArtifactPanel?: boolean;
+
   // 🆕 Widget System Integration
   showWidgetSelector?: boolean;
   onCloseWidgetSelector?: () => void;
@@ -175,6 +179,8 @@ export const ChatLayout = memo<ChatLayoutProps>(({
   onMessageClick,
   onEditMessage,
   onRegenerateMessage,
+  artifactPanelContent,
+  showArtifactPanel = false,
 
   // Widget System Integration
   showWidgetSelector = false,
@@ -362,6 +368,21 @@ export const ChatLayout = memo<ChatLayoutProps>(({
               style={{ borderLeft: '1px solid var(--glass-border)', gridArea: 'widget' }}
             >
               {rightSidebarContent}
+            </div>
+          )}
+
+          {/* Artifact Panel — Claude-style split view (#239) */}
+          {showArtifactPanel && artifactPanelContent && (
+            <div
+              className="overflow-hidden transition-all duration-200"
+              style={{
+                borderLeft: '1px solid var(--glass-border)',
+                width: '50%',
+                minWidth: '400px',
+                maxWidth: '700px',
+              }}
+            >
+              {artifactPanelContent}
             </div>
           )}
 
