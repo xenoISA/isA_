@@ -505,9 +505,11 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         onEditMessage={messageHandlers.handleEditMessage}
         onRegenerateMessage={messageHandlers.handleRegenerateMessage}
 
-        // Artifact Panel — store-driven (#249, #252)
+        // Artifact Panel — store-driven (#249, #252, #256)
         showArtifactPanel={artifactPanelLayout !== 'closed'}
-        artifactPanelContent={<ArtifactPanel />}
+        artifactPanelContent={
+          <ArtifactPanel onEditArtifact={messageHandlers.handleArtifactEdit} />
+        }
 
         // Sidebar state (injected from AppLayout via useSidebar)
         sidebarOpen={sidebarOpen}

@@ -210,6 +210,21 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
             useChatStore.getState().setIsTyping(false);
             useChatStore.getState().setExecutingPlan(false);
             logger.info(LogCategory.CHAT_FLOW, 'Message sending completed successfully');
+
+            // Artifact edit-to-version: if this was an artifact edit, create new version (#256)
+            if (typeof window !== 'undefined' && (window as any).__pendingArtifactEdit) {
+              const { artifactId, instruction } = (window as any).__pendingArtifactEdit;
+              delete (window as any).__pendingArtifactEdit;
+              // Get the last assistant message content as the new version
+              const messages = useMessageStore.getState().messages;
+              const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+              if (lastAssistant && 'content' in lastAssistant && lastAssistant.content) {
+                import('../../stores/useArtifactManager').then(({ useArtifactManager }) => {
+                  useArtifactManager.getState().addVersion(artifactId, lastAssistant.content, instruction);
+                  log.info('Artifact version created from edit response', { artifactId, instruction });
+                });
+              }
+            }
           },
           onToolStart: (toolName: string, toolCallId?: string) => {
             if (isDelegationTool(toolName) && toolCallId) {
@@ -401,6 +416,49 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     handleSendMessage(userContent);
   };
 
+  /**
+   * Edit an artifact — sends structured follow-up to Mate, creates new version (#256)
+   *
+   * The core evolution loop:
+   * 1. User types instruction in artifact Edit tab
+   * 2. System sends: "[Artifact Edit] <instruction>\n\nOriginal content:\n```\n<content>\n```"
+   * 3. Mate responds with updated content
+   * 4. Response callback creates a new ArtifactVersion
+   */
+  const handleArtifactEdit = async (artifactId: string, instruction: string, currentContent: string) => {
+    const { useArtifactManager } = await import('../../stores/useArtifactManager');
+    const artifactManager = useArtifactManager.getState();
+
+    // Build structured edit prompt
+    const editPrompt = `[Artifact Edit Request]
+Instruction: ${instruction}
+
+Current artifact content:
+\`\`\`
+${currentContent}
+\`\`\`
+
+Please apply the requested changes and return ONLY the updated content. Do not include explanations — just the updated artifact.`;
+
+    // Send as a regular message — the response will be captured
+    // and used to create a new artifact version
+    const originalSendMessage = handleSendMessage;
+
+    // Store the artifact ID so the response callback can create a version
+    if (typeof window !== 'undefined') {
+      (window as any).__pendingArtifactEdit = {
+        artifactId,
+        instruction,
+      };
+    }
+
+    await originalSendMessage(editPrompt, {
+      artifact_edit: true,
+      artifact_id: artifactId,
+      edit_instruction: instruction,
+    });
+  };
+
   return {
     handleNewChat,
     handleSendMessage,
@@ -408,5 +466,6 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     handleMessageClick,
     handleEditMessage,
     handleRegenerateMessage,
+    handleArtifactEdit,
   };
 }
