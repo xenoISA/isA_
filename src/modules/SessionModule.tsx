@@ -48,6 +48,7 @@ const log = createLogger('SessionModule');
 import { useSessionHandler } from '../components/core/SessionHandler';
 // 直接使用useSessionStore，不再依赖SessionProvider
 import { ChatSession } from '../hooks/useSession';
+import { ProjectSwitcher } from '../components/ui/chat/ProjectSwitcher';
 import { ChatMessage } from '../types/chatTypes';
 import {
   useCurrentSessionId,
@@ -519,6 +520,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
       onEditingTitleChange={handleEditingTitleChange}
       onSearchChange={handleSearchChange}
       userContent={props.userContent}
+      headerContent={<ProjectSwitcher />}
     />
   );
 };
