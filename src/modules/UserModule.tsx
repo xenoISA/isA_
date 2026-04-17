@@ -444,13 +444,14 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
       return;
     }
 
-    // 🚪 情况2：未认证 - 清理状态
+    // 🚪 情况2：未认证 - 清理状态 (run once to avoid infinite loop)
     if (!isAuthenticated) {
-      log.info('User not authenticated, clearing state');
       if (initializationStatus !== 'idle') {
+        log.info('User not authenticated, clearing state');
         setInitializationStatus('idle');
         initializationRef.current = null;
-        userHook.clearUser();
+        // Defer clearUser to avoid re-render loop
+        setTimeout(() => userHook.clearUser(), 0);
       }
       return;
     }
