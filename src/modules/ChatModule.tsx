@@ -382,7 +382,13 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // 🆕 当有活跃会话时启动HIL监控 (with cleanup optimization)
   useEffect(() => {
-    if (currentSession && hilMonitoringActive) {
+    // Skip execution monitoring when using Mate backend — Mate doesn't have
+    // the /agents/execution/status endpoint. HIL is handled via SSE events instead.
+    const isMateBackend = (() => {
+      try { const { getChatBackend } = require('../config/runtimeEnv'); return getChatBackend() === 'mate'; } catch { return false; }
+    })();
+
+    if (currentSession && hilMonitoringActive && !isMateBackend) {
       const threadId = currentSession.id;
 
       // 清理之前会话的监控以避免重复polling
