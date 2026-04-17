@@ -50,20 +50,33 @@ export class OrganizationService {
   // Organization CRUD
   // ================================================================================
 
+  private _orgFetchFailed = false; // prevent infinite retry loop
+
   async getUserOrganizations(): Promise<Organization[]> {
+    // Don't retry after first failure — prevents infinite re-render loop
+    if (this._orgFetchFailed) {
+      return [];
+    }
+
     try {
       log.info('Fetching user organizations');
-      const response = await this.apiService.get<Organization[]>(
+      const response = await this.apiService.get<any>(
         GATEWAY_ENDPOINTS.ORGANIZATION.LIST
       );
       if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch organizations');
+        this._orgFetchFailed = true;
+        return [];
       }
-      return response.data ?? [];
+      // API returns {organizations: [], total: N} — extract the array
+      const data = response.data;
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.organizations)) return data.organizations;
+      return [];
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.error('Failed to fetch user organizations', { error: msg });
-      throw new Error(`Fetch organizations failed: ${msg}`);
+      this._orgFetchFailed = true;
+      return []; // Return empty instead of throwing — prevents crash loop
     }
   }
 

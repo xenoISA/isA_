@@ -60,6 +60,8 @@ class MateAutonomousListenerService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 1000; // starts at 1s
   private static readonly MAX_RECONNECT_DELAY = 30_000;
+  private static readonly MAX_RECONNECT_ATTEMPTS = 5;
+  private reconnectAttempts = 0;
 
   /** Start listening for autonomous events. Safe to call multiple times. */
   start(): void {
@@ -174,6 +176,13 @@ class MateAutonomousListenerService {
 
   private scheduleReconnect(overrideDelay?: number): void {
     if (!this.running) return;
+
+    this.reconnectAttempts++;
+    if (this.reconnectAttempts > MateAutonomousListenerService.MAX_RECONNECT_ATTEMPTS) {
+      log.warn(`Autonomous events: giving up after ${this.reconnectAttempts} failed attempts`);
+      this.running = false;
+      return;
+    }
 
     const delay = overrideDelay ?? this.reconnectDelay;
     log.debug(`Scheduling reconnect in ${delay}ms`);
