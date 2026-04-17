@@ -40,6 +40,7 @@ const log = createLogger('UserModule');
 import { PlanType, CreateExternalUserData, UpdateProfileData, CreditConsumption } from '../types/userTypes';
 import { useUser } from '../hooks/useUser';
 import '../utils/creditMonitor'; // 🎯 初始化信用监控系统
+import { GATEWAY_CONFIG } from '../config/gatewayConfig';
 
 // ================================================================================
 // UserModule Interface
@@ -229,7 +230,23 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         executionTime: Date.now() - startTime + 'ms'
       });
         
-      // 💾 Step 3: 保存用户数据到store
+      // 💎 Step 3: Fetch credits from credit_service (separate from account)
+      try {
+        const creditRes = await fetch(
+          `${GATEWAY_CONFIG.BASE_URL}/api/v1/credits/balance?user_id=${userResult.auth0_id}`,
+          { headers: { Authorization: `Bearer ${await getAccessToken()}` } }
+        );
+        if (creditRes.ok) {
+          const creditData = await creditRes.json();
+          userResult.credits = creditData.available_balance ?? creditData.total_balance ?? 0;
+          userResult.credits_total = creditData.total_balance ?? 0;
+          log.info('Credits fetched', { credits: userResult.credits, total: userResult.credits_total });
+        }
+      } catch (e) {
+        log.warn('Could not fetch credits — using defaults', e);
+      }
+
+      // 💾 Step 4: 保存用户数据到store
       log.info('Saving user data to store...');
       const userStore = useUserStore.getState();
       userStore.setExternalUser(userResult);
