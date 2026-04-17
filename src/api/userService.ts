@@ -78,18 +78,30 @@ export class UserService {
         name: userData.name
       });
 
-      const response = await this.apiService.post<ExternalUser>('/api/v1/users/ensure', userData);
+      // Map auth0_id → user_id for the backend (account_service uses user_id field)
+      const payload = {
+        user_id: userData.auth0_id,
+        email: userData.email,
+        name: userData.name,
+      };
+      const response = await this.apiService.post<ExternalUser>('/api/v1/users/ensure', payload);
 
       if (!response.success) {
         throw new Error(response.error || 'Failed to ensure user exists');
       }
 
+      // Map user_id back to auth0_id for frontend compatibility
+      const result = response.data!;
+      if (!result.auth0_id && (result as any).user_id) {
+        result.auth0_id = (result as any).user_id;
+      }
+
       logger.info(LogCategory.API_REQUEST, 'External user ensured successfully', {
-        auth0_id: response.data?.auth0_id,
-        email: response.data?.email
+        auth0_id: result.auth0_id,
+        email: result.email
       });
 
-      return response.data!;
+      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(LogCategory.API_REQUEST, 'Failed to ensure user exists', { error: errorMessage });
