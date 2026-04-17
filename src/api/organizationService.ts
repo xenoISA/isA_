@@ -310,6 +310,12 @@ export class OrganizationService {
 // Default Instance Export
 // ================================================================================
 
-export const organizationService = new OrganizationService();
+// Pass auth headers from the in-memory token store
+import { authTokenStore } from '../stores/authTokenStore';
+
+export const organizationService = new OrganizationService(async () => {
+  const token = authTokenStore.getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+});
 
 export default organizationService;
