@@ -118,19 +118,18 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
   // Effects
   // ================================================================================
 
-  // Initialize context data when user becomes authenticated
+  // Initialize context data ONCE when user becomes authenticated
+  const contextInitialized = React.useRef(false);
   useEffect(() => {
-    const initializeUserContext = async () => {
-      if (!userModule.isAuthenticated || !userData) {
-        return;
-      }
+    if (!userModule.isAuthenticated || !userData || contextInitialized.current) {
+      return;
+    }
+    contextInitialized.current = true;
 
+    const initializeUserContext = async () => {
       try {
-        // Fetch user's organizations when they log in
         logger.info(LogCategory.USER_AUTH, 'Fetching user organizations for context initialization');
         await organizationModule.fetchUserOrganizations();
-        
-        // Refresh context to get latest data
         await contextModule.refreshContext();
       } catch (error) {
         logger.error(LogCategory.USER_AUTH, 'Failed to initialize user context', { error });
@@ -138,12 +137,8 @@ export const UserButtonContainer: React.FC<UserButtonContainerProps> = () => {
     };
 
     initializeUserContext();
-  }, [
-    userModule.isAuthenticated,
-    userData,
-    organizationModule,
-    contextModule
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps — intentionally run once on auth
+  }, [userModule.isAuthenticated, userData]);
 
   // ================================================================================
   // Props Assembly
