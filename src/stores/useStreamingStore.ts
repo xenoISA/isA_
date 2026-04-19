@@ -5,11 +5,15 @@
  *
  * Extracted from useChatStore as part of #124.
  *
- * Responsibilities:
- *   - Streaming buffers and flush timers (moved from module-level _streamingFlushTimers)
- *   - Typing indicator (isTyping)
- *   - Chat loading state (chatLoading)
- *   - Streaming message lifecycle (start / append / finish / status)
+ * MIGRATION NOTE (#281): The reusable streaming logic (buffer/flush, thinking,
+ * task progress) has been extracted to @isa/hooks as:
+ *   - useStreaming() — buffer/flush lifecycle
+ *   - useThinking() — thinking accumulation
+ *   - useTaskProgress() — typed task progress
+ *
+ * This store remains because it coordinates cross-store state (useMessageStore,
+ * useSessionStore) which is isA_-specific. When @isa/hooks is published,
+ * this store should delegate to the SDK hooks internally.
  *
  * Does NOT handle:
  *   - Message array CRUD or history (useMessageStore)
