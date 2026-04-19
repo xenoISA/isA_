@@ -194,8 +194,15 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
           ? chatService.sendMessageViaMate.bind(chatService, content, matePayload, token)
           : chatService.sendMessage.bind(chatService, content, { ...enrichedMetadata, ...(selectedModel ? { model: selectedModel } : {}) }, token);
 
+        // Show immediate thinking indicator — don't wait for Mate's first SSE event
+        const placeholderId = `thinking-${Date.now()}`;
+        useChatStore.getState().startStreamingMessage(placeholderId, 'Thinking...');
+        useChatStore.getState().setIsTyping(true);
+
         await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
+            // Replace the placeholder with the real streaming message
+            useChatStore.getState().finishStreamingMessage(); // close placeholder
             useChatStore.getState().startStreamingMessage(messageId, status);
             useChatStore.getState().setExecutingPlan(true);
           },
