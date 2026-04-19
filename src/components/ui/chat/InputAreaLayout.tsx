@@ -245,41 +245,31 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
       }
     }
 
-    setIsLoading(true);
-    
+    // Clear input immediately for responsive UX — don't wait for stream
+    setInputValue('');
+    setAttachedFiles([]);
+
     try {
-      // Use multimodal send if files are attached (including voice files)
       if (attachedFiles.length > 0 && onSendMultimodal) {
-        // Pass intelligent mode settings as metadata
-        const metadata = {
-          intelligentMode,
-          isVoiceMessage: hasAudioFiles,
-          multimodal: true
-        };
-        await onSendMultimodal(messageToSend, attachedFiles, metadata);
+        const metadata = { intelligentMode, isVoiceMessage: hasAudioFiles, multimodal: true };
+        // Fire-and-forget: don't await stream completion to unblock input
+        onSendMultimodal(messageToSend, attachedFiles, metadata).catch((error) => {
+          playAudioFeedback('error');
+          onError?.(error instanceof Error ? error : new Error('Send failed'));
+        });
       } else if (onSend) {
-        // For text-only messages, pass intelligent mode settings
-        const metadata = {
-          intelligentMode,
-          multimodal: false
-        };
-        await onSend(messageToSend, metadata);
+        const metadata = { intelligentMode, multimodal: false };
+        onSend(messageToSend, metadata).catch((error) => {
+          playAudioFeedback('error');
+          onError?.(error instanceof Error ? error : new Error('Send failed'));
+        });
       }
-      
-      setInputValue('');
-      setAttachedFiles([]);
+
       playAudioFeedback('success');
-      
-      if (onAfterSend) {
-        onAfterSend(messageToSend);
-      }
+      onAfterSend?.(messageToSend);
     } catch (error) {
       playAudioFeedback('error');
-      if (onError) {
-        onError(error instanceof Error ? error : new Error('Send failed'));
-      }
-    } finally {
-      setIsLoading(false);
+      onError?.(error instanceof Error ? error : new Error('Send failed'));
     }
   };
 
@@ -422,8 +412,8 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
       {/* Mate status line */}
       <div className="mb-2 px-1 flex items-center gap-2">
         <span className={`text-xs font-display ${!isOnline ? 'text-white/30' : 'text-[var(--mate-accent)]/60'}`}>
-          {isLoading
-            ? 'Thinking...'
+          {isActivelyStreaming
+            ? 'Responding...'
             : !isOnline
               ? 'Connecting...'
               : isWorking
@@ -448,8 +438,8 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
         onChange={setInputValue}
         onSend={handleSendMessage}
         placeholder={placeholder || t('placeholders.typeMessage')}
-        disabled={disabled || isLoading}
-        isLoading={isLoading}
+        disabled={disabled}
+        isLoading={false}
         variant="elevated"
         showAttachButton={true}
         showVoiceButton={true}
