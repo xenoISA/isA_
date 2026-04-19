@@ -7,6 +7,10 @@ import { useMatePresence } from '../../../hooks/useMatePresence';
 import { useMessageStore } from '../../../stores/useMessageStore';
 import { useStreamingStore } from '../../../stores/useStreamingStore';
 import { ModelSelectorDropdown } from './ModelSelectorDropdown';
+// SDK streaming components (#290)
+import { StreamingStatusLine as SDKStreamingStatusLine } from '@isa/ui-web';
+// Cast for React types version mismatch
+const StreamingStatusLine = SDKStreamingStatusLine as React.FC<any>;
 const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {
@@ -409,22 +413,24 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
         </div>
       )}
 
-      {/* Mate status line */}
-      <div className="mb-2 px-1 flex items-center gap-2">
-        <span className={`text-xs font-display ${!isOnline ? 'text-white/30' : 'text-[var(--mate-accent)]/60'}`}>
-          {isActivelyStreaming
-            ? 'Responding...'
-            : !isOnline
-              ? 'Connecting...'
-              : isWorking
-                ? `Working on ${activeDelegationCount} task${activeDelegationCount !== 1 ? 's' : ''}...`
-                : ''}
-        </span>
-        {isOnline && channels.length > 0 && !isLoading && (
-          <span className="text-xs text-white/30">
-            Active on {channels.length} channel{channels.length !== 1 ? 's' : ''}
-          </span>
-        )}
+      {/* Mate status line — SDK StreamingStatusLine (#290) */}
+      <div className="mb-2 px-1">
+        <StreamingStatusLine
+          phase={
+            isActivelyStreaming ? 'generating'
+            : !isOnline ? 'connecting'
+            : isWorking ? 'preparing'
+            : 'idle'
+          }
+          message={
+            isWorking && !isActivelyStreaming
+              ? `Working on ${activeDelegationCount} task${activeDelegationCount !== 1 ? 's' : ''}...`
+              : undefined
+          }
+          isThinking={useStreamingStore.getState().isThinking}
+          activeTasks={isWorking ? activeDelegationCount : undefined}
+          className="text-xs"
+        />
       </div>
 
       {/* Model Selector — above input, Claude-style (#194) */}

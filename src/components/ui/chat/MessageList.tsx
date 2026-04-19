@@ -47,6 +47,10 @@ import { DeepThinking as DeepThinkingOriginal } from '@isa/ui-web';
 import type { ThinkingStep, DeepThinkingProps } from '@isa/ui-web';
 // Cast to work around React types version mismatch between packages
 const DeepThinking = DeepThinkingOriginal as React.FC<DeepThinkingProps>;
+// SDK streaming components (#290)
+import { ThinkingBlock as ThinkingBlockOriginal, ToolCallDisplay as ToolCallDisplayOriginal } from '@isa/ui-web';
+const ThinkingBlock = ThinkingBlockOriginal as React.FC<any>;
+const ToolCallDisplay = ToolCallDisplayOriginal as React.FC<any>;
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';
 import { EditableMessage } from './EditableMessage';
@@ -788,8 +792,19 @@ export const MessageList = memo<MessageListProps>(({
           </div>
         )}
 
+        {/* Live Thinking — streaming chain-of-thought via SDK ThinkingBlock (#290) */}
+        {message.role === 'assistant' && message.isStreaming && message.type === 'regular' && (message as RegularMessage).thinkingContent && (
+          <div className="ml-12 mb-3">
+            <ThinkingBlock
+              isThinking={true}
+              content={(message as RegularMessage).thinkingContent || ''}
+              autoCollapse={true}
+            />
+          </div>
+        )}
+
         {/* Deep Thinking — collapsible reasoning block above assistant response (#185) */}
-        {message.role === 'assistant' && message.type === 'regular' && (message as RegularMessage).thinkingSteps && (message as RegularMessage).thinkingSteps!.length > 0 && (
+        {message.role === 'assistant' && message.type === 'regular' && !message.isStreaming && (message as RegularMessage).thinkingSteps && (message as RegularMessage).thinkingSteps!.length > 0 && (
           <div className="ml-12 mb-3">
             <DeepThinking
               steps={(message as RegularMessage).thinkingSteps!.map((s): ThinkingStep => ({
