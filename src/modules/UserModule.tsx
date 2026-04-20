@@ -264,13 +264,24 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         auth0_id: authUser.sub,
         executionTime: Date.now() - startTime + 'ms'
       });
-      
-      logger.error(LogCategory.USER_AUTH, 'User initialization failed', { 
+
+      logger.error(LogCategory.USER_AUTH, 'User initialization failed', {
         error: errorMessage,
-        auth0_id: authUser.sub 
+        auth0_id: authUser.sub
       });
-      
-      throw error; // 重新抛出错误供调用者处理
+
+      // Graceful degradation: set user with defaults so chat still works
+      // even when user/credit service is temporarily unavailable (503).
+      const userStore = useUserStore.getState();
+      userStore.setExternalUser({
+        auth0_id: authUser.sub,
+        email: authUser.email,
+        name: authUser.name || authUser.email,
+        credits: 100000, // Default credits — will be corrected on next successful init
+        credits_total: 100000,
+        plan: 'free',
+      });
+      log.warn('User set with default credits due to service unavailability');
     }
   }, [authUser?.sub, authUser?.email, authUser?.name, isAuthenticated, userService]);
 
