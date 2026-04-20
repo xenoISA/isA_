@@ -325,10 +325,14 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
         // REMOVED: HIL回调注册 - SSEParser已删除
 
-        // 检查HIL服务是否可用
+        // 检查HIL服务是否可用 (xenoISA/isA_Mate#404 → /v1/interactive/health)
         const isServiceAvailable = await executionControlService.isServiceAvailable();
         if (!isServiceAvailable) {
-          log.warn('HIL service not available, but HIL interrupt handling enabled for ask_human');
+          // Downgraded from warn → debug. HIL interrupt handling stays enabled
+          // regardless of probe result (ask_human still works via SSE); the
+          // previous warn caused misleading console noise on every page load
+          // when the backend wasn't yet serving /v1/interactive.
+          log.debug('HIL probe inactive — interrupt handling stays enabled');
           return;
         }
 
