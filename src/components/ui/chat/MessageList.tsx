@@ -47,14 +47,30 @@ import { DeepThinking as DeepThinkingOriginal } from '@isa/ui-web';
 import type { ThinkingStep, DeepThinkingProps } from '@isa/ui-web';
 // Cast to work around React types version mismatch between packages
 const DeepThinking = DeepThinkingOriginal as React.FC<DeepThinkingProps>;
-// SDK streaming components (#290) — safe import with fallback until @isa/ui-web dist is rebuilt
-let ThinkingBlock: React.FC<any> = () => null;
-let ToolCallDisplay: React.FC<any> = () => null;
-try {
-  const uiWeb = require('@isa/ui-web');
-  if (uiWeb.ThinkingBlock) ThinkingBlock = uiWeb.ThinkingBlock as React.FC<any>;
-  if (uiWeb.ToolCallDisplay) ToolCallDisplay = uiWeb.ToolCallDisplay as React.FC<any>;
-} catch { /* @isa/ui-web dist not yet rebuilt with streaming components */ }
+// SDK streaming components — inline until @isa/ui-web dist is rebuilt (#290)
+const ThinkingBlock: React.FC<{
+  isThinking: boolean; content: string; autoCollapse?: boolean; className?: string;
+}> = ({ isThinking, content, className = '' }) => {
+  const [expanded, setExpanded] = useState(isThinking);
+  useEffect(() => { if (isThinking) setExpanded(true); }, [isThinking]);
+  useEffect(() => { if (!isThinking) { const t = setTimeout(() => setExpanded(false), 500); return () => clearTimeout(t); } }, [isThinking]);
+  if (!content && !isThinking) return null;
+  return (
+    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-2 ${className}`}>
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 text-left">
+        <span style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s', fontSize: '8px' }}>▶</span>
+        {isThinking && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+        <span className="font-medium">{isThinking ? 'Thinking...' : 'Thought process'}</span>
+      </button>
+      {expanded && (
+        <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-pre-wrap max-h-96 overflow-auto">
+          {content}{isThinking && <span className="opacity-40 animate-pulse">▋</span>}
+        </div>
+      )}
+    </div>
+  );
+};
+const ToolCallDisplay: React.FC<any> = () => null; // Placeholder until wired
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';
 import { EditableMessage } from './EditableMessage';
