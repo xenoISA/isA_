@@ -8,10 +8,12 @@
  */
 
 import React from 'react';
-import { DesignCanvas as DesignCanvasOriginal } from '@isa/ui-web';
-
-// Cast for React types version mismatch
-const DesignCanvas = DesignCanvasOriginal as React.FC<any>;
+// Safe import — @isa/ui-web dist may not include DesignCanvas yet
+let DesignCanvas: React.FC<any> = (props) => React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'Design Canvas loading...');
+try {
+  const uiWeb = require('@isa/ui-web');
+  if (uiWeb.DesignCanvas) DesignCanvas = uiWeb.DesignCanvas as React.FC<any>;
+} catch { /* fallback */ }
 
 export interface DesignPanelProps {
   /** Design content URL (image) */
