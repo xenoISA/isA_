@@ -14,10 +14,17 @@ import { getTokenFromCookie } from '../utils/authCookieHelper';
 let _accessToken: string | null = null;
 
 export const authTokenStore = {
-  /** Return the cached in-memory token, falling back to a dev cookie. */
+  /** Return the cached in-memory token, falling back to dev localStorage or cookie. */
   getToken: (): string | null => {
     if (_accessToken) return _accessToken;
-    // In dev the cookie is not HttpOnly so we can read it as a fallback
+    // Dev fallback 1: localStorage (survives page refresh)
+    if (typeof window !== 'undefined') {
+      try {
+        const fromStorage = localStorage.getItem('isa_dev_token');
+        if (fromStorage) { _accessToken = fromStorage; return _accessToken; }
+      } catch { /* storage unavailable */ }
+    }
+    // Dev fallback 2: non-HttpOnly cookie
     const fromCookie = getTokenFromCookie();
     if (fromCookie) {
       _accessToken = fromCookie;

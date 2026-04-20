@@ -358,6 +358,11 @@ export const getAuthHeaders = (): Record<string, string> => {
  */
 export const saveAuthToken = (token: string): void => {
   authTokenStore.setToken(token);
+  // Persist in localStorage for dev mode so session survives page refresh.
+  // In production, the HttpOnly cookie handles persistence.
+  if (typeof window !== 'undefined' && !isHttpOnlyCookieMode()) {
+    try { localStorage.setItem('isa_dev_token', token); } catch { /* quota exceeded */ }
+  }
 };
 
 /**
@@ -366,10 +371,10 @@ export const saveAuthToken = (token: string): void => {
 export const clearAuth = (): void => {
   authTokenStore.clearToken();
   clearAuthCookies();
-  // Clean up legacy localStorage entries from pre-migration
   if (typeof window !== 'undefined') {
     localStorage.removeItem(GATEWAY_CONFIG.AUTH.TOKEN_KEY);
     localStorage.removeItem(GATEWAY_CONFIG.AUTH.API_KEY);
+    localStorage.removeItem('isa_dev_token');
   }
 };
 
