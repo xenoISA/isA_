@@ -77,6 +77,8 @@ export interface ChatServiceCallbacks {
 export class ChatService {
   private readonly name = 'chat_service';
   private readonly version = '3.0.0';
+  /** Tracks whether onStreamStart has been called for the current request */
+  private _streamStarted = false;
   
   /**
    * 发送消息 - 符合 how_to_chat.md 标准格式
@@ -100,6 +102,7 @@ export class ChatService {
     // Starting message processing
     
     try {
+      this._streamStarted = false; // Reset for new request
       // 构建标准的Chat API payload (符合 how_to_chat.md)
       const payload = {
         message,
@@ -256,18 +259,30 @@ export class ChatService {
         break;
 
       case 'text_message_start':
-        // NOW create the streaming message — real content is about to arrive
-        callbacks.onStreamStart?.(event.message_id || event.run_id, 'Generating...');
+        // Create the streaming message — real content is about to arrive
+        if (!this._streamStarted) {
+          this._streamStarted = true;
+          callbacks.onStreamStart?.(event.message_id || event.run_id, 'Generating...');
+        }
         break;
 
       case 'text_message_end':
-        // Don't complete here — let run_finished or handleComplete do it once
-        log.debug('Text message ended', { messageId: event.message_id });
+        // If we got content but never started, start + immediately complete
+        if (!this._streamStarted && (event.final_content || event.content)) {
+          this._streamStarted = true;
+          callbacks.onStreamStart?.(event.message_id || event.run_id, 'Generating...');
+          callbacks.onStreamContent?.(event.final_content || event.content);
+        }
         break;
-        
+
       case 'text_delta':
       case 'text_message_content':
         if (event.delta || event.content) {
+          // Auto-start stream on first content if text_message_start was missed
+          if (!this._streamStarted) {
+            this._streamStarted = true;
+            callbacks.onStreamStart?.(event.message_id || event.run_id, 'Generating...');
+          }
           callbacks.onStreamContent?.(event.delta || event.content);
         }
         break;
@@ -553,10 +568,11 @@ export class ChatService {
 
       return new Promise<void>((resolve, reject) => {
         let streamEnded = false;
+        this._streamStarted = false; // Reset for new request
         const { startEvent, context } = createMateStreamContext(metadata.session_id);
         let adaptCtx = context;
 
-        // Emit synthetic run_started
+        // Emit synthetic run_started (just logs — doesn't create message)
         this.handleAGUIEvent(startEvent, callbacks);
 
         const handleComplete = async (finalContent?: string) => {
