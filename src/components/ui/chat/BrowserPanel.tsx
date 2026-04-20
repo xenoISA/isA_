@@ -8,11 +8,14 @@
  */
 
 import React, { useState } from 'react';
-import { BrowserViewport as BrowserViewportOriginal, ActionLogPanel as ActionLogPanelOriginal } from '@isa/ui-web';
-
-// Cast for React types version mismatch
-const BrowserViewport = BrowserViewportOriginal as React.FC<any>;
-const ActionLogPanel = ActionLogPanelOriginal as React.FC<any>;
+// Safe import — @isa/ui-web dist may not include these yet
+let BrowserViewport: React.FC<any> = () => React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'Browser Viewport loading...');
+let ActionLogPanel: React.FC<any> = () => React.createElement('div', { style: { padding: 20, color: '#6b7280' } }, 'Action log loading...');
+try {
+  const uiWeb = require('@isa/ui-web');
+  if (uiWeb.BrowserViewport) BrowserViewport = uiWeb.BrowserViewport as React.FC<any>;
+  if (uiWeb.ActionLogPanel) ActionLogPanel = uiWeb.ActionLogPanel as React.FC<any>;
+} catch { /* fallback */ }
 
 export interface BrowserPanelProps {
   /** Current screenshot */

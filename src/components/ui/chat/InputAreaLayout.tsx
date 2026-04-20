@@ -7,10 +7,14 @@ import { useMatePresence } from '../../../hooks/useMatePresence';
 import { useMessageStore } from '../../../stores/useMessageStore';
 import { useStreamingStore } from '../../../stores/useStreamingStore';
 import { ModelSelectorDropdown } from './ModelSelectorDropdown';
-// SDK streaming components (#290)
-import { StreamingStatusLine as SDKStreamingStatusLine } from '@isa/ui-web';
-// Cast for React types version mismatch
-const StreamingStatusLine = SDKStreamingStatusLine as React.FC<any>;
+// SDK streaming components (#290) — safe import with fallback until @isa/ui-web dist is rebuilt
+let StreamingStatusLine: React.FC<any> = () => null;
+try {
+  const uiWeb = require('@isa/ui-web');
+  if (uiWeb.StreamingStatusLine) {
+    StreamingStatusLine = uiWeb.StreamingStatusLine as React.FC<any>;
+  }
+} catch { /* @isa/ui-web dist not yet rebuilt with streaming components */ }
 const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {

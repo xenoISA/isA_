@@ -47,10 +47,14 @@ import { DeepThinking as DeepThinkingOriginal } from '@isa/ui-web';
 import type { ThinkingStep, DeepThinkingProps } from '@isa/ui-web';
 // Cast to work around React types version mismatch between packages
 const DeepThinking = DeepThinkingOriginal as React.FC<DeepThinkingProps>;
-// SDK streaming components (#290)
-import { ThinkingBlock as ThinkingBlockOriginal, ToolCallDisplay as ToolCallDisplayOriginal } from '@isa/ui-web';
-const ThinkingBlock = ThinkingBlockOriginal as React.FC<any>;
-const ToolCallDisplay = ToolCallDisplayOriginal as React.FC<any>;
+// SDK streaming components (#290) — safe import with fallback until @isa/ui-web dist is rebuilt
+let ThinkingBlock: React.FC<any> = () => null;
+let ToolCallDisplay: React.FC<any> = () => null;
+try {
+  const uiWeb = require('@isa/ui-web');
+  if (uiWeb.ThinkingBlock) ThinkingBlock = uiWeb.ThinkingBlock as React.FC<any>;
+  if (uiWeb.ToolCallDisplay) ToolCallDisplay = uiWeb.ToolCallDisplay as React.FC<any>;
+} catch { /* @isa/ui-web dist not yet rebuilt with streaming components */ }
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';
 import { EditableMessage } from './EditableMessage';
