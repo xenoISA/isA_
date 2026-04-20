@@ -102,7 +102,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
 
   return (
     <div
-      className={`min-h-dvh w-full flex flex-col bg-[var(--surface-bg,#0f172a)] text-[var(--text-primary,#fff)] relative ${className}`}
+      className={`h-dvh w-full flex flex-col overflow-hidden bg-[var(--surface-bg,#0f172a)] text-[var(--text-primary,#fff)] relative ${className}`}
     >
       {/* Platform Navigation — disabled pending PlatformNav component fix
           The compiled @isa/ui-web PlatformNav renders a React element where

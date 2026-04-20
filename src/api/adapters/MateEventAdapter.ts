@@ -159,18 +159,37 @@ export function adaptMateEvent(
     }
 
     case 'result': {
-      // Final result — close the text message and finish the run
-      if (currentMessageId) {
+      // Final result — if no text message was started, emit start+content+end
+      if (!currentMessageId) {
+        currentMessageId = generateId('msg');
         results.push({
-          type: 'text_message_end',
+          type: 'text_message_start',
           thread_id: threadId,
           timestamp: now,
           run_id: context.runId,
           message_id: currentMessageId,
-          final_content: event.content,
+          role: 'assistant',
         });
-        currentMessageId = null;
+        if (event.content) {
+          results.push({
+            type: 'text_message_content',
+            thread_id: threadId,
+            timestamp: now,
+            run_id: context.runId,
+            message_id: currentMessageId,
+            delta: event.content,
+          });
+        }
       }
+      results.push({
+        type: 'text_message_end',
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        message_id: currentMessageId,
+        final_content: event.content,
+      });
+      currentMessageId = null;
       results.push({
         type: 'run_finished',
         thread_id: threadId,
