@@ -309,6 +309,75 @@ These existing capabilities set isA_ apart and should be preserved/enhanced, not
 - Computer use / screen control
 - Dispatch (phone → desktop)
 
+### Epic: Agent Capability Consumption — Surface SDK Features in Chat
+
+**Priority**: P0 → P3 (phased E1 → E6)
+**Milestone**: v1.0 — Unified Platform
+**Status**: Ready for design
+
+Currently the frontend reaches a narrow slice of isA_Agent_SDK through isA_Mate: chat, memory, scheduler, tracker. Users and agents cannot see or trigger 20+ SDK services (HIL, triggers, background jobs, webhooks, knowledge graph, vector search, checkpoints, cost metrics, audit) because there is no HTTP surface. The gateway plan (isA_Mate §2.30) exposes 5 capability routers under `/v1/{interactive,proactive,observability,persistence,responsive,autonomous,reactive}/*`. This epic tracks the isA_ UI side of consumption: which chat surfaces render which capability.
+
+**Why conversation-first matters:** isA_ is a companion, not a dashboard. Every capability lands in chat — HIL approvals surface as inline interrupts, trigger fires appear as proactive messages, cost/audit live in a drawer, checkpoints restore via slash command. No standalone settings pages.
+
+#### Sub-Epics
+
+**E1. Interactive (P0) — HIL Consumption**
+- `ExecutionControlService` polls `/v1/interactive/interrupts` (replaces broken `/agents/execution/health` probe)
+- `HILInterruptModal` renders ask_human, tool_authorization, review_and_edit variants
+- `HILInteractionManager` POSTs `/v1/interactive/interrupts/{id}/respond` to resume
+- Audit drawer shows approval history per session
+- Fixes the current 502 / "HIL service not available" warning
+
+**E2. Proactive (P1) — Triggers Panel**
+- Triggers pane in settings for CRUD against `/v1/proactive/triggers`
+- Autonomous event stream from `/v1/autonomous/events` (SSE) surfaces as proactive chat messages ("Your morning brief is ready…")
+- Trigger test dry-run UI for debugging conditions
+- Push notifications ride on top (when available)
+
+**E3. Observable (P1) — Cost & Audit**
+- Cost badge in chat header from `/v1/observability/metrics` (tokens + USD per session)
+- Audit drawer from `/v1/observability/audit` filterable by action type
+- No full-screen dashboards — everything accessible from chat
+
+**E4. Persistent (P2) — Knowledge & Checkpoints**
+- `/v1/persistence/knowledge/search` powers semantic memory lookup in Cmd+K
+- Graph view for `/v1/persistence/graph/{id}` relationships
+- Slash command `/restore <checkpoint_id>` invokes `/v1/persistence/restore` for resume-from-failure
+- Integrates with Companion Memory differentiator (5 memory types)
+
+**E5. Responsive (P2) — Live Progress**
+- `/v1/responsive/stream/{session_id}` (SSE) fuels live node/tool/content progress indicators
+- Complements existing `/v1/chat` SSE for post-hoc/observer views
+- Tool execution badges show timing + status
+
+**E6. Autonomous + Reactive (P3)**
+- Background job surface (`/v1/autonomous/background-jobs`) — user can see async work, not block chat
+- Generic webhook config UI (`/v1/reactive/webhooks`) for third-party ingress
+
+#### Cross-Repo Impact
+
+| Repo | Role |
+|------|------|
+| isA_Mate | Gateway routers (§2.30) — backend exposure |
+| isA_Agent_SDK | SDK-side hooks — query/restore APIs for HIL + checkpoints |
+| isA_App_SDK | 5 new capability clients — `InteractiveClient`, `ProactiveClient`, `ObservabilityClient`, `PersistenceClient`, `ResponsiveClient` in `@isa/transport` |
+| isA_ | UI integration — modals, panels, badges, drawers wired to new clients |
+
+#### Acceptance Criteria (Epic-level)
+
+- [ ] E1: 502 at `/agents/execution/health` is gone; ask_human modal renders and resumes
+- [ ] E2: User creates a cron trigger via UI, sees proactive message when it fires
+- [ ] E3: Cost badge updates live; audit drawer shows last 50 actions
+- [ ] E4: Semantic search finds prior conversation context; `/restore` resumes a failed run
+- [ ] E5: Live progress indicator shows every node/tool event in chat
+- [ ] E6: Background job appears in chat as async work; webhook config saves
+
+#### Out of Scope (for this epic)
+
+- Multi-tenant admin views (handled by isA_Console)
+- Raw Prometheus dashboards (handled by ops, not chat UI)
+- SDK-level changes to agent internals (handled in isA_Agent_SDK epics)
+
 ## Technical Constraints
 
 - Next.js 14 with pages router

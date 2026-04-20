@@ -159,6 +159,29 @@ export const GATEWAY_ENDPOINTS = {
       },
       HEALTH: buildMateEndpoint('/health'),
       AUTONOMOUS_EVENTS: buildMateEndpoint('/v1/autonomous/events'),
+      // Human-in-the-Loop capability router — maps to xenoISA/isA_Mate#404
+      // /v1/interactive/*. Replaces the defunct AGENTS.EXECUTION probe that
+      // returns 502 through APISIX (→ isA_Mate PR #424).
+      INTERACTIVE: {
+        HEALTH: buildMateEndpoint('/v1/interactive/health'),
+        LIST: buildMateEndpoint('/v1/interactive/interrupts'),
+        DETAIL: (id: string) =>
+          buildMateEndpoint(
+            `/v1/interactive/interrupts/${encodeURIComponent(id)}`,
+          ),
+        RESPOND: (id: string) =>
+          buildMateEndpoint(
+            `/v1/interactive/interrupts/${encodeURIComponent(id)}/respond`,
+          ),
+        TIMEOUT: (id: string, seconds: number) =>
+          buildMateEndpoint(
+            `/v1/interactive/interrupts/${encodeURIComponent(id)}/timeout/${seconds}`,
+          ),
+        AUDIT: (id: string) =>
+          buildMateEndpoint(
+            `/v1/interactive/interrupts/${encodeURIComponent(id)}/audit`,
+          ),
+      },
     };
   })(),
 

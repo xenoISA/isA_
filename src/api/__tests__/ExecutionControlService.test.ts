@@ -7,6 +7,7 @@ vi.mock('../BaseApiService', () => ({
 }));
 
 // Mock gatewayConfig
+const MATE_BASE = 'http://localhost:18789';
 vi.mock('../../config/gatewayConfig', () => ({
   GATEWAY_CONFIG: {
     BASE_URL: 'http://localhost:9080',
@@ -20,6 +21,16 @@ vi.mock('../../config/gatewayConfig', () => ({
         ROLLBACK: 'http://localhost:9080/agents/api/execution/rollback',
         RESUME: 'http://localhost:9080/agents/api/execution/resume',
         RESUME_STREAM: 'http://localhost:9080/agents/api/execution/resume-stream',
+      },
+    },
+    MATE: {
+      INTERACTIVE: {
+        HEALTH: 'http://localhost:18789/v1/interactive/health',
+        LIST: 'http://localhost:18789/v1/interactive/interrupts',
+        DETAIL: (id: string) => `http://localhost:18789/v1/interactive/interrupts/${encodeURIComponent(id)}`,
+        RESPOND: (id: string) => `http://localhost:18789/v1/interactive/interrupts/${encodeURIComponent(id)}/respond`,
+        TIMEOUT: (id: string, s: number) => `http://localhost:18789/v1/interactive/interrupts/${encodeURIComponent(id)}/timeout/${s}`,
+        AUDIT: (id: string) => `http://localhost:18789/v1/interactive/interrupts/${encodeURIComponent(id)}/audit`,
       },
     },
   },
@@ -68,36 +79,34 @@ describe('ExecutionControlService', () => {
   // ============================================================================
 
   describe('getHealth', () => {
-    test('returns health data on success', async () => {
-      const healthData = {
+    test('probes the MATE /v1/interactive/health endpoint and maps to ExecutionHealth', async () => {
+      const interactiveHealth = {
         status: 'healthy',
-        service: 'execution-control',
         features: {
           human_in_loop: true,
           approval_workflow: true,
           tool_authorization: true,
-          total_interrupts: 5,
         },
         graph_info: {
-          nodes: 10,
           durable: true,
-          checkpoints: true,
-          environment: 'development',
+          total_interrupts: 5,
         },
       };
       mockFetch.mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue(healthData),
+        json: vi.fn().mockResolvedValue(interactiveHealth),
       });
 
       const result = await service.getHealth();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:9080/agents/api/execution/health',
+        'http://localhost:18789/v1/interactive/health',
         expect.objectContaining({ method: 'GET' })
       );
       expect(result.status).toBe('healthy');
       expect(result.features.human_in_loop).toBe(true);
+      expect(result.features.total_interrupts).toBe(5);
+      expect(result.service).toBe('mate-interactive');
     });
 
     test('throws on non-ok response', async () => {
@@ -116,6 +125,120 @@ describe('ExecutionControlService', () => {
       mockFetch.mockRejectedValue(new Error('Connection refused'));
 
       await expect(service.getHealth()).rejects.toThrow('Connection refused');
+    });
+
+    test('logs at debug (not warn/error) when probe fails — silences misleading warn at ChatModule.tsx:331', async () => {
+      const { logger } = await import('../../utils/logger');
+      mockFetch.mockResolvedValue({ ok: false, status: 502, statusText: 'Bad Gateway' });
+
+      await expect(service.getHealth()).rejects.toThrow();
+
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================================
+  // Interactive capability router (/v1/interactive/*) — xenoISA/isA_Mate#404
+  // ============================================================================
+
+  describe('Interactive capability client', () => {
+    test('listInterrupts calls the correct endpoint with cursor/limit', async () => {
+      const payload = { pending: [], active_sessions: [], next_cursor: null };
+      mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue(payload) });
+
+      const result = await service.listInterrupts({ cursor: 'c1', limit: 10 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:18789/v1/interactive/interrupts?cursor=c1&limit=10',
+        expect.objectContaining({ method: 'GET' })
+      );
+      expect(result).toEqual(payload);
+    });
+
+    test('getInterrupt URL-encodes the request_id', async () => {
+      const payload = {
+        id: 'id with spaces',
+        type: 'ask_human',
+        title: 't',
+        message: 'm',
+        timestamp: '2026-04-20T00:00:00Z',
+        thread_id: 'x',
+        expires_at: null,
+        security_level: 'medium',
+        data: {},
+      };
+      mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue(payload) });
+
+      await service.getInterrupt('id with spaces');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:18789/v1/interactive/interrupts/id%20with%20spaces',
+        expect.objectContaining({ method: 'GET' })
+      );
+    });
+
+    test('respondToInterrupt POSTs the body to /respond', async () => {
+      const payload = { session_id: 'req-1', status: 'resumed' };
+      mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue(payload) });
+
+      const result = await service.respondToInterrupt('req-1', {
+        response: { email: 'a@b.com' },
+        action: 'continue',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:18789/v1/interactive/interrupts/req-1/respond',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ response: { email: 'a@b.com' }, action: 'continue' }),
+        })
+      );
+      expect(result.status).toBe('resumed');
+    });
+
+    test('extendTimeout rejects out-of-bounds seconds locally (no fetch)', async () => {
+      await expect(service.extendTimeout('req-1', 0)).rejects.toThrow(RangeError);
+      await expect(service.extendTimeout('req-1', 3601)).rejects.toThrow(RangeError);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('extendTimeout PATCHes the correct URL for valid seconds', async () => {
+      const payload = { request_id: 'req-1', new_expires_at: '2026-04-20T01:00:00Z' };
+      mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue(payload) });
+
+      const result = await service.extendTimeout('req-1', 120);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:18789/v1/interactive/interrupts/req-1/timeout/120',
+        expect.objectContaining({ method: 'PATCH' })
+      );
+      expect(result.new_expires_at).toBe('2026-04-20T01:00:00Z');
+    });
+
+    test('getInterruptAudit returns the audit array', async () => {
+      const audit = [
+        { timestamp: '2026-04-20T00:00:00Z', user_id: 'u1', response: 'ok', latency_ms: 100, outcome: 'approved' },
+      ];
+      mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue(audit) });
+
+      const result = await service.getInterruptAudit('req-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:18789/v1/interactive/interrupts/req-1/audit',
+        expect.objectContaining({ method: 'GET' })
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0].outcome).toBe('approved');
+    });
+
+    test('each method propagates non-ok responses as Errors', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 404, statusText: 'Not Found' });
+
+      await expect(service.getInterrupt('missing')).rejects.toThrow(/404/);
+      await expect(service.respondToInterrupt('missing', { response: 'x' })).rejects.toThrow(/404/);
+      await expect(service.getInterruptAudit('missing')).rejects.toThrow(/404/);
     });
   });
 
@@ -337,7 +460,11 @@ describe('ExecutionControlService', () => {
     test('returns true when health check succeeds', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue({ status: 'healthy' }),
+        json: vi.fn().mockResolvedValue({
+          status: 'healthy',
+          features: { human_in_loop: true, approval_workflow: true, tool_authorization: true },
+          graph_info: { durable: true, total_interrupts: 0 },
+        }),
       });
 
       const result = await service.isServiceAvailable();
@@ -351,6 +478,17 @@ describe('ExecutionControlService', () => {
       const result = await service.isServiceAvailable();
 
       expect(result).toBe(false);
+    });
+
+    test('returns false silently (no warn/error) on 502 — fixes ChatModule.tsx:331 spam', async () => {
+      const { logger } = await import('../../utils/logger');
+      mockFetch.mockResolvedValue({ ok: false, status: 502, statusText: 'Bad Gateway' });
+
+      const result = await service.isServiceAvailable();
+
+      expect(result).toBe(false);
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
     });
   });
 

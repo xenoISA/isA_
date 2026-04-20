@@ -28,11 +28,20 @@ import { BaseApiService } from './BaseApiService';
 import { logger, LogCategory } from '../utils/logger';
 import { GATEWAY_CONFIG, GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
 import { authTokenStore } from '../stores/authTokenStore';
-import { 
-  HILInterruptDetectedEvent, 
+import {
+  HILInterruptDetectedEvent,
   HILCheckpointCreatedEvent,
-  HILExecutionStatusData 
+  HILExecutionStatusData
 } from '../types/aguiTypes';
+import type {
+  Interrupt,
+  InterruptListResponse,
+  InterruptResponseBody,
+  ResumeResult as InteractiveResumeResult,
+  ExpiryInfo,
+  AuditEntry,
+  InteractiveHealth,
+} from './types/interactive';
 
 // ================================================================================
 // Type Definitions - HIL执行控制类型定义
@@ -220,10 +229,16 @@ export class ExecutionControlService {
 
   /**
    * 检查HIL执行控制服务健康状态
+   *
+   * Probes the Mate gateway's /v1/interactive/health endpoint
+   * (xenoISA/isA_Mate#404). Failures are downgraded to debug — the old
+   * error log caused the misleading "HIL service not available" spam at
+   * ChatModule.tsx:331 when the backend returned 502/404, even though
+   * HIL interrupt handling should remain enabled regardless.
    */
   async getHealth(): Promise<ExecutionHealth> {
     try {
-      const response = await fetch(GATEWAY_ENDPOINTS.AGENTS.EXECUTION.HEALTH, {
+      const response = await fetch(GATEWAY_ENDPOINTS.MATE.INTERACTIVE.HEALTH, {
         method: 'GET',
         headers: this.getRequestHeaders()
       });
@@ -232,13 +247,114 @@ export class ExecutionControlService {
         throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
       }
 
-      const health = await response.json();
-      logger.info(LogCategory.CHAT_FLOW, 'HIL service health check successful', health);
+      const interactive: InteractiveHealth = await response.json();
+      // Map the capability-router shape to the legacy ExecutionHealth
+      // shape so existing callers continue to work.
+      const health: ExecutionHealth = {
+        status: interactive.status === 'healthy' ? 'healthy' : 'down',
+        service: 'mate-interactive',
+        features: {
+          human_in_loop: interactive.features.human_in_loop,
+          approval_workflow: interactive.features.approval_workflow,
+          tool_authorization: interactive.features.tool_authorization,
+          total_interrupts: interactive.graph_info.total_interrupts ?? 0,
+        },
+        graph_info: {
+          nodes: 0,
+          durable: interactive.graph_info.durable ?? false,
+          checkpoints: interactive.graph_info.durable ?? false,
+          environment: 'mate',
+        },
+      };
+      logger.debug(LogCategory.CHAT_FLOW, 'HIL service health check successful', health);
       return health;
     } catch (error) {
-      logger.error(LogCategory.CHAT_FLOW, 'HIL service health check failed', { error });
+      logger.debug(LogCategory.CHAT_FLOW, 'HIL probe inactive — interrupt handling stays enabled', { error });
       throw error;
     }
+  }
+
+  // ================================================================================
+  // /v1/interactive/* client — capability router consumption
+  // (xenoISA/isA_Mate#404, contract INTERACTIVE v1)
+  // ================================================================================
+
+  /**
+   * List pending HIL interrupts for the authenticated user.
+   */
+  async listInterrupts(opts: { cursor?: string; limit?: number } = {}): Promise<InterruptListResponse> {
+    const qs = new URLSearchParams();
+    if (opts.cursor) qs.set('cursor', opts.cursor);
+    qs.set('limit', String(opts.limit ?? 50));
+    const url = `${GATEWAY_ENDPOINTS.MATE.INTERACTIVE.LIST}?${qs.toString()}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: this.getRequestHeaders('listInterrupts'),
+    });
+    if (!response.ok) {
+      throw new Error(`listInterrupts failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Get a single interrupt by request id.
+   */
+  async getInterrupt(requestId: string): Promise<Interrupt> {
+    const response = await fetch(GATEWAY_ENDPOINTS.MATE.INTERACTIVE.DETAIL(requestId), {
+      method: 'GET',
+      headers: this.getRequestHeaders('getInterrupt'),
+    });
+    if (!response.ok) {
+      throw new Error(`getInterrupt failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Submit the user response for a pending interrupt and resume execution.
+   */
+  async respondToInterrupt(requestId: string, body: InterruptResponseBody): Promise<InteractiveResumeResult> {
+    const response = await fetch(GATEWAY_ENDPOINTS.MATE.INTERACTIVE.RESPOND(requestId), {
+      method: 'POST',
+      headers: this.getRequestHeaders('respondToInterrupt'),
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(`respondToInterrupt failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Extend the timeout on a pending interrupt.
+   */
+  async extendTimeout(requestId: string, seconds: number): Promise<ExpiryInfo> {
+    if (!Number.isInteger(seconds) || seconds < 1 || seconds > 3600) {
+      throw new RangeError(`extendTimeout: seconds must be integer in [1, 3600], got ${seconds}`);
+    }
+    const response = await fetch(GATEWAY_ENDPOINTS.MATE.INTERACTIVE.TIMEOUT(requestId, seconds), {
+      method: 'PATCH',
+      headers: this.getRequestHeaders('extendTimeout'),
+    });
+    if (!response.ok) {
+      throw new Error(`extendTimeout failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Get approval/response audit history for a completed interrupt.
+   */
+  async getInterruptAudit(requestId: string): Promise<AuditEntry[]> {
+    const response = await fetch(GATEWAY_ENDPOINTS.MATE.INTERACTIVE.AUDIT(requestId), {
+      method: 'GET',
+      headers: this.getRequestHeaders('getInterruptAudit'),
+    });
+    if (!response.ok) {
+      throw new Error(`getInterruptAudit failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
   }
 
   /**
