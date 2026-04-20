@@ -204,6 +204,26 @@ export const GATEWAY_ENDPOINTS = {
         METRICS: buildMateEndpoint('/v1/observability/metrics'),
         AUDIT: buildMateEndpoint('/v1/observability/audit'),
       },
+      // Persistence capability router — maps to xenoISA/isA_Mate#407 + #427
+      PERSISTENCE: {
+        CHECKPOINTS: buildMateEndpoint('/v1/persistence/checkpoints'),
+        CHECKPOINT: (id: string) =>
+          buildMateEndpoint(
+            `/v1/persistence/checkpoints/${encodeURIComponent(id)}`,
+          ),
+        RESTORE: buildMateEndpoint('/v1/persistence/restore'),
+        KNOWLEDGE: buildMateEndpoint('/v1/persistence/knowledge'),
+        KNOWLEDGE_SEARCH: buildMateEndpoint('/v1/persistence/knowledge/search'),
+        GRAPH_NODE: (id: string) =>
+          buildMateEndpoint(`/v1/persistence/graph/${encodeURIComponent(id)}`),
+      },
+      // Responsive capability — per-session SSE stream (xenoISA/isA_Mate#408 + #428)
+      RESPONSIVE: {
+        STREAM: (sessionId: string) =>
+          buildMateEndpoint(
+            `/v1/responsive/stream/${encodeURIComponent(sessionId)}`,
+          ),
+      },
     };
   })(),
 
