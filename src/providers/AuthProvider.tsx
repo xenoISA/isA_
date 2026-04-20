@@ -99,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${devToken}` },
               credentials: 'include',
+              body: JSON.stringify({ token: devToken }),
             }).then(res => {
               if (res.status === 401) {
                 // Token truly invalid — force re-login
@@ -107,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setAuthUser(null);
                 logger.warn(LogCategory.USER_AUTH, 'Dev token rejected by server (401), forcing re-login');
               }
+              // 422/503/other = ignore silently, keep local session
             }).catch(() => {
               // Network error — keep the session, service is down
             });
