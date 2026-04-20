@@ -250,16 +250,19 @@ export class ChatService {
     switch (event.type) {
       // 基础流程事件
       case 'run_started':
-        callbacks.onStreamStart?.(event.message_id || event.run_id, 'Starting...');
+        // Don't call onStreamStart here — wait for text_message_start or first content.
+        // The placeholder in messageHandlers handles the "waiting" UX.
+        log.debug('Run started', { runId: event.run_id });
         break;
-        
+
       case 'text_message_start':
-        // 只是标记开始，不创建消息。实际内容由 token 事件处理
-        log.debug('Message generation started', { messageId: event.message_id || event.run_id });
+        // NOW create the streaming message — real content is about to arrive
+        callbacks.onStreamStart?.(event.message_id || event.run_id, 'Generating...');
         break;
-        
+
       case 'text_message_end':
-        callbacks.onStreamComplete?.(event.content || event.result);
+        // Don't complete here — let run_finished or handleComplete do it once
+        log.debug('Text message ended', { messageId: event.message_id });
         break;
         
       case 'text_delta':
@@ -271,7 +274,9 @@ export class ChatService {
         
       case 'run_finished':
       case 'run_completed':
-        callbacks.onStreamComplete?.(event.content || event.result);
+        // Don't call onStreamComplete here — handleComplete does it when stream ends.
+        // Calling it here causes duplicate finishStreamingMessage().
+        log.debug('Run finished', { runId: event.run_id });
         break;
         
       case 'run_error':
@@ -280,7 +285,8 @@ export class ChatService {
         break;
         
       case 'stream_done':
-        callbacks.onStreamComplete?.();
+        // Don't call onStreamComplete here — handleComplete does it once when SSE ends.
+        log.debug('Stream done event received');
         break;
         
       // 工具执行事件
