@@ -68,30 +68,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // instead of calling /refresh (which requires an HttpOnly cookie not set in dev)
         const devToken = typeof window !== 'undefined' ? localStorage.getItem('isa_dev_token') : null;
         if (devToken) {
-          const verifyRes = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${devToken}` },
-            credentials: 'include',
-          });
-
-          if (cancelled) return;
-
-          if (verifyRes.ok) {
-            const data = await verifyRes.json();
-            saveAuthToken(devToken);
-            const user = data.user || {};
-            setAuthUser({
-              ...user,
-              sub: data.user_id || user.sub || data.sub || '',
-              email: user.email || data.email || '',
-              name: user.name || data.name || data.email || '',
-            });
-            logger.info(LogCategory.USER_AUTH, 'Restored session from dev localStorage token');
-            setIsLoading(false);
-            return;
-          } else {
-            // Token expired — remove it
+          // Decode JWT payload locally to restore user without network call
+          let jwtUser: any = null;
+          try {
+            const payload = JSON.parse(atob(devToken.split('.')[1]));
+            // Check expiry
+            if (payload.exp && payload.exp * 1000 > Date.now()) {
+              jwtUser = payload;
+            } else {
+              localStorage.removeItem('isa_dev_token');
+              logger.info(LogCategory.USER_AUTH, 'Dev token expired, removed');
+            }
+          } catch {
             localStorage.removeItem('isa_dev_token');
+          }
+
+          if (jwtUser) {
+            // Restore session from JWT payload — no network call needed
+            saveAuthToken(devToken);
+            setAuthUser({
+              sub: jwtUser.user_id || jwtUser.sub || '',
+              email: jwtUser.email || '',
+              name: jwtUser.name || jwtUser.email || '',
+            });
+            logger.info(LogCategory.USER_AUTH, 'Restored session from dev JWT (local decode)');
+            setIsLoading(false);
+
+            // Optionally verify in background (non-blocking)
+            fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${devToken}` },
+              credentials: 'include',
+            }).then(res => {
+              if (res.status === 401) {
+                // Token truly invalid — force re-login
+                localStorage.removeItem('isa_dev_token');
+                clearAuth();
+                setAuthUser(null);
+                logger.warn(LogCategory.USER_AUTH, 'Dev token rejected by server (401), forcing re-login');
+              }
+            }).catch(() => {
+              // Network error — keep the session, service is down
+            });
+
+            return;
           }
         }
 
