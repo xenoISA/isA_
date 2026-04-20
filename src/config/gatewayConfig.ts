@@ -182,6 +182,28 @@ export const GATEWAY_ENDPOINTS = {
             `/v1/interactive/interrupts/${encodeURIComponent(id)}/audit`,
           ),
       },
+      // Proactive capability router — maps to xenoISA/isA_Mate#405 /v1/proactive/*
+      // and xenoISA/isA_Mate#425 autonomous SSE events.
+      PROACTIVE: {
+        TRIGGERS: buildMateEndpoint('/v1/proactive/triggers'),
+        TRIGGER: (id: string) =>
+          buildMateEndpoint(
+            `/v1/proactive/triggers/${encodeURIComponent(id)}`,
+          ),
+        TEST: (id: string) =>
+          buildMateEndpoint(
+            `/v1/proactive/triggers/${encodeURIComponent(id)}/test`,
+          ),
+        RUNS: (id: string) =>
+          buildMateEndpoint(
+            `/v1/proactive/triggers/${encodeURIComponent(id)}/runs`,
+          ),
+      },
+      // Observability capability router — maps to xenoISA/isA_Mate#406 + #426
+      OBSERVABILITY: {
+        METRICS: buildMateEndpoint('/v1/observability/metrics'),
+        AUDIT: buildMateEndpoint('/v1/observability/audit'),
+      },
     };
   })(),
 
