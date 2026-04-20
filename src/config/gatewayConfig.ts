@@ -224,6 +224,28 @@ export const GATEWAY_ENDPOINTS = {
             `/v1/responsive/stream/${encodeURIComponent(sessionId)}`,
           ),
       },
+      // Autonomous capability — background jobs (xenoISA/isA_Mate#409 + #429)
+      AUTONOMOUS: {
+        JOBS: buildMateEndpoint('/v1/autonomous/background-jobs'),
+        JOB: (id: string) =>
+          buildMateEndpoint(
+            `/v1/autonomous/background-jobs/${encodeURIComponent(id)}`,
+          ),
+      },
+      // Reactive capability — webhooks + event subscriptions
+      REACTIVE: {
+        WEBHOOKS: buildMateEndpoint('/v1/reactive/webhooks'),
+        WEBHOOK: (id: string) =>
+          buildMateEndpoint(
+            `/v1/reactive/webhooks/${encodeURIComponent(id)}`,
+          ),
+        SUBSCRIBE: buildMateEndpoint('/v1/reactive/events/subscribe'),
+        SUBSCRIPTIONS: buildMateEndpoint('/v1/reactive/events/subscriptions'),
+        SUBSCRIPTION: (id: string) =>
+          buildMateEndpoint(
+            `/v1/reactive/events/subscriptions/${encodeURIComponent(id)}`,
+          ),
+      },
     };
   })(),
 
