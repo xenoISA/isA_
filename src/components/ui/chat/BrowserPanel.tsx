@@ -8,14 +8,17 @@
  */
 
 import React, { useState } from 'react';
-// Safe import — @isa/ui-web dist may not include these yet
-let BrowserViewport: React.FC<any> = () => React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'Browser Viewport loading...');
-let ActionLogPanel: React.FC<any> = () => React.createElement('div', { style: { padding: 20, color: '#6b7280' } }, 'Action log loading...');
-try {
-  const uiWeb = require('@isa/ui-web');
-  if (uiWeb.BrowserViewport) BrowserViewport = uiWeb.BrowserViewport as React.FC<any>;
-  if (uiWeb.ActionLogPanel) ActionLogPanel = uiWeb.ActionLogPanel as React.FC<any>;
-} catch { /* fallback */ }
+// Placeholder until @isa/ui-web dist is rebuilt (#293, #294)
+const BrowserViewport: React.FC<any> = ({ isConnected }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#1e1e2e', color: '#6b7280', fontSize: 14, borderRadius: 8 }}>
+    {isConnected ? 'Waiting for screenshot...' : 'Browser Viewport — rebuild @isa/ui-web to activate'}
+  </div>
+);
+const ActionLogPanel: React.FC<any> = ({ actions = [] }) => (
+  <div style={{ padding: 12, color: '#6b7280', fontSize: 13, border: '1px solid #e5e7eb', borderRadius: 8, height: '100%' }}>
+    Action Log — {actions.length} actions
+  </div>
+);
 
 export interface BrowserPanelProps {
   /** Current screenshot */

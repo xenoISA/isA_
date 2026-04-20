@@ -8,12 +8,12 @@
  */
 
 import React from 'react';
-// Safe import — @isa/ui-web dist may not include DesignCanvas yet
-let DesignCanvas: React.FC<any> = (props) => React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'Design Canvas loading...');
-try {
-  const uiWeb = require('@isa/ui-web');
-  if (uiWeb.DesignCanvas) DesignCanvas = uiWeb.DesignCanvas as React.FC<any>;
-} catch { /* fallback */ }
+// Placeholder until @isa/ui-web dist is rebuilt with DesignCanvas (#291)
+const DesignCanvas: React.FC<any> = (props) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', fontSize: 14 }}>
+    {props.isGenerating ? 'Generating design...' : 'Design Canvas — rebuild @isa/ui-web to activate'}
+  </div>
+);
 
 export interface DesignPanelProps {
   /** Design content URL (image) */

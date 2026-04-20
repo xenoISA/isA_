@@ -7,14 +7,33 @@ import { useMatePresence } from '../../../hooks/useMatePresence';
 import { useMessageStore } from '../../../stores/useMessageStore';
 import { useStreamingStore } from '../../../stores/useStreamingStore';
 import { ModelSelectorDropdown } from './ModelSelectorDropdown';
-// SDK streaming components (#290) — safe import with fallback until @isa/ui-web dist is rebuilt
-let StreamingStatusLine: React.FC<any> = () => null;
-try {
-  const uiWeb = require('@isa/ui-web');
-  if (uiWeb.StreamingStatusLine) {
-    StreamingStatusLine = uiWeb.StreamingStatusLine as React.FC<any>;
-  }
-} catch { /* @isa/ui-web dist not yet rebuilt with streaming components */ }
+// SDK streaming component — inline implementation until @isa/ui-web dist is rebuilt (#290)
+const StreamingStatusLine: React.FC<{
+  phase: string;
+  message?: string;
+  isThinking?: boolean;
+  activeTasks?: number;
+  className?: string;
+}> = ({ phase, message, isThinking, activeTasks, className = '' }) => {
+  const defaultMessages: Record<string, string> = {
+    idle: '', connecting: 'Connecting...', preparing: 'Preparing...',
+    generating: 'Responding...', done: '',
+  };
+  const text = message || defaultMessages[phase] || '';
+  if (!text && !isThinking && !activeTasks) return null;
+
+  return (
+    <div className={`flex items-center gap-1.5 ${className}`} role="status" aria-live="polite">
+      {phase !== 'idle' && phase !== 'done' && (
+        <span className={`w-1.5 h-1.5 rounded-full ${isThinking ? 'bg-amber-400' : 'bg-blue-400'} animate-pulse`} />
+      )}
+      <span>{isThinking ? 'Thinking...' : text}</span>
+      {activeTasks != null && activeTasks > 0 && (
+        <span className="ml-auto opacity-70">{activeTasks} task{activeTasks !== 1 ? 's' : ''} active</span>
+      )}
+    </div>
+  );
+};
 const log = createLogger('InputAreaLayout');
 
 export interface InputAreaLayoutProps {
