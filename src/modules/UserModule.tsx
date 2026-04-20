@@ -270,18 +270,19 @@ export const UserModule: React.FC<{ children: React.ReactNode }> = ({ children }
         auth0_id: authUser.sub
       });
 
-      // Graceful degradation: set user with defaults so chat still works
-      // even when user/credit service is temporarily unavailable (503).
+      // Graceful degradation: set user with zero credits so they can see the UI
+      // but can't send messages until the service recovers and real credits load.
       const userStore = useUserStore.getState();
       userStore.setExternalUser({
         auth0_id: authUser.sub,
         email: authUser.email,
         name: authUser.name || authUser.email,
-        credits: 100000, // Default credits — will be corrected on next successful init
-        credits_total: 100000,
+        credits: 0,
+        credits_total: 0,
         plan: 'free',
+        _serviceUnavailable: true,
       });
-      log.warn('User set with default credits due to service unavailability');
+      log.warn('User set with zero credits — service unavailable, will retry on next refresh');
     }
   }, [authUser?.sub, authUser?.email, authUser?.name, isAuthenticated, userService]);
 
