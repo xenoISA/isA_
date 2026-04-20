@@ -64,6 +64,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let cancelled = false;
     (async () => {
       try {
+        // Dev fast-path: if we have a token in localStorage, verify it directly
+        // instead of calling /refresh (which requires an HttpOnly cookie not set in dev)
+        const devToken = typeof window !== 'undefined' ? localStorage.getItem('isa_dev_token') : null;
+        if (devToken) {
+          const verifyRes = await fetch(GATEWAY_ENDPOINTS.AUTH.VERIFY_TOKEN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${devToken}` },
+            credentials: 'include',
+          });
+
+          if (cancelled) return;
+
+          if (verifyRes.ok) {
+            const data = await verifyRes.json();
+            saveAuthToken(devToken);
+            const user = data.user || {};
+            setAuthUser({
+              ...user,
+              sub: data.user_id || user.sub || data.sub || '',
+              email: user.email || data.email || '',
+              name: user.name || data.name || data.email || '',
+            });
+            logger.info(LogCategory.USER_AUTH, 'Restored session from dev localStorage token');
+            setIsLoading(false);
+            return;
+          } else {
+            // Token expired — remove it
+            localStorage.removeItem('isa_dev_token');
+          }
+        }
+
         // Try silent refresh — the HttpOnly cookie is sent automatically
         const res = await fetch(GATEWAY_ENDPOINTS.AUTH.BASE + '/refresh', {
           method: 'POST',
