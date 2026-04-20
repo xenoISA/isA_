@@ -201,8 +201,15 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
         await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
-            // Replace the placeholder with the real streaming message
-            useChatStore.getState().finishStreamingMessage(); // close placeholder
+            // Remove the placeholder — don't finishStreamingMessage (which persists empty content)
+            const messages = useMessageStore.getState().messages;
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && lastMsg.isStreaming && lastMsg.id === placeholderId) {
+              // Delete placeholder instead of finishing it (avoids empty "mate complete" bubble)
+              useMessageStore.setState({ messages: messages.slice(0, -1) });
+            } else {
+              useChatStore.getState().finishStreamingMessage();
+            }
             useChatStore.getState().startStreamingMessage(messageId, status);
             useChatStore.getState().setExecutingPlan(true);
           },

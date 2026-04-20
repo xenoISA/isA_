@@ -970,45 +970,9 @@ export const MessageList = memo<MessageListProps>(({
         {!virtualized && (
           <>
 
-            {/* Typing indicator */}
-            {isTyping && !messages.some(m => m.isStreaming) && (
-              <div className="flex justify-start mb-4">
-                <div className="max-w-[80%]">
-                  {showAvatars && (
-                    <div className="flex items-center mb-2">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 shadow-lg">
-                        AI
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="p-4 rounded-xl bg-white/8 backdrop-blur-md border border-white/10">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-bounce shadow-lg shadow-blue-400/50"></div>
-                        <div className="w-2 h-2 bg-gradient-to-r from-blue-300 to-purple-300 rounded-full animate-bounce delay-100 shadow-md shadow-blue-300/30"></div>
-                        <div className="w-2 h-2 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full animate-bounce delay-200 shadow-sm shadow-blue-200/20"></div>
-                      </div>
-                      <span className="text-sm text-white/70">AI is typing...</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Typing indicator removed — StreamingStatusLine in InputAreaLayout handles this (#290) */}
 
-            {/* Loading indicator */}
-            {isLoading && !isTyping && !messages.some(m => m.isStreaming) && (
-              <div className="text-center py-8">
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="flex space-x-1">
-                    <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-bounce shadow-lg shadow-blue-400/50"></div>
-                    <div className="w-3 h-3 bg-gradient-to-r from-blue-300 to-purple-300 rounded-full animate-bounce delay-100 shadow-md shadow-blue-300/30"></div>
-                    <div className="w-3 h-3 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full animate-bounce delay-200 shadow-sm shadow-blue-200/20"></div>
-                  </div>
-                  <span className="text-sm font-medium text-white/70">Processing your request...</span>
-                </div>
-              </div>
-            )}
+            {/* Loading indicator removed — StreamingStatusLine in InputAreaLayout handles this (#290) */}
           </>
         )}
       </div>
