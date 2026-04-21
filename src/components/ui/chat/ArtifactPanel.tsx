@@ -10,7 +10,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { ArtifactNode } from '../../../types/artifactTypes';
 import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
 import { useArtifactManager } from '../../../stores/useArtifactManager';
-import { getRenderer, hasRenderer } from './ArtifactRendererRegistry';
+import { RenderArtifact } from './renderers';
 
 // Lazy-load A2UI renderer — only imported when an artifact has a2uiState
 let A2UIRendererModule: typeof import('./A2UISurfacePanel') | null = null;
@@ -374,19 +374,17 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
                 surfaceEvents={surfaceEvents}
                 onUserAction={onUserAction}
               />
-            ) : (() => {
-              // Use ArtifactRendererRegistry for content-type dispatch (#255)
-              const Renderer = getRenderer(artifact.contentType);
-              return (
-                <Renderer
-                  content={activeVersion.content}
-                  language={activeVersion.language}
-                  title={artifact.title}
-                  a2uiState={activeVersion.a2uiState}
-                  metadata={artifact.metadata}
-                />
-              );
-            })()}
+            ) : (
+              // ArtifactRendererRegistry dispatch with widget + content fallback chain (#255)
+              <RenderArtifact
+                widgetType={artifact.widgetType}
+                content={activeVersion.content}
+                contentType={artifact.contentType}
+                language={activeVersion.language}
+                layout="inspect"
+                metadata={artifact.metadata}
+              />
+            )}
           </div>
         )}
 
