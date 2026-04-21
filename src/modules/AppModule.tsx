@@ -45,6 +45,8 @@ import { CommandPalette } from '../components/ui/chat/CommandPalette';
 import { SettingsModal } from '../components/ui/settings/SettingsModal';
 import { ArtifactCanvas } from '../components/ui/chat/ArtifactCanvas';
 import { ArtifactSheet } from '../components/ui/chat/ArtifactSheet';
+// Side-effect import: registers default + widget-specific artifact renderers (#255)
+import '../components/ui/chat/renderers';
 import { KeyboardShortcutsOverlay } from '../components/ui/settings/KeyboardShortcutsOverlay';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
