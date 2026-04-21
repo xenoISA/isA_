@@ -158,7 +158,7 @@ export const GATEWAY_ENDPOINTS = {
         JOB_RUN: buildMateEndpoint('/v1/scheduler/jobs/{jobId}/run'),
       },
       HEALTH: buildMateEndpoint('/health'),
-      CONTEXT_WARMUP: buildMateEndpoint('/v1/context/warmup'),
+      MEMORY_STATS: buildMateEndpoint('/v1/memory/stats'),
       AUTONOMOUS_EVENTS: buildMateEndpoint('/v1/autonomous/events'),
       // Human-in-the-Loop capability router — maps to xenoISA/isA_Mate#404
       // /v1/interactive/*. Replaces the defunct AGENTS.EXECUTION probe that
@@ -266,8 +266,8 @@ export const GATEWAY_ENDPOINTS = {
   },
   
   // ==== 账户服务端点 (原User服务) ====
-  // Note: ACCOUNTS paths include /api/v1/users/... because the user-service
-  // backend exposes routes under that prefix, unlike AGENTS which uses short paths.
+  // Primary account routes now live under /api/v1/accounts/*.
+  // A few profile-level compatibility endpoints still exist under /api/v1/users/*.
   ACCOUNTS: {
     BASE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS),
     ME: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/me'),
@@ -280,14 +280,14 @@ export const GATEWAY_ENDPOINTS = {
   // ==== 会话服务端点 ====
   SESSIONS: {
     BASE: buildEndpoint(GATEWAY_SERVICES.SESSIONS),
-    LIST: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions'),
-    CREATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions'),
-    GET: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/{sessionId}'),
-    UPDATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/{sessionId}'),
-    DELETE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/{sessionId}'),
-    USER: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/user'),
-    ACTIVE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/active'),
-    SEARCH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/sessions/search'),
+    LIST: buildEndpoint(GATEWAY_SERVICES.SESSIONS),
+    CREATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS),
+    GET: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/{sessionId}'),
+    UPDATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/{sessionId}'),
+    DELETE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/{sessionId}'),
+    USER: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/user'),
+    ACTIVE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/active'),
+    SEARCH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/search'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/health'),
   },
   
@@ -478,8 +478,14 @@ export const mapLegacyUrl = (legacyUrl: string): string => {
   if (legacyUrl.includes('localhost:8080')) {
     return legacyUrl.replace('http://localhost:8080', GATEWAY_ENDPOINTS.AGENTS.BASE);
   }
+  if (legacyUrl.includes('http://localhost:9000/api/v1/users')) {
+    return legacyUrl.replace(
+      'http://localhost:9000/api/v1/users',
+      GATEWAY_ENDPOINTS.ACCOUNTS.BASE,
+    );
+  }
   if (legacyUrl.includes('localhost:9000')) {
-    return legacyUrl.replace('http://localhost:9000', GATEWAY_ENDPOINTS.ACCOUNTS.BASE);
+    return legacyUrl.replace('http://localhost:9000', GATEWAY_CONFIG.BASE_URL);
   }
   if (legacyUrl.includes('localhost:3000/api/sessions')) {
     return legacyUrl.replace('http://localhost:3000/api/sessions', GATEWAY_ENDPOINTS.SESSIONS.BASE);

@@ -18,7 +18,7 @@ vi.mock('../../config/gatewayConfig', () => ({
     MATE: {
       BASE: 'http://mate.test',
       HEALTH: 'http://mate.test/health',
-      CONTEXT_WARMUP: 'http://mate.test/v1/context/warmup',
+      MEMORY_STATS: 'http://mate.test/v1/memory/stats',
       MEMORY: {
         SESSIONS: 'http://mate.test/v1/memory/sessions',
         SESSION_MESSAGES: 'http://mate.test/v1/memory/sessions/{sessionId}/messages',
@@ -41,9 +41,9 @@ vi.mock('../../utils/logger', () => ({
   LogCategory: { API_REQUEST: 'api_request' },
 }));
 
-const getPost = () => {
+const getGet = () => {
   const mod = vi.mocked(BaseApiService);
-  return mod.mock.results[0]?.value.post as ReturnType<typeof vi.fn>;
+  return mod.mock.results[0]?.value.get as ReturnType<typeof vi.fn>;
 };
 
 describe('MateService.triggerWarmup', () => {
@@ -54,38 +54,33 @@ describe('MateService.triggerWarmup', () => {
     service = new MateService();
   });
 
-  test('POSTs to the warmup endpoint with an empty body and a validateStatus that allows 404 (#326)', async () => {
-    getPost().mockResolvedValueOnce({ success: true, data: {}, statusCode: 200 });
+  test('GETs /v1/memory/stats to exercise the memory/context layer (real warmup work)', async () => {
+    getGet().mockResolvedValueOnce({ success: true, data: { turns: 0 }, statusCode: 200 });
 
     await service.triggerWarmup();
 
-    expect(getPost()).toHaveBeenCalledTimes(1);
-    const [url, body, config] = getPost().mock.calls[0];
-    expect(url).toBe('http://mate.test/v1/context/warmup');
-    expect(body).toEqual({});
-    expect(config?.validateStatus).toBeInstanceOf(Function);
-    // Contract: 404 must be treated as a non-error so BaseApiService doesn't log it.
-    expect(config.validateStatus(404)).toBe(true);
-    expect(config.validateStatus(200)).toBe(true);
-    expect(config.validateStatus(500)).toBe(false);
+    expect(getGet()).toHaveBeenCalledTimes(1);
+    expect(getGet()).toHaveBeenCalledWith('http://mate.test/v1/memory/stats');
   });
 
-  test('resolves silently when backend returns 404 (older Mate, no endpoint)', async () => {
-    // With validateStatus, the mock now resolves rather than throws for 404.
-    getPost().mockResolvedValueOnce({ success: true, statusCode: 404, data: null });
+  test('resolves silently on non-success response', async () => {
+    getGet().mockResolvedValueOnce({ success: false, statusCode: 500, error: 'Internal' });
 
     await expect(service.triggerWarmup()).resolves.toBeUndefined();
   });
 
-  test('resolves silently when BaseApiService reports non-success without 404', async () => {
-    getPost().mockResolvedValueOnce({ success: false, statusCode: 500, error: 'Internal' });
+  test('resolves silently on network error', async () => {
+    getGet().mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
     await expect(service.triggerWarmup()).resolves.toBeUndefined();
   });
 
-  test('resolves silently when the POST throws (network failure)', async () => {
-    getPost().mockRejectedValueOnce(new Error('ECONNREFUSED'));
+  test('never throws — fire-and-forget contract', async () => {
+    getGet().mockRejectedValueOnce(new Error('anything'));
 
-    await expect(service.triggerWarmup()).resolves.toBeUndefined();
+    // Shouldn't reject whatever the underlying call does.
+    let threw = false;
+    try { await service.triggerWarmup(); } catch { threw = true; }
+    expect(threw).toBe(false);
   });
 });
