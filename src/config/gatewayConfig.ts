@@ -86,6 +86,8 @@ export const GATEWAY_SERVICES = {
   NOTIFICATION: 'api/v1/notification', // 通知服务 (8206)
   STORAGE: 'api/v1/storage',         // 存储服务 (8208)
   WALLET: 'api/v1/wallet',           // 钱包服务 (8209)
+  CREDITS: 'api/v1/credits',         // Credit 服务
+  SUBSCRIPTIONS: 'api/v1/subscriptions', // Subscription 服务
   TASK: 'api/v1/task_service',       // 任务服务 (8211)
   AUDIT: 'api/v1/audit',             // 审计服务 (8204)
 
@@ -158,7 +160,6 @@ export const GATEWAY_ENDPOINTS = {
         JOB_RUN: buildMateEndpoint('/v1/scheduler/jobs/{jobId}/run'),
       },
       HEALTH: buildMateEndpoint('/health'),
-      MEMORY_STATS: buildMateEndpoint('/v1/memory/stats'),
       AUTONOMOUS_EVENTS: buildMateEndpoint('/v1/autonomous/events'),
       // Human-in-the-Loop capability router — maps to xenoISA/isA_Mate#404
       // /v1/interactive/*. Replaces the defunct AGENTS.EXECUTION probe that
@@ -271,10 +272,25 @@ export const GATEWAY_ENDPOINTS = {
   ACCOUNTS: {
     BASE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS),
     ME: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/me'),
+    PROFILE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/profile/{userId}'),
     ENSURE: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/ensure'),
     CREDITS: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/{userId}/credits/consume'),
     SUBSCRIPTION: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/{userId}/subscription'),
+    INSTRUCTIONS: `${GATEWAY_CONFIG.BASE_URL}/api/v1/users/me/instructions`,
     HEALTH: buildEndpoint(GATEWAY_SERVICES.ACCOUNTS, '/health'),
+  },
+
+  CREDITS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.CREDITS),
+    BALANCE: buildEndpoint(GATEWAY_SERVICES.CREDITS, '/balance'),
+    CONSUME: buildEndpoint(GATEWAY_SERVICES.CREDITS, '/consume'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.CREDITS, '/health'),
+  },
+
+  SUBSCRIPTIONS: {
+    BASE: buildEndpoint(GATEWAY_SERVICES.SUBSCRIPTIONS),
+    USER: buildEndpoint(GATEWAY_SERVICES.SUBSCRIPTIONS, '/user/{userId}'),
+    HEALTH: buildEndpoint(GATEWAY_SERVICES.SUBSCRIPTIONS, '/health'),
   },
   
   // ==== 会话服务端点 ====
