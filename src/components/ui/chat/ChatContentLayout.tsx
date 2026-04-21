@@ -84,7 +84,7 @@ export const ChatContentLayout: React.FC<ChatContentLayoutProps> = ({
         padding: '1rem !important',
         display: 'flex !important',
         flexDirection: 'column',
-        alignItems: 'flex-start',
+        alignItems: 'stretch',
         height: '100%',
         width: '100%'
       }}
