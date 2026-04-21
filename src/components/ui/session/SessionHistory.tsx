@@ -31,6 +31,9 @@ export interface SessionHistoryProps {
   editingSessionId?: string | null;
   editingTitle?: string;
   searchQuery?: string;
+  /** Set of starred session IDs — determines which sessions appear in the Starred group and
+   *  which show a filled star icon. (#273) */
+  starredSessionIds?: Set<string>;
 
   // Event callbacks - handled by parent
   onSessionSelect?: (sessionId: string) => void;
@@ -41,6 +44,8 @@ export interface SessionHistoryProps {
   onCancelRename?: () => void;
   onEditingTitleChange?: (title: string) => void;
   onSearchChange?: (query: string) => void;
+  /** Toggle star for a session. (#273) */
+  onToggleStar?: (sessionId: string) => void;
 
   // UI props
   showCreateButton?: boolean;
@@ -61,6 +66,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   editingSessionId,
   editingTitle = '',
   searchQuery = '',
+  starredSessionIds,
 
   // Event callbacks
   onSessionSelect,
@@ -71,6 +77,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   onCancelRename,
   onEditingTitleChange,
   onSearchChange,
+  onToggleStar,
 
   // UI props
   showCreateButton = true,
@@ -89,7 +96,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     });
   }, [sessions, searchQuery]);
 
-  // Group sessions by time period (#238)
+  // Group sessions: Starred first (#273), then by time period (#238).
+  // Starred sessions appear ONLY in the Starred group, not duplicated in time groups.
   const groupedSessions = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -98,6 +106,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     const prev30 = new Date(today.getTime() - 30 * 86400000);
 
     const groups: { label: string; sessions: typeof filteredSessions }[] = [
+      { label: 'Starred', sessions: [] },
       { label: 'Today', sessions: [] },
       { label: 'Yesterday', sessions: [] },
       { label: 'Previous 7 Days', sessions: [] },
@@ -105,17 +114,23 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
       { label: 'Older', sessions: [] },
     ];
 
+    const starred = starredSessionIds ?? new Set<string>();
+
     for (const s of filteredSessions) {
+      if (starred.has(s.id)) {
+        groups[0].sessions.push(s);
+        continue;
+      }
       const d = new Date(s.timestamp || s.createdAt || 0);
-      if (d >= today) groups[0].sessions.push(s);
-      else if (d >= yesterday) groups[1].sessions.push(s);
-      else if (d >= prev7) groups[2].sessions.push(s);
-      else if (d >= prev30) groups[3].sessions.push(s);
-      else groups[4].sessions.push(s);
+      if (d >= today) groups[1].sessions.push(s);
+      else if (d >= yesterday) groups[2].sessions.push(s);
+      else if (d >= prev7) groups[3].sessions.push(s);
+      else if (d >= prev30) groups[4].sessions.push(s);
+      else groups[5].sessions.push(s);
     }
 
     return groups.filter(g => g.sessions.length > 0);
-  }, [filteredSessions]);
+  }, [filteredSessions, starredSessionIds]);
 
   return (
     <div className={`session-history ${className} flex flex-col h-full`}>
@@ -301,9 +316,33 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     </div>
                   </div>
                   
-                  {/* Action buttons - only show on hover */}
-                  {editingSessionId !== session.id && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  {/* Action buttons - star is always visible when starred, hover-only otherwise (#273) */}
+                  {editingSessionId !== session.id && (() => {
+                    const isStarred = !!starredSessionIds?.has(session.id);
+                    return (
+                    <div
+                      className={`absolute top-3 right-3 flex items-center gap-1 transition-all duration-200 ${
+                        isStarred ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleStar?.(session.id);
+                        }}
+                        className={`w-7 h-7 rounded-lg border transition-all duration-200 flex items-center justify-center ${
+                          isStarred
+                            ? 'bg-yellow-400/20 border-yellow-400/40 text-yellow-300 hover:bg-yellow-400/30'
+                            : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/30 text-white/70 hover:text-yellow-300'
+                        }`}
+                        title={isStarred ? 'Unstar session' : 'Star session'}
+                        aria-label={isStarred ? 'Unstar session' : 'Star session'}
+                        aria-pressed={isStarred}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill={isStarred ? 'currentColor' : 'none'}>
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -331,7 +370,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                         </svg>
                       </button>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             );

@@ -52,6 +52,8 @@ import { ProjectSwitcher } from '../components/ui/chat/ProjectSwitcher';
 import { ChatMessage } from '../types/chatTypes';
 import {
   useCurrentSessionId,
+  useStarredSessionIds,
+  useStarActions,
   useCurrentSession, // 使用store版本
   useSessions, // 使用store版本
   useSessionCount,
@@ -120,6 +122,16 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
   const sessionCount = useSessionCount();
   const isLoading = useIsLoadingSession();
   const isSyncing = useIsSyncingToAPI();
+  const starredSessionIds = useStarredSessionIds();
+  const starActions = useStarActions();
+
+  const handleToggleStar = useCallback((sessionId: string) => {
+    if (starActions.isSessionStarred(sessionId)) {
+      starActions.unstarSession(sessionId);
+    } else {
+      starActions.starSession(sessionId);
+    }
+  }, [starActions]);
   
   // 按最后活动时间排序sessions（最新的在前）
   const sessions = useMemo(() => {
@@ -511,6 +523,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
       editingSessionId={editingSessionId}
       editingTitle={editingTitle}
       searchQuery={searchQuery}
+      starredSessionIds={starredSessionIds}
       onSessionSelect={handleSessionSelect}
       onNewSession={handleNewSession}
       onDeleteSession={handleDeleteSession}
@@ -519,6 +532,7 @@ export const SessionModule: React.FC<SessionModuleProps> = (props) => {
       onCancelRename={handleCancelRename}
       onEditingTitleChange={handleEditingTitleChange}
       onSearchChange={handleSearchChange}
+      onToggleStar={handleToggleStar}
       userContent={props.userContent}
       headerContent={<ProjectSwitcher />}
     />
