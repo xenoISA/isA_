@@ -84,7 +84,7 @@ export class UserService {
         email: userData.email,
         name: userData.name,
       };
-      const response = await this.apiService.post<ExternalUser>('/api/v1/users/ensure', payload);
+      const response = await this.apiService.post<ExternalUser>('/api/v1/accounts/ensure', payload);
 
       if (!response.success) {
         throw new Error(response.error || 'Failed to ensure user exists');

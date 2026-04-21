@@ -39,22 +39,24 @@ describe('CalendarAdapter', () => {
   // getEvents
   // ---------------------------------------------------------------------------
   describe('getEvents', () => {
-    test('constructs URL with encoded start/end query params', async () => {
+    test('sends user_id, start_date, end_date as query params (backend contract)', async () => {
       const events = [{ id: 'e1', title: 'Standup' }];
       globalThis.fetch = mockFetchOk(events);
 
-      const result = await getEvents('2026-04-16T00:00:00Z', '2026-04-17T00:00:00Z');
+      const result = await getEvents('user-42', '2026-04-16T00:00:00Z', '2026-04-17T00:00:00Z');
 
       expect(result).toEqual(events);
       const url = (globalThis.fetch as any).mock.calls[0][0] as string;
-      expect(url).toContain(`${BASE}/events?start=`);
-      expect(url).toContain(encodeURIComponent('2026-04-16T00:00:00Z'));
-      expect(url).toContain(encodeURIComponent('2026-04-17T00:00:00Z'));
+      expect(url.startsWith(`${BASE}/events?`)).toBe(true);
+      const qs = new URLSearchParams(url.split('?')[1]);
+      expect(qs.get('user_id')).toBe('user-42');
+      expect(qs.get('start_date')).toBe('2026-04-16T00:00:00Z');
+      expect(qs.get('end_date')).toBe('2026-04-17T00:00:00Z');
     });
 
     test('sends credentials include and content-type header', async () => {
       globalThis.fetch = mockFetchOk([]);
-      await getEvents('a', 'b');
+      await getEvents('user-42', 'a', 'b');
 
       const opts = (globalThis.fetch as any).mock.calls[0][1];
       expect(opts.credentials).toBe('include');
@@ -63,7 +65,7 @@ describe('CalendarAdapter', () => {
 
     test('throws on non-200 response', async () => {
       globalThis.fetch = mockFetchError(500);
-      await expect(getEvents('a', 'b')).rejects.toThrow('Calendar API error: 500');
+      await expect(getEvents('user-42', 'a', 'b')).rejects.toThrow('Calendar API error: 500');
     });
   });
 
@@ -71,15 +73,16 @@ describe('CalendarAdapter', () => {
   // getTodayEvents
   // ---------------------------------------------------------------------------
   describe('getTodayEvents', () => {
-    test('calls getEvents with today start/end', async () => {
+    test('calls getEvents with current userId and today window', async () => {
       globalThis.fetch = mockFetchOk([]);
-      await getTodayEvents();
+      await getTodayEvents('user-42');
 
       const url = (globalThis.fetch as any).mock.calls[0][0] as string;
-      // Should contain today's date (ISO format)
-      const now = new Date();
-      const yearStr = String(now.getFullYear());
-      expect(url).toContain(yearStr);
+      const qs = new URLSearchParams(url.split('?')[1]);
+      expect(qs.get('user_id')).toBe('user-42');
+      const yearStr = String(new Date().getFullYear());
+      expect(qs.get('start_date')).toContain(yearStr);
+      expect(qs.get('end_date')).toContain(yearStr);
     });
   });
 
