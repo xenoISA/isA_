@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import type { CalendarEvent, CalendarProvider } from '../api/adapters/CalendarAdapter';
 import * as CalendarAdapter from '../api/adapters/CalendarAdapter';
+import { useUserStore } from './useUserStore';
+
+function requireUserId(): string | null {
+  return useUserStore.getState().externalUser?.auth0_id ?? null;
+}
 
 interface CalendarState {
   events: CalendarEvent[];
@@ -22,18 +27,28 @@ export const useCalendarStore = create<CalendarState>((set) => ({
   isLoading: false,
   error: null,
   fetchTodayEvents: async () => {
+    const userId = requireUserId();
+    if (!userId) {
+      set({ error: 'Not authenticated: calendar fetch requires a logged-in user', isLoading: false });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
-      const todayEvents = await CalendarAdapter.getTodayEvents();
+      const todayEvents = await CalendarAdapter.getTodayEvents(userId);
       set({ todayEvents, isLoading: false });
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }
   },
   fetchEvents: async (start, end) => {
+    const userId = requireUserId();
+    if (!userId) {
+      set({ error: 'Not authenticated: calendar fetch requires a logged-in user', isLoading: false });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
-      const events = await CalendarAdapter.getEvents(start, end);
+      const events = await CalendarAdapter.getEvents(userId, start, end);
       set({ events, isLoading: false });
     } catch (err: any) {
       set({ error: err.message, isLoading: false });

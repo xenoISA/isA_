@@ -262,19 +262,33 @@ function setupIPC(): void {
   ipcMain.on('updater:check-now', () => checkForUpdates());
   ipcMain.on('updater:quit-and-install', () => quitAndInstall());
 
-  // Calendar IPC (#230)
-  ipcMain.handle('calendar:get-today', async () => {
+  // Calendar IPC (#230) — renderer must pass its current auth0_id (backend requires user_id).
+  ipcMain.handle('calendar:get-today', async (_e, userId: string) => {
     const win = getMainWindow();
-    if (!win) return [];
+    if (!win || !userId) return [];
+    const userIdLiteral = JSON.stringify(userId);
     return win.webContents.executeJavaScript(
-      `fetch((window.__NEXT_DATA__?.runtimeConfig?.GATEWAY_URL || 'http://localhost:9080') + '/api/v1/calendar/events?start=' + new Date(new Date().setHours(0,0,0,0)).toISOString() + '&end=' + new Date(new Date().setHours(23,59,59,999)).toISOString(), { credentials: 'include' }).then(r => r.json()).catch(() => [])`
+      `(() => {
+        const base = (window.__NEXT_DATA__?.runtimeConfig?.GATEWAY_URL || 'http://localhost:9080') + '/api/v1/calendar/events';
+        const params = new URLSearchParams({
+          user_id: ${userIdLiteral},
+          start_date: new Date(new Date().setHours(0,0,0,0)).toISOString(),
+          end_date: new Date(new Date().setHours(23,59,59,999)).toISOString(),
+        });
+        return fetch(base + '?' + params.toString(), { credentials: 'include' }).then(r => r.json()).catch(() => []);
+      })()`
     );
   });
-  ipcMain.handle('calendar:get-tasks', async () => {
+  ipcMain.handle('calendar:get-tasks', async (_e, userId: string) => {
     const win = getMainWindow();
-    if (!win) return [];
+    if (!win || !userId) return [];
+    const userIdLiteral = JSON.stringify(userId);
     return win.webContents.executeJavaScript(
-      `fetch((window.__NEXT_DATA__?.runtimeConfig?.GATEWAY_URL || 'http://localhost:9080') + '/api/v1/tasks?status=pending&limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => [])`
+      `(() => {
+        const base = (window.__NEXT_DATA__?.runtimeConfig?.GATEWAY_URL || 'http://localhost:9080') + '/api/v1/tasks';
+        const params = new URLSearchParams({ user_id: ${userIdLiteral}, status: 'pending', limit: '10' });
+        return fetch(base + '?' + params.toString(), { credentials: 'include' }).then(r => r.json()).catch(() => []);
+      })()`
     );
   });
 }

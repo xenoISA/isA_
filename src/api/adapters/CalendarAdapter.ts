@@ -34,15 +34,20 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function getEvents(start: string, end: string): Promise<CalendarEvent[]> {
-  return apiFetch(`/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+export async function getEvents(userId: string, start: string, end: string): Promise<CalendarEvent[]> {
+  const params = new URLSearchParams({
+    user_id: userId,
+    start_date: start,
+    end_date: end,
+  });
+  return apiFetch(`/events?${params.toString()}`);
 }
 
-export async function getTodayEvents(): Promise<CalendarEvent[]> {
+export async function getTodayEvents(userId: string): Promise<CalendarEvent[]> {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-  return getEvents(start, end);
+  return getEvents(userId, start, end);
 }
 
 export async function createEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> {
