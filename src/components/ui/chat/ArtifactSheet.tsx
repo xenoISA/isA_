@@ -5,10 +5,11 @@
  * Covers 75% of screen, swipe-down or X to close.
  * Shows same tabs as ArtifactPanel.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { ArtifactNode } from '../../../types/artifactTypes';
 import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
 import { useArtifactManager } from '../../../stores/useArtifactManager';
+import { shouldDismissFromSwipe } from '../../../utils/swipeDismiss';
 
 export const ArtifactSheet: React.FC = () => {
   const openArtifactId = useArtifactManager(s => s.openArtifactId);
@@ -19,6 +20,28 @@ export const ArtifactSheet: React.FC = () => {
   const artifact = openArtifactId ? artifacts[openArtifactId] : null;
   const activeVersion = artifact ? getActiveVersion(artifact) : null;
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartY = useRef<number | null>(null);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    dragStartY.current = e.clientY;
+    setDragOffset(0);
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (dragStartY.current === null) return;
+    const delta = e.clientY - dragStartY.current;
+    // Only allow downward drag (delta > 0) to produce visual offset.
+    setDragOffset(Math.max(0, delta));
+  }, []);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    if (dragStartY.current !== null && shouldDismissFromSwipe(dragStartY.current, e.clientY)) {
+      closePanel();
+    }
+    dragStartY.current = null;
+    setDragOffset(0);
+  }, [closePanel]);
 
   if (panelLayout === 'closed' || !artifact || !activeVersion) return null;
 
@@ -28,9 +51,20 @@ export const ArtifactSheet: React.FC = () => {
       <div className="absolute inset-0 bg-black/40" onClick={closePanel} />
 
       {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] rounded-t-2xl max-h-[75vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
-        {/* Handle */}
-        <div className="flex justify-center pt-2 pb-1">
+      <div
+        className="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] rounded-t-2xl max-h-[75vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200 touch-pan-y"
+        style={dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: 'none' } : undefined}
+      >
+        {/* Handle — swipe area */}
+        <div
+          className="flex justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          aria-label="Drag down to dismiss"
+          role="button"
+        >
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
 
