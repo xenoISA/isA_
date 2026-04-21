@@ -75,6 +75,33 @@ export class MateService {
     }
   }
 
+  /**
+   * Fire-and-forget warmup ping — primes Mate's RuntimeContextHelper cache
+   * so the user's first message doesn't pay a 10-15s cold-start cost.
+   *
+   * Contract: MUST NOT throw. Older Mate versions without the endpoint
+   * return 404 — treated as a no-op. Network errors are swallowed.
+   */
+  async triggerWarmup(): Promise<void> {
+    try {
+      log.info('Warming up Mate backend');
+      const response = await this.apiService.post<unknown>(
+        GATEWAY_ENDPOINTS.MATE.CONTEXT_WARMUP,
+        {}
+      );
+      if (response.success) return;
+      if (response.statusCode === 404) {
+        log.info('Mate warmup endpoint not available (404) — skipping');
+        return;
+      }
+      log.warn('Mate warmup non-success', { statusCode: response.statusCode, error: response.error });
+    } catch (error) {
+      log.warn('Mate warmup threw (ignored)', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   // ================================================================================
   // Memory — Sessions & Messages
   // ================================================================================
