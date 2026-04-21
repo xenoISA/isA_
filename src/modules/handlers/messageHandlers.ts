@@ -7,10 +7,12 @@
 import { useChatStore } from '../../stores/useChatStore';
 import { useMessageStore } from '../../stores/useMessageStore';
 import { useBranchStore } from '../../stores/useBranchStore';
+import { useUserStore } from '../../stores/useUserStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
 import { ArtifactMessage } from '../../types/chatTypes';
 import { AppId } from '../../types/appTypes';
+import { CreditConsumption } from '../../types/userTypes';
 import { isDelegationTool } from '../../constants/delegationTeams';
 
 const log = createLogger('ChatModule:Message');
@@ -29,6 +31,7 @@ export interface MessageHandlerDeps {
     currentPlan: string;
     getAccessToken: () => Promise<string>;
     createCheckout: (plan: any) => Promise<string>;
+    consumeUserCredits: (consumption: CreditConsumption) => Promise<void>;
   };
   setShowUpgradeModal: React.Dispatch<React.SetStateAction<boolean>>;
   getChatService: () => Promise<any>;
@@ -49,6 +52,21 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     setShowRightSidebar,
     setHuntSearchResults,
   } = deps;
+
+  // Deduct credits after a completed message send:
+  // optimistic UI update first, then backend consume. Revert on backend failure.
+  const consumeCreditsAfterSend = (reason: string, amount = 1) => {
+    const consumption: CreditConsumption = { amount, reason };
+    useUserStore.getState().consumeCreditsOptimistic(consumption);
+    userModule.consumeUserCredits(consumption).catch((error) => {
+      logger.error(LogCategory.USER_AUTH, 'Backend credit consumption failed, reverting optimistic update', {
+        reason,
+        amount,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      useUserStore.getState().revertCreditsOptimistic();
+    });
+  };
 
   const handleNewChat = () => {
     logger.info(LogCategory.CHAT_FLOW, '📱 Creating new chat session from mobile interface');
@@ -226,6 +244,8 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
             useChatStore.getState().setExecutingPlan(false);
             logger.info(LogCategory.CHAT_FLOW, 'Message sending completed successfully');
 
+            consumeCreditsAfterSend('message_send');
+
             // Artifact edit-to-version: if this was an artifact edit, create new version (#256)
             if (typeof window !== 'undefined' && (window as any).__pendingArtifactEdit) {
               const { artifactId, instruction } = (window as any).__pendingArtifactEdit;
@@ -346,6 +366,8 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
           useChatStore.getState().setIsTyping(false);
           useChatStore.getState().setExecutingPlan(false);
           logger.info(LogCategory.CHAT_FLOW, 'Multimodal message sending completed successfully');
+
+          consumeCreditsAfterSend('multimodal_send');
         },
         onError: (error: Error) => {
           logger.error(LogCategory.CHAT_FLOW, 'Multimodal message sending failed', { error: error.message });
