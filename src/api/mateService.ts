@@ -81,19 +81,25 @@ export class MateService {
    *
    * Contract: MUST NOT throw. Older Mate versions without the endpoint
    * return 404 — treated as a no-op. Network errors are swallowed.
+   *
+   * `validateStatus` tells Axios to resolve 404 as a successful response
+   * (carrying statusCode=404) instead of throwing. This keeps
+   * BaseApiService's error logger quiet for a status we expect and handle
+   * explicitly. See #326.
    */
   async triggerWarmup(): Promise<void> {
     try {
       log.info('Warming up Mate backend');
       const response = await this.apiService.post<unknown>(
         GATEWAY_ENDPOINTS.MATE.CONTEXT_WARMUP,
-        {}
+        {},
+        { validateStatus: (status) => status === 404 || status < 400 }
       );
-      if (response.success) return;
       if (response.statusCode === 404) {
         log.info('Mate warmup endpoint not available (404) — skipping');
         return;
       }
+      if (response.success) return;
       log.warn('Mate warmup non-success', { statusCode: response.statusCode, error: response.error });
     } catch (error) {
       log.warn('Mate warmup threw (ignored)', {
