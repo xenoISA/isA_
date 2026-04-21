@@ -43,6 +43,7 @@ export interface LeftSidebarLayoutProps {
   editingSessionId?: string | null;
   editingTitle?: string;
   searchQuery?: string;
+  starredSessionIds?: Set<string>;
 
   // Event callbacks - passed to SessionHistory
   onSessionSelect?: (sessionId: string) => void;
@@ -53,6 +54,7 @@ export interface LeftSidebarLayoutProps {
   onCancelRename?: () => void;
   onEditingTitleChange?: (title: string) => void;
   onSearchChange?: (query: string) => void;
+  onToggleStar?: (sessionId: string) => void;
   
   // User content - provided by UserModule
   userContent?: React.ReactNode;
@@ -75,6 +77,7 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
   editingSessionId,
   editingTitle,
   searchQuery,
+  starredSessionIds,
 
   // Event callbacks for SessionHistory
   onSessionSelect,
@@ -85,7 +88,8 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
   onCancelRename,
   onEditingTitleChange,
   onSearchChange,
-  
+  onToggleStar,
+
   userContent,
   headerContent
 }) => {
@@ -104,6 +108,7 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
           editingSessionId={editingSessionId}
           editingTitle={editingTitle}
           searchQuery={searchQuery}
+          starredSessionIds={starredSessionIds}
 
           // Pass all event callbacks
           onSessionSelect={onSessionSelect}
@@ -114,7 +119,8 @@ export const LeftSidebarLayout = memo<LeftSidebarLayoutProps>(({
           onCancelRename={onCancelRename}
           onEditingTitleChange={onEditingTitleChange}
           onSearchChange={onSearchChange}
-          
+          onToggleStar={onToggleStar}
+
           className="flex-1 p-4"
         />
       </div>
