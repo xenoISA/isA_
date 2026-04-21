@@ -79,27 +79,25 @@ export class MateService {
    * Fire-and-forget warmup ping — primes Mate's RuntimeContextHelper cache
    * so the user's first message doesn't pay a 10-15s cold-start cost.
    *
-   * Contract: MUST NOT throw. Older Mate versions without the endpoint
-   * return 404 — treated as a no-op. Network errors are swallowed.
+   * Uses GET /v1/memory/stats because it's the cheapest endpoint that
+   * actually exercises the memory/context layer Mate lazy-loads on first
+   * use — ~300ms of real cold-path work that would otherwise land on the
+   * user's first message. A dedicated /v1/context/warmup endpoint would
+   * be cleaner but has not been shipped on the backend; switch back
+   * trivially once it exists.
    *
-   * `validateStatus` tells Axios to resolve 404 as a successful response
-   * (carrying statusCode=404) instead of throwing. This keeps
-   * BaseApiService's error logger quiet for a status we expect and handle
-   * explicitly. See #326.
+   * Contract: MUST NOT throw. All errors swallowed at warn level.
    */
   async triggerWarmup(): Promise<void> {
     try {
-      log.info('Warming up Mate backend');
-      const response = await this.apiService.post<unknown>(
-        GATEWAY_ENDPOINTS.MATE.CONTEXT_WARMUP,
-        {},
-        { validateStatus: (status) => status === 404 || status < 400 }
+      log.info('Warming up Mate memory layer');
+      const response = await this.apiService.get<unknown>(
+        GATEWAY_ENDPOINTS.MATE.MEMORY_STATS
       );
-      if (response.statusCode === 404) {
-        log.info('Mate warmup endpoint not available (404) — skipping');
+      if (response.success) {
+        log.info('Mate warmup complete');
         return;
       }
-      if (response.success) return;
       log.warn('Mate warmup non-success', { statusCode: response.statusCode, error: response.error });
     } catch (error) {
       log.warn('Mate warmup threw (ignored)', {
