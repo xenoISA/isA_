@@ -4,6 +4,7 @@ import { FileUpload } from './FileUpload';
 import { GlassChatInput, GlassCard, GlassButton, IntelligentModeSettings } from '../../shared';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useMatePresence } from '../../../hooks/useMatePresence';
+import { useProgressiveStage } from '../../../hooks/useProgressiveStage';
 import { useMessageStore } from '../../../stores/useMessageStore';
 import { useStreamingStore } from '../../../stores/useStreamingStore';
 import { ModelSelectorDropdown } from './ModelSelectorDropdown';
@@ -85,6 +86,8 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
   const { t } = useTranslation();
   const { isOnline, isWorking, channels } = useMatePresence();
   const stopStreaming = useStreamingStore((s) => s.stopStreaming);
+  const sendStartedAt = useStreamingStore((s) => s.sendStartedAt);
+  const progressiveStage = useProgressiveStage(sendStartedAt);
   const allMessages = useMessageStore((s) => s.messages);
   const lastMsg = allMessages[allMessages.length - 1];
   const isActivelyStreaming = !!(lastMsg && 'isStreaming' in lastMsg && lastMsg.isStreaming);
@@ -436,17 +439,21 @@ export const InputAreaLayout: React.FC<InputAreaLayoutProps> = ({
         </div>
       )}
 
-      {/* Mate status line — SDK StreamingStatusLine (#290) */}
+      {/* Mate status line — SDK StreamingStatusLine (#290)
+          Progressive warmup stages drive phase/message while a send is in flight (#278). */}
       <div className="mb-2 px-1">
         <StreamingStatusLine
           phase={
             isActivelyStreaming ? 'generating'
+            : progressiveStage ? progressiveStage.phase
             : !isOnline ? 'connecting'
             : isWorking ? 'preparing'
             : 'idle'
           }
           message={
-            isWorking && !isActivelyStreaming
+            progressiveStage && !isActivelyStreaming
+              ? progressiveStage.label
+              : isWorking && !isActivelyStreaming
               ? `Working on ${activeDelegationCount} task${activeDelegationCount !== 1 ? 's' : ''}...`
               : undefined
           }
