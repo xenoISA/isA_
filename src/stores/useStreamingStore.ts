@@ -63,6 +63,9 @@ export interface StreamingStoreState {
   isThinking: boolean;
   /** Accumulated thinking content for the current streaming message */
   thinkingBuffer: string;
+  /** Timestamp (Date.now()) when the current send began, or null if no send in flight.
+   *  Used to drive the progressive warmup status stages (#278). */
+  sendStartedAt: number | null;
 }
 
 export interface StreamingActions {
@@ -82,6 +85,9 @@ export interface StreamingActions {
   startThinking: () => void;
   appendThinkingContent: (delta: string) => void;
   finishThinking: () => void;
+
+  /** Mark the moment the user pressed Send, or null to clear. */
+  setSendStartedAt: (ts: number | null) => void;
 }
 
 export type StreamingStore = StreamingStoreState & StreamingActions;
@@ -100,6 +106,7 @@ export const useStreamingStore = create<StreamingStore>()(
     activeAbortController: null,
     isThinking: false,
     thinkingBuffer: '',
+    sendStartedAt: null,
 
     setIsTyping: (typing) => {
       set({ isTyping: typing });
@@ -396,6 +403,10 @@ export const useStreamingStore = create<StreamingStore>()(
         }
       }
       set({ isThinking: false, thinkingBuffer: '' });
-    }
+    },
+
+    setSendStartedAt: (ts) => {
+      set({ sendStartedAt: ts });
+    },
   }))
 );

@@ -9,6 +9,7 @@ import { useMessageStore } from '../../stores/useMessageStore';
 import { useBranchStore } from '../../stores/useBranchStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { usePerformanceStore } from '../../stores/usePerformanceStore';
+import { useStreamingStore } from '../../stores/useStreamingStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
 import { ArtifactMessage } from '../../types/chatTypes';
@@ -102,6 +103,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
     const timing = new MessageTimingTracker();
     timing.markSent();
+    useStreamingStore.getState().setSendStartedAt(Date.now());
 
     let sessionId = currentSessionId;
 
@@ -235,6 +237,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
         await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
             timing.markStreamStart();
+            useStreamingStore.getState().setSendStartedAt(null);
             // Remove the placeholder — don't finishStreamingMessage (which persists empty content)
             const messages = useMessageStore.getState().messages;
             const lastMsg = messages[messages.length - 1];
@@ -296,6 +299,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
           },
           onError: (error: Error) => {
             logger.error(LogCategory.CHAT_FLOW, 'Message sending failed', { error: error.message });
+            useStreamingStore.getState().setSendStartedAt(null);
             useChatStore.getState().setChatLoading(false);
             useChatStore.getState().setIsTyping(false);
             useChatStore.getState().setExecutingPlan(false);
@@ -342,6 +346,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
     const timing = new MessageTimingTracker();
     timing.markSent();
+    useStreamingStore.getState().setSendStartedAt(Date.now());
 
     const enrichedMetadata = {
       ...metadata,
@@ -374,6 +379,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
       await chatService.sendMultimodalMessage(content, enrichedMetadata, token, {
         onStreamStart: (messageId: string, status?: string) => {
           timing.markStreamStart();
+          useStreamingStore.getState().setSendStartedAt(null);
           useChatStore.getState().startStreamingMessage(messageId, status);
           useChatStore.getState().setExecutingPlan(true);
         },
@@ -397,6 +403,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
         },
         onError: (error: Error) => {
           logger.error(LogCategory.CHAT_FLOW, 'Multimodal message sending failed', { error: error.message });
+          useStreamingStore.getState().setSendStartedAt(null);
           useChatStore.getState().setChatLoading(false);
           useChatStore.getState().setIsTyping(false);
           useChatStore.getState().setExecutingPlan(false);
