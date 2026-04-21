@@ -8,12 +8,14 @@ import { useChatStore } from '../../stores/useChatStore';
 import { useMessageStore } from '../../stores/useMessageStore';
 import { useBranchStore } from '../../stores/useBranchStore';
 import { useUserStore } from '../../stores/useUserStore';
+import { usePerformanceStore } from '../../stores/usePerformanceStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
 import { ArtifactMessage } from '../../types/chatTypes';
 import { AppId } from '../../types/appTypes';
 import { CreditConsumption } from '../../types/userTypes';
 import { isDelegationTool } from '../../constants/delegationTeams';
+import { MessageTimingTracker, formatTimingLog } from '../../utils/messageTiming';
 
 const log = createLogger('ChatModule:Message');
 
@@ -53,6 +55,16 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     setHuntSearchResults,
   } = deps;
 
+  // Commit message timing to the performance store and log in dev mode (#277).
+  const commitMessageTiming = (tracker: MessageTimingTracker) => {
+    const snapshot = tracker.snapshot();
+    usePerformanceStore.getState().recordTiming(snapshot);
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug(formatTimingLog(snapshot));
+    }
+  };
+
   // Deduct credits after a completed message send:
   // optimistic UI update first, then backend consume. Revert on backend failure.
   const consumeCreditsAfterSend = (reason: string, amount = 1) => {
@@ -87,6 +99,9 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
       setShowUpgradeModal(true);
       return;
     }
+
+    const timing = new MessageTimingTracker();
+    timing.markSent();
 
     let sessionId = currentSessionId;
 
@@ -219,6 +234,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
         await sendFn({
           onStreamStart: (messageId: string, status?: string) => {
+            timing.markStreamStart();
             // Remove the placeholder — don't finishStreamingMessage (which persists empty content)
             const messages = useMessageStore.getState().messages;
             const lastMsg = messages[messages.length - 1];
@@ -232,18 +248,21 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
             useChatStore.getState().setExecutingPlan(true);
           },
           onStreamContent: (contentChunk: string) => {
+            timing.markFirstToken();
             useChatStore.getState().appendToStreamingMessage(contentChunk);
           },
           onStreamStatus: (status: string) => {
             useChatStore.getState().updateStreamingStatus(status);
           },
           onStreamComplete: () => {
+            timing.markComplete();
             useChatStore.getState().finishStreamingMessage();
             useChatStore.getState().setChatLoading(false);
             useChatStore.getState().setIsTyping(false);
             useChatStore.getState().setExecutingPlan(false);
             logger.info(LogCategory.CHAT_FLOW, 'Message sending completed successfully');
 
+            commitMessageTiming(timing);
             consumeCreditsAfterSend('message_send');
 
             // Artifact edit-to-version: if this was an artifact edit, create new version (#256)
@@ -321,6 +340,9 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
     log.info('Credit check passed for multimodal, proceeding with message send');
 
+    const timing = new MessageTimingTracker();
+    timing.markSent();
+
     const enrichedMetadata = {
       ...metadata,
       user_id: authUserSub || (() => { throw new Error('User not authenticated') })(),
@@ -351,22 +373,26 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
       await chatService.sendMultimodalMessage(content, enrichedMetadata, token, {
         onStreamStart: (messageId: string, status?: string) => {
+          timing.markStreamStart();
           useChatStore.getState().startStreamingMessage(messageId, status);
           useChatStore.getState().setExecutingPlan(true);
         },
         onStreamContent: (contentChunk: string) => {
+          timing.markFirstToken();
           useChatStore.getState().appendToStreamingMessage(contentChunk);
         },
         onStreamStatus: (status: string) => {
           useChatStore.getState().updateStreamingStatus(status);
         },
         onStreamComplete: () => {
+          timing.markComplete();
           useChatStore.getState().finishStreamingMessage();
           useChatStore.getState().setChatLoading(false);
           useChatStore.getState().setIsTyping(false);
           useChatStore.getState().setExecutingPlan(false);
           logger.info(LogCategory.CHAT_FLOW, 'Multimodal message sending completed successfully');
 
+          commitMessageTiming(timing);
           consumeCreditsAfterSend('multimodal_send');
         },
         onError: (error: Error) => {
