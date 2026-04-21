@@ -54,16 +54,25 @@ describe('MateService.triggerWarmup', () => {
     service = new MateService();
   });
 
-  test('POSTs to the warmup endpoint with an empty body', async () => {
+  test('POSTs to the warmup endpoint with an empty body and a validateStatus that allows 404 (#326)', async () => {
     getPost().mockResolvedValueOnce({ success: true, data: {}, statusCode: 200 });
 
     await service.triggerWarmup();
 
-    expect(getPost()).toHaveBeenCalledWith('http://mate.test/v1/context/warmup', {});
+    expect(getPost()).toHaveBeenCalledTimes(1);
+    const [url, body, config] = getPost().mock.calls[0];
+    expect(url).toBe('http://mate.test/v1/context/warmup');
+    expect(body).toEqual({});
+    expect(config?.validateStatus).toBeInstanceOf(Function);
+    // Contract: 404 must be treated as a non-error so BaseApiService doesn't log it.
+    expect(config.validateStatus(404)).toBe(true);
+    expect(config.validateStatus(200)).toBe(true);
+    expect(config.validateStatus(500)).toBe(false);
   });
 
   test('resolves silently when backend returns 404 (older Mate, no endpoint)', async () => {
-    getPost().mockResolvedValueOnce({ success: false, statusCode: 404, error: 'Not Found' });
+    // With validateStatus, the mock now resolves rather than throws for 404.
+    getPost().mockResolvedValueOnce({ success: true, statusCode: 404, data: null });
 
     await expect(service.triggerWarmup()).resolves.toBeUndefined();
   });
