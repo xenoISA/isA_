@@ -6,9 +6,9 @@
  * Returns live online/offline status, active channels, and working state.
  * Polls every 30 seconds. Handles Mate-offline gracefully.
  *
- * Also fires a fire-and-forget warmup ping on the first successful health
- * check of a session so the user's first message doesn't pay the
- * RuntimeContextHelper cold-start cost (#276).
+ * (Note: a frontend-initiated warmup was tried in #276 but removed —
+ * Mate pre-warms its RuntimeContextHelper at process startup on the
+ * server side, so the frontend has no useful role in warmup.)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -17,27 +17,6 @@ import { useMessageStore } from '../stores/useMessageStore';
 import type { MateHealthResponse } from '../types/mateTypes';
 
 const POLL_INTERVAL_MS = 30_000;
-export const WARMUP_TTL_MS = 5 * 60 * 1000; // matches RuntimeContextHelper cache TTL
-
-// Module-level debounce so remounts in the same session don't re-fire.
-let lastWarmupAt = 0;
-
-/** Pure predicate — exported for unit tests. */
-export function shouldTriggerWarmup(now: number, previouslyFiredAt: number, ttlMs: number = WARMUP_TTL_MS): boolean {
-  return now - previouslyFiredAt >= ttlMs;
-}
-
-/** Test-only: reset module state between test cases. */
-export function __resetWarmupForTests(): void {
-  lastWarmupAt = 0;
-}
-
-/** Test-only: inspect last warmup timestamp. */
-export function __getLastWarmupAtForTests(): number {
-  return lastWarmupAt;
-}
-
-export type WarmupStatus = 'idle' | 'warming' | 'ready';
 
 export interface MatePresenceState {
   isOnline: boolean;
@@ -46,7 +25,6 @@ export interface MatePresenceState {
   isWorking: boolean;
   lastChecked: Date | null;
   error: string | null;
-  warmupStatus: WarmupStatus;
 }
 
 export function useMatePresence(): MatePresenceState {
@@ -57,23 +35,9 @@ export function useMatePresence(): MatePresenceState {
     isWorking: false,
     lastChecked: null,
     error: null,
-    warmupStatus: 'idle',
   });
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const triggerWarmupIfNeeded = useCallback(() => {
-    const now = Date.now();
-    if (!shouldTriggerWarmup(now, lastWarmupAt)) return;
-    lastWarmupAt = now;
-    setState((prev) => ({ ...prev, warmupStatus: 'warming' }));
-    // Fire-and-forget — triggerWarmup never throws
-    getMateService()
-      .triggerWarmup()
-      .finally(() => {
-        setState((prev) => ({ ...prev, warmupStatus: 'ready' }));
-      });
-  }, []);
 
   const poll = useCallback(async () => {
     try {
@@ -92,9 +56,6 @@ export function useMatePresence(): MatePresenceState {
         lastChecked: new Date(),
         error: null,
       }));
-
-      // Fire eager warmup on the first successful health check (debounced)
-      triggerWarmupIfNeeded();
     } catch (err) {
       setState((prev) => ({
         ...prev,
@@ -105,7 +66,7 @@ export function useMatePresence(): MatePresenceState {
         error: err instanceof Error ? err.message : String(err),
       }));
     }
-  }, [triggerWarmupIfNeeded]);
+  }, []);
 
   useEffect(() => {
     // Initial poll
