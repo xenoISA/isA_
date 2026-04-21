@@ -158,6 +158,7 @@ export const GATEWAY_ENDPOINTS = {
         JOB_RUN: buildMateEndpoint('/v1/scheduler/jobs/{jobId}/run'),
       },
       HEALTH: buildMateEndpoint('/health'),
+      CONTEXT_WARMUP: buildMateEndpoint('/v1/context/warmup'),
       AUTONOMOUS_EVENTS: buildMateEndpoint('/v1/autonomous/events'),
       // Human-in-the-Loop capability router — maps to xenoISA/isA_Mate#404
       // /v1/interactive/*. Replaces the defunct AGENTS.EXECUTION probe that
