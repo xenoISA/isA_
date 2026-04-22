@@ -301,8 +301,6 @@ export const GATEWAY_ENDPOINTS = {
     GET: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/{sessionId}'),
     UPDATE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/{sessionId}'),
     DELETE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/{sessionId}'),
-    USER: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/user'),
-    ACTIVE: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/active'),
     SEARCH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/search'),
     HEALTH: buildEndpoint(GATEWAY_SERVICES.SESSIONS, '/health'),
   },
@@ -434,8 +432,6 @@ export const LEGACY_TO_GATEWAY_MAP = {
   // 会话服务映射 (原3000端口 → 现在8205通过网关)
   'http://localhost:3000/api/sessions': GATEWAY_ENDPOINTS.SESSIONS.LIST,
   'http://localhost:3000/api/sessions/health': GATEWAY_ENDPOINTS.SESSIONS.HEALTH,
-  'http://localhost:3000/api/sessions/user': GATEWAY_ENDPOINTS.SESSIONS.USER,
-  'http://localhost:3000/api/sessions/active': GATEWAY_ENDPOINTS.SESSIONS.ACTIVE,
   'http://localhost:3000/api/sessions/search': GATEWAY_ENDPOINTS.SESSIONS.SEARCH,
 } as const;
 
