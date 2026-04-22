@@ -57,8 +57,6 @@ export const API_PATHS = {
   SESSION: {
     BASE: '/api/v1/sessions',
     HEALTH: '/api/v1/sessions/health',
-    USER: '/api/v1/sessions/user',
-    ACTIVE: '/api/v1/sessions/active',
     SEARCH: '/api/v1/sessions/search'
   },
   

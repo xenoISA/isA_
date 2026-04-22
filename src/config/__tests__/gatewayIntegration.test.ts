@@ -61,7 +61,6 @@ describe('Gateway endpoint construction', () => {
   test('SESSIONS endpoints include /api/v1/ paths', () => {
     expect(GATEWAY_ENDPOINTS.SESSIONS.LIST).toContain('/api/v1/sessions');
     expect(GATEWAY_ENDPOINTS.SESSIONS.CREATE).toContain('/api/v1/sessions');
-    expect(GATEWAY_ENDPOINTS.SESSIONS.USER).toContain('/api/v1/sessions/user');
     expect(GATEWAY_ENDPOINTS.SESSIONS.SEARCH).toContain('/api/v1/sessions/search');
   });
 
