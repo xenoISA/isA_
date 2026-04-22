@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@isa/ui-web', '@isa/core', '@isa/theme', '@isa/transport'],
+  transpilePackages: ['@isa/ui-web', '@isa/core', '@isa/theme', '@isa/transport', '@isa/hooks'],
   // Produce a standalone build for Docker deployment
   output: 'standalone',
   env: {
