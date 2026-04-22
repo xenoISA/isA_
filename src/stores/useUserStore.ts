@@ -53,6 +53,11 @@ export interface UserStore {
   externalUser: ExternalUser | null;
   subscription: ExternalSubscription | null;
   role: UserRole;
+  _nextOptimisticCreditId: number;
+  _pendingCreditConsumptions: Array<{
+    id: string;
+    amount: number;
+  }>;
 
   // Loading States
   isLoading: boolean;
@@ -82,8 +87,9 @@ export interface UserStore {
 
   // Actions - Credits Management
   updateCredits: (credits: number, source?: 'api' | 'billing' | 'manual') => void;
-  consumeCreditsOptimistic: (consumption: CreditConsumption) => void;
-  revertCreditsOptimistic: () => void;
+  consumeCreditsOptimistic: (consumption: CreditConsumption) => string | null;
+  confirmCreditConsumption: (pendingId: string | null | undefined) => void;
+  revertCreditsOptimistic: (pendingId: string | null | undefined) => void;
 }
 
 // ================================================================================
@@ -95,6 +101,8 @@ const initialState = {
   externalUser: null,
   subscription: null,
   role: 'user' as UserRole,
+  _nextOptimisticCreditId: 0,
+  _pendingCreditConsumptions: [],
 
   // Loading States
   isLoading: false,
@@ -298,30 +306,95 @@ export const useUserStore = create<UserStore>()(
     
     consumeCreditsOptimistic: (consumption: CreditConsumption) => {
       const currentUser = get().externalUser;
-      if (currentUser) {
-        const newCredits = Math.max(0, currentUser.credits - consumption.amount);
-        
-        logger.info(LogCategory.USER_AUTH, 'Optimistic credits consumption', { 
-          auth0_id: currentUser.auth0_id,
-          consumption: consumption.amount,
-          reason: consumption.reason,
-          oldCredits: currentUser.credits,
-          newCredits 
-        });
-        
-        set({ 
-          externalUser: { 
-            ...currentUser, 
-            credits: newCredits 
-          }
-        });
+      if (!currentUser) {
+        log.warn('Cannot consume credits optimistically - no current user');
+        return null;
       }
+
+      const nextId = get()._nextOptimisticCreditId + 1;
+      const pendingId = `credit-pending-${nextId}`;
+      const newCredits = Math.max(0, currentUser.credits - consumption.amount);
+
+      logger.info(LogCategory.USER_AUTH, 'Optimistic credits consumption', { 
+        auth0_id: currentUser.auth0_id,
+        pendingId,
+        consumption: consumption.amount,
+        reason: consumption.reason,
+        oldCredits: currentUser.credits,
+        newCredits 
+      });
+
+      set((state) => ({
+        _nextOptimisticCreditId: nextId,
+        _pendingCreditConsumptions: [
+          ...state._pendingCreditConsumptions,
+          { id: pendingId, amount: consumption.amount },
+        ],
+        externalUser: { 
+          ...currentUser, 
+          credits: newCredits 
+        }
+      }));
+
+      return pendingId;
+    },
+
+    confirmCreditConsumption: (pendingId: string | null | undefined) => {
+      if (!pendingId) {
+        return;
+      }
+
+      const pending = get()._pendingCreditConsumptions.find((entry) => entry.id === pendingId);
+      if (!pending) {
+        logger.warn(LogCategory.USER_AUTH, 'Credit optimistic confirm requested for unknown pending entry', {
+          pendingId,
+        });
+        return;
+      }
+
+      logger.info(LogCategory.USER_AUTH, 'Confirmed optimistic credit consumption', {
+        pendingId,
+        amount: pending.amount,
+      });
+
+      set((state) => ({
+        _pendingCreditConsumptions: state._pendingCreditConsumptions.filter(
+          (entry) => entry.id !== pendingId,
+        ),
+      }));
     },
     
-    revertCreditsOptimistic: () => {
-      // This would need to store original credits value
-      // For now, just log the revert attempt
-      logger.warn(LogCategory.USER_AUTH, 'Credits optimistic revert requested - implement if needed');
+    revertCreditsOptimistic: (pendingId: string | null | undefined) => {
+      if (!pendingId) {
+        return;
+      }
+
+      const currentUser = get().externalUser;
+      const pending = get()._pendingCreditConsumptions.find((entry) => entry.id === pendingId);
+
+      if (!currentUser || !pending) {
+        logger.warn(LogCategory.USER_AUTH, 'Credit optimistic revert requested for unknown pending entry', {
+          pendingId,
+          hasUser: !!currentUser,
+        });
+        return;
+      }
+
+      logger.warn(LogCategory.USER_AUTH, 'Reverting optimistic credit consumption', {
+        pendingId,
+        amount: pending.amount,
+        currentCredits: currentUser.credits,
+      });
+
+      set((state) => ({
+        _pendingCreditConsumptions: state._pendingCreditConsumptions.filter(
+          (entry) => entry.id !== pendingId,
+        ),
+        externalUser: {
+          ...currentUser,
+          credits: currentUser.credits + pending.amount,
+        },
+      }));
     },
   }))
 );
