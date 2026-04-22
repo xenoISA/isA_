@@ -3,7 +3,7 @@
  * Connects to isA_user project CRUD API (#258)
  */
 import { useState, useEffect, useCallback } from 'react';
-import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
+import { GATEWAY_ENDPOINTS, getAuthHeaders } from '../config/gatewayConfig';
 
 export interface Project {
   id: string;
@@ -26,6 +26,7 @@ export function useProjects() {
     try {
       const res = await fetch(`${GATEWAY_ENDPOINTS.MODELS.BASE}`.replace('/models', '/projects'), {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -52,7 +53,7 @@ export function useProjects() {
     try {
       const res = await fetch(`${GATEWAY_ENDPOINTS.MODELS.BASE}`.replace('/models', '/projects'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         credentials: 'include',
         body: JSON.stringify({ name, description }),
       });
@@ -70,6 +71,7 @@ export function useProjects() {
       await fetch(`${GATEWAY_ENDPOINTS.MODELS.BASE}`.replace('/models', `/projects/${id}`), {
         method: 'DELETE',
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       setProjects(prev => prev.filter(p => p.id !== id));
       if (activeProjectId === id) setActiveProjectId(null);

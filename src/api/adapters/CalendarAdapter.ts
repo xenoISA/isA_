@@ -40,7 +40,8 @@ export async function getEvents(userId: string, start: string, end: string): Pro
     start_date: start,
     end_date: end,
   });
-  return apiFetch(`/events?${params.toString()}`);
+  const res = await apiFetch<CalendarEvent[] | { events: CalendarEvent[] }>(`/events?${params.toString()}`);
+  return Array.isArray(res) ? res : (res?.events ?? []);
 }
 
 export async function getTodayEvents(userId: string): Promise<CalendarEvent[]> {
@@ -59,7 +60,8 @@ export async function deleteEvent(id: string): Promise<void> {
 }
 
 export async function getProviders(): Promise<CalendarProvider[]> {
-  return apiFetch('/providers');
+  const res = await apiFetch<CalendarProvider[] | { providers: CalendarProvider[] }>('/providers');
+  return Array.isArray(res) ? res : (res?.providers ?? []);
 }
 
 export async function connectProvider(type: CalendarProvider['type']): Promise<{ authUrl: string }> {
