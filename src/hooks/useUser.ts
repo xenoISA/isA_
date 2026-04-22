@@ -302,8 +302,16 @@ export const useUser = (): UseUserReturn => {
       const consumptionResult = await authenticatedUserService.consumeCredits(auth0_id, consumption);
       
       // Update user with remaining credits from result
-      if (externalUser) {
-        const updatedExternalUser = { ...externalUser, credits: consumptionResult.remaining_credits };
+      const currentStoreUser = useUserStore.getState().externalUser ?? externalUser;
+      const currentDisplayedCredits = currentStoreUser?.credits;
+
+      if (currentStoreUser) {
+        const updatedExternalUser = {
+          ...currentStoreUser,
+          credits: currentDisplayedCredits === undefined
+            ? consumptionResult.remaining_credits
+            : Math.min(currentDisplayedCredits, consumptionResult.remaining_credits),
+        };
         setExternalUser(updatedExternalUser);
         logger.info(LogCategory.USER_AUTH, 'Credits consumed successfully', { 
           auth0_id, 

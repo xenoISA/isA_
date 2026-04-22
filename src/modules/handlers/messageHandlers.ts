@@ -70,15 +70,21 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
   // optimistic UI update first, then backend consume. Revert on backend failure.
   const consumeCreditsAfterSend = (reason: string, amount = 1) => {
     const consumption: CreditConsumption = { amount, reason };
-    useUserStore.getState().consumeCreditsOptimistic(consumption);
-    userModule.consumeUserCredits(consumption).catch((error) => {
-      logger.error(LogCategory.USER_AUTH, 'Backend credit consumption failed, reverting optimistic update', {
-        reason,
-        amount,
-        error: error instanceof Error ? error.message : String(error),
+    const pendingId = useUserStore.getState().consumeCreditsOptimistic(consumption);
+
+    userModule.consumeUserCredits(consumption)
+      .then(() => {
+        useUserStore.getState().confirmCreditConsumption(pendingId);
+      })
+      .catch((error) => {
+        logger.error(LogCategory.USER_AUTH, 'Backend credit consumption failed, reverting optimistic update', {
+          reason,
+          amount,
+          pendingId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        useUserStore.getState().revertCreditsOptimistic(pendingId);
       });
-      useUserStore.getState().revertCreditsOptimistic();
-    });
   };
 
   const handleNewChat = () => {
