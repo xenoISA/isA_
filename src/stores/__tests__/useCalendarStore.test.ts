@@ -250,7 +250,11 @@ describe('useCalendarStore', () => {
     const state = {
       ...useCalendarStore.getState(),
       events: [
-        makeStoreEvent({ id: 'today', startTime: new Date().toISOString() }),
+        makeStoreEvent({
+          id: 'today',
+          startTime: new Date().toISOString(),
+          endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        }),
         makeStoreEvent({
           id: 'next-week',
           startTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
