@@ -90,12 +90,17 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  const handleStartNewChat = useCallback(() => {
+    useAppStore.getState().startNewChat();
+  }, []);
+
   // Register global keyboard shortcuts (#198)
   useKeyboardShortcuts(useMemo(() => [
     { key: 'k', meta: true, description: 'Search conversations', category: 'Navigation', action: () => setShowCommandPalette(true) },
     { key: ',', meta: true, description: 'Open settings', category: 'Navigation', action: () => setShowSettings(true) },
+    { key: 'n', meta: true, description: 'New chat', category: 'Chat', action: handleStartNewChat },
     { key: '?', description: 'Show keyboard shortcuts', category: 'Help', action: () => setShowShortcuts(true) },
-  ], []));
+  ], [handleStartNewChat]));
   
   // Right panel state
   const [showRightPanel, setShowRightPanel] = useState(false);
@@ -352,6 +357,7 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
           open={showCommandPalette}
           onClose={() => setShowCommandPalette(false)}
           onAction={(id) => {
+            if (id === 'new-chat') handleStartNewChat();
             if (id === 'settings') setShowSettings(true);
           }}
         />
