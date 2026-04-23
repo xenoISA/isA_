@@ -57,6 +57,12 @@ describe('API path configuration', () => {
     expect(API_PATHS.EXECUTION.HEALTH).toMatch(/^\//);
     expect(API_PATHS.SESSION.BASE).toMatch(/^\//);
   });
+
+  test('user routes match the current account service contract', () => {
+    expect(API_PATHS.USER.ME).toBe('/api/v1/accounts/me');
+    expect(API_PATHS.USER.ENSURE).toBe('/api/v1/accounts/ensure');
+    expect(API_PATHS.USER.SUBSCRIPTION).toBe('/api/v1/accounts/{userId}/subscription');
+  });
 });
 
 describe('timeout configuration', () => {

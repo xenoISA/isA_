@@ -126,7 +126,11 @@ describe('UserService', () => {
 
       const result = await service.ensureUserExists(userData);
 
-      expect(getMocks().mockPost).toHaveBeenCalledWith('/api/v1/users/ensure', userData);
+      expect(getMocks().mockPost).toHaveBeenCalledWith('/api/v1/accounts/ensure', {
+        user_id: 'auth0|123',
+        email: 'alice@example.com',
+        name: 'Alice',
+      });
       expect(result).toEqual(mockUser);
     });
 

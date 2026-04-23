@@ -65,8 +65,8 @@ describe('Gateway endpoint construction', () => {
   });
 
   test('ACCOUNTS endpoints include user paths', () => {
-    expect(GATEWAY_ENDPOINTS.ACCOUNTS.ME).toContain('/api/v1/users/me');
-    expect(GATEWAY_ENDPOINTS.ACCOUNTS.ENSURE).toContain('/api/v1/users/ensure');
+    expect(GATEWAY_ENDPOINTS.ACCOUNTS.ME).toContain('/api/v1/accounts/me');
+    expect(GATEWAY_ENDPOINTS.ACCOUNTS.ENSURE).toContain('/api/v1/accounts/ensure');
     expect(GATEWAY_ENDPOINTS.ACCOUNTS.CREDITS).toContain('{userId}');
   });
 

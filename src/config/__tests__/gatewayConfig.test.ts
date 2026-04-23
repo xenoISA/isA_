@@ -28,10 +28,10 @@ describe('GATEWAY_CONFIG', () => {
 
 describe('GATEWAY_SERVICES', () => {
   test('core services are defined', () => {
-    expect(GATEWAY_SERVICES.AGENTS).toBe('agents');
-    expect(GATEWAY_SERVICES.ACCOUNTS).toBe('accounts');
-    expect(GATEWAY_SERVICES.SESSIONS).toBe('sessions');
-    expect(GATEWAY_SERVICES.AUTH).toBe('auth');
+    expect(GATEWAY_SERVICES.AGENTS).toBe('api/v1/agents');
+    expect(GATEWAY_SERVICES.ACCOUNTS).toBe('api/v1/accounts');
+    expect(GATEWAY_SERVICES.SESSIONS).toBe('api/v1/sessions');
+    expect(GATEWAY_SERVICES.AUTH).toBe('api/v1/auth');
   });
 });
 
@@ -74,7 +74,7 @@ describe('requiresAuth', () => {
 
   test('other endpoints require auth', () => {
     expect(requiresAuth('/api/v1/agents/chat')).toBe(true);
-    expect(requiresAuth('/api/v1/users/me')).toBe(true);
+    expect(requiresAuth('/api/v1/accounts/me')).toBe(true);
   });
 });
 

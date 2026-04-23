@@ -74,6 +74,20 @@ function makeStoreEvent(overrides: Record<string, any> = {}) {
   };
 }
 
+function offsetIso(daysFromNow: number, hour = 9, durationHours = 1) {
+  const start = new Date();
+  start.setDate(start.getDate() + daysFromNow);
+  start.setHours(hour, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(end.getHours() + durationHours);
+
+  return {
+    startTime: start.toISOString(),
+    endTime: end.toISOString(),
+  };
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;
@@ -135,12 +149,12 @@ describe('useCalendarStore', () => {
 
   test('creates events optimistically and replaces the temporary event with SDK response', async () => {
     const pending = deferred<any>();
+    const todaySlot = offsetIso(0, 10);
     mockCreateEvent.mockReturnValue(pending.promise);
 
     const createPromise = useCalendarStore.getState().createEvent({
       title: 'Planning',
-      startTime: '2026-04-23T10:00:00Z',
-      endTime: '2026-04-23T11:00:00Z',
+      ...todaySlot,
     });
 
     expect(useCalendarStore.getState().events[0].id).toMatch(/^optimistic-/);
@@ -153,8 +167,8 @@ describe('useCalendarStore', () => {
       expect.objectContaining({
         user_id: 'user-1',
         title: 'Planning',
-        start_time: '2026-04-23T10:00:00Z',
-        end_time: '2026-04-23T11:00:00Z',
+        start_time: todaySlot.startTime,
+        end_time: todaySlot.endTime,
       }),
     );
     expect(created.id).toBe('evt-created');
@@ -252,16 +266,15 @@ describe('useCalendarStore', () => {
       events: [
         makeStoreEvent({
           id: 'today',
-          startTime: new Date().toISOString(),
-          endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          ...offsetIso(0, 9),
         }),
         makeStoreEvent({
           id: 'next-week',
-          startTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+          ...offsetIso(10, 9),
         }),
         makeStoreEvent({
           id: 'tomorrow',
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          ...offsetIso(1, 9),
         }),
       ],
     };
