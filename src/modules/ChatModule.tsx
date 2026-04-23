@@ -41,6 +41,7 @@ import { RightPanel } from '../components/ui/chat/RightPanel';
 import { RightSidebarLayout } from '../components/ui/chat/RightSidebarLayout';
 import { BrowserPanel } from '../components/ui/chat/BrowserPanel';
 import { DesignPanel } from '../components/ui/chat/DesignPanel';
+import { DesignSystemOnboarding } from '../components/ui/chat/DesignSystemOnboarding';
 import { ModeSwitcher, type AppMode } from '../components/ui/chat/ModeSwitcher';
 import { AppId } from '../types/appTypes';
 import { useBrowserControl } from '@isa/hooks';
@@ -57,6 +58,8 @@ import { useHuntActions } from '../stores/useWidgetStores';
 import { ArtifactMessage } from '../types/chatTypes';
 import { detectPluginTrigger, executePlugin } from '../plugins';
 import { useTask } from '../hooks/useTask';
+import { useDesignSystemProfile } from '../hooks/useDesignSystemProfile';
+import { shouldShowDesignSystemOnboarding } from '../api/designSystemProfileService';
 
 // 🆕 HIL (Human-in-the-Loop) 导入
 import { HILInterruptModal } from '../components/ui/hil/HILInterruptModal';
@@ -149,6 +152,8 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // Get chat interface state using the hook (now pure state aggregation)
   const chatInterface = useChat();
+
+  const designSystemProfile = useDesignSystemProfile(appMode === 'design');
 
   // Get authentication state
   const { authUser } = useAuth();
@@ -415,7 +420,27 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     }
 
     if (appMode === 'design') {
-      return <DesignPanel />;
+      const showOnboarding = shouldShowDesignSystemOnboarding(
+        appMode,
+        designSystemProfile.profile,
+        designSystemProfile.isLoading,
+      );
+
+      return (
+        <div className="relative h-full">
+          <DesignPanel />
+          <DesignSystemOnboarding
+            open={showOnboarding}
+            profile={designSystemProfile.profile}
+            isExtracting={designSystemProfile.isExtracting}
+            isSaving={designSystemProfile.isSaving}
+            error={designSystemProfile.error}
+            onExtract={designSystemProfile.extractProfile}
+            onSave={designSystemProfile.saveProfile}
+            onSkip={designSystemProfile.skipOnboarding}
+          />
+        </div>
+      );
     }
 
     return null;
@@ -429,6 +454,14 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     clickAt,
     currentScreenshot,
     currentUrl,
+    designSystemProfile.error,
+    designSystemProfile.extractProfile,
+    designSystemProfile.isExtracting,
+    designSystemProfile.isLoading,
+    designSystemProfile.isSaving,
+    designSystemProfile.profile,
+    designSystemProfile.saveProfile,
+    designSystemProfile.skipOnboarding,
     handleBrowserApprove,
     handleBrowserReject,
     isConnected,
