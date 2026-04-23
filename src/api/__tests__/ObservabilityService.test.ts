@@ -4,6 +4,7 @@ import { ObservabilityService } from '../ObservabilityService';
 vi.mock('../../config/gatewayConfig', () => ({
   GATEWAY_ENDPOINTS: {
     MATE: {
+      BASE: 'http://localhost:18789',
       OBSERVABILITY: {
         METRICS: 'http://localhost:18789/v1/observability/metrics',
         AUDIT: 'http://localhost:18789/v1/observability/audit',

@@ -117,6 +117,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ className = '', children }
           availableApps={appData.availableApps}
           onMenuClick={toggleSidebar}
           sidebarOpen={sidebarOpen}
+          isAuthenticated={isAuthenticated}
         />
       </div>
 

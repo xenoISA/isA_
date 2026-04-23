@@ -3,9 +3,12 @@ import { CalendarToolbar } from './CalendarToolbar';
 import { TaskToolbar } from './TaskToolbar';
 import { NotificationToolbar } from './NotificationToolbar';
 import { TaskStatusIndicator } from './header/TaskStatusIndicator';
+import { CostBadge } from './header/CostBadge';
+import { AuditDrawer } from './drawers/AuditDrawer';
 import { ThemeToggle } from './theme/ThemeToggle';
 import { MatePresenceIndicator } from './chat/MatePresenceIndicator';
 import { docsLinks } from '../../config/surfaceConfig';
+import { useCurrentSessionId } from '../../stores/useSessionStore';
 
 interface AppHeaderProps {
   currentApp: string | null;
@@ -19,6 +22,8 @@ interface AppHeaderProps {
   onMenuClick?: () => void;
   /** Whether sidebar drawer is currently open */
   sidebarOpen?: boolean;
+  /** Whether the user is authenticated; cost/audit calls require auth */
+  isAuthenticated?: boolean;
   // TaskStatusIndicator props
   streamingStatus?: string;
   lastSSEEvent?: any;
@@ -51,7 +56,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onTaskControl,
   onMenuClick,
   sidebarOpen,
+  isAuthenticated = false,
 }) => {
+  const currentSessionId = useCurrentSessionId();
+  const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
+
   // Logo element — clean, no gradient
   const logo = (
     <div className="size-9 rounded-lg flex items-center justify-center bg-white/10 border border-white/10">
@@ -94,6 +103,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   }, [overflowOpen]);
 
   return (
+    <>
     <header className="flex items-center gap-3 px-3 md:px-4 h-full bg-transparent">
       {/* Hamburger on mobile */}
       {isMobile && onMenuClick && (
@@ -122,6 +132,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <MatePresenceIndicator className="ml-1" />
 
       <div className="flex-1" />
+
+      {isAuthenticated && (
+        <CostBadge
+          sessionId={currentSessionId}
+          onClick={() => setAuditDrawerOpen(true)}
+        />
+      )}
 
       {/* Task status — always visible */}
       <TaskStatusIndicator
@@ -162,5 +179,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </>
       )}
     </header>
+    <AuditDrawer
+      open={auditDrawerOpen && isAuthenticated}
+      sessionId={currentSessionId}
+      onClose={() => setAuditDrawerOpen(false)}
+    />
+    </>
   );
 };
