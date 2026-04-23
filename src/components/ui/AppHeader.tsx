@@ -22,6 +22,8 @@ interface AppHeaderProps {
   onMenuClick?: () => void;
   /** Whether sidebar drawer is currently open */
   sidebarOpen?: boolean;
+  /** Whether the user is authenticated; cost/audit calls require auth */
+  isAuthenticated?: boolean;
   // TaskStatusIndicator props
   streamingStatus?: string;
   lastSSEEvent?: any;
@@ -54,6 +56,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onTaskControl,
   onMenuClick,
   sidebarOpen,
+  isAuthenticated = false,
 }) => {
   const currentSessionId = useCurrentSessionId();
   const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
@@ -130,10 +133,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
       <div className="flex-1" />
 
-      <CostBadge
-        sessionId={currentSessionId}
-        onClick={() => setAuditDrawerOpen(true)}
-      />
+      {isAuthenticated && (
+        <CostBadge
+          sessionId={currentSessionId}
+          onClick={() => setAuditDrawerOpen(true)}
+        />
+      )}
 
       {/* Task status — always visible */}
       <TaskStatusIndicator
@@ -175,7 +180,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       )}
     </header>
     <AuditDrawer
-      open={auditDrawerOpen}
+      open={auditDrawerOpen && isAuthenticated}
       sessionId={currentSessionId}
       onClose={() => setAuditDrawerOpen(false)}
     />
