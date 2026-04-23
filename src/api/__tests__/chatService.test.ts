@@ -323,9 +323,38 @@ describe('ChatService', () => {
       expect(callbacks.onToolCompleted).toHaveBeenCalledWith('search', { data: [] }, undefined, 120);
     });
 
+    test('canonical tool_call running → onToolExecuting', async () => {
+      await streamEvent({
+        type: 'tool_call',
+        data: {
+          toolName: 'search',
+          status: 'running',
+          progress: 50,
+        },
+      });
+      expect(callbacks.onToolExecuting).toHaveBeenCalledWith('search', 'running', 50);
+    });
+
     test('run_finished → onStreamComplete', async () => {
       await streamEvent({ type: 'run_finished', content: 'final' });
       expect(callbacks.onStreamComplete).toHaveBeenCalledWith('final');
+    });
+
+    test('canonical done event completes without a separate DONE sentinel', async () => {
+      mockConnection.stream.mockReturnValue(
+        createAsyncIterable([
+          `data: ${JSON.stringify({ type: 'done' })}`,
+        ])
+      );
+      mockParser.parse.mockReturnValueOnce({
+        type: 'done',
+        data: { finalContent: 'final from sdk' },
+      });
+
+      await service.sendMessage('Hi', defaultMetadata, defaultToken, callbacks);
+
+      expect(callbacks.onStreamComplete).toHaveBeenCalledWith('final from sdk');
+      expect(mockConnection.close).toHaveBeenCalled();
     });
 
     test('run_error → onError', async () => {
@@ -337,6 +366,13 @@ describe('ChatService', () => {
       await streamEvent({ type: 'error', message: 'bad request' });
       expect(callbacks.onError).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'bad request' })
+      );
+    });
+
+    test('canonical error event uses data.message', async () => {
+      await streamEvent({ type: 'error', data: { message: 'sdk failure' } });
+      expect(callbacks.onError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'sdk failure' })
       );
     });
 
@@ -524,6 +560,29 @@ describe('ChatService', () => {
       );
     });
 
+    test('canonical hil_request also creates pending browser action', async () => {
+      const event = {
+        type: 'hil_request',
+        thread_id: 'thread-1',
+        data: {
+          checkpointId: 'cp-1',
+          tool_name: 'ComputerUseAgent',
+          action_type: 'navigate',
+          target: 'https://example.com',
+        },
+      };
+      await streamEvent(event);
+
+      expect(callbacks.onHILInterruptDetected).toHaveBeenCalledWith(event);
+      expect(callbacks.onBrowserAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'navigate',
+          status: 'pending',
+          target: 'https://example.com',
+        }),
+      );
+    });
+
     test('artifact_created → onArtifactCreated', async () => {
       const artifact = { id: 'a1', name: 'code.py' };
       await streamEvent({ type: 'artifact_created', artifact });
@@ -533,6 +592,12 @@ describe('ChatService', () => {
     test('artifact_updated → onArtifactUpdated', async () => {
       const artifact = { id: 'a1', name: 'code.py', version: 2 };
       await streamEvent({ type: 'artifact_updated', artifact });
+      expect(callbacks.onArtifactUpdated).toHaveBeenCalledWith(artifact);
+    });
+
+    test('canonical artifact update → onArtifactUpdated', async () => {
+      const artifact = { id: 'a1', title: 'code.py', version: 2 };
+      await streamEvent({ type: 'artifact', data: { action: 'updated', artifact } });
       expect(callbacks.onArtifactUpdated).toHaveBeenCalledWith(artifact);
     });
 
@@ -644,6 +709,23 @@ describe('ChatService', () => {
       await service.sendMessageViaMate('Hi', mateMetadata, defaultToken, callbacks);
 
       expect(callbacks.onStreamComplete).toHaveBeenCalled();
+    });
+
+    test('completes when Mate adapter emits a terminal event without DONE sentinel', async () => {
+      mockConnection.stream.mockReturnValue(
+        createAsyncIterable([
+          `data: ${JSON.stringify({ type: 'result', content: 'done' })}`,
+        ])
+      );
+      mockAdaptMateEvent.mockReturnValue({
+        events: [{ type: 'run_finished', content: 'mate final' }],
+        updatedContext: { runId: 'mate-run-1', sessionId: 'mate-session-1', currentMessageId: null },
+      });
+
+      await service.sendMessageViaMate('Hi', mateMetadata, defaultToken, callbacks);
+
+      expect(callbacks.onStreamComplete).toHaveBeenCalledWith('mate final');
+      expect(mockConnection.close).toHaveBeenCalled();
     });
   });
 

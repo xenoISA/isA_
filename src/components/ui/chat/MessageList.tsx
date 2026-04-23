@@ -20,7 +20,7 @@
  * - 在新架构中被ChatContentLayout使用
  * - 不处理业务逻辑，只负责消息的视觉呈现
  */
-import React, { memo, useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { memo, useState, useMemo, useRef, useCallback } from 'react';
 import { createLogger } from '../../../utils/logger';
 import { ChatMessage, ArtifactMessage, RegularMessage } from '../../../types/chatTypes';
 const log = createLogger('MessageList');
@@ -45,31 +45,9 @@ import { ChannelOriginBadge } from './ChannelOriginBadge';
 import { DelegationCard } from './DelegationCard';
 import { DeepThinking as DeepThinkingOriginal } from '@isa/ui-web';
 import type { ThinkingStep, DeepThinkingProps } from '@isa/ui-web';
+import { ThinkingBlock } from './streamingSdkCompat';
 // Cast to work around React types version mismatch between packages
 const DeepThinking = DeepThinkingOriginal as React.FC<DeepThinkingProps>;
-// SDK streaming components — inline until @isa/ui-web dist is rebuilt (#290)
-const ThinkingBlock: React.FC<{
-  isThinking: boolean; content: string; autoCollapse?: boolean; className?: string;
-}> = ({ isThinking, content, className = '' }) => {
-  const [expanded, setExpanded] = useState(isThinking);
-  useEffect(() => { if (isThinking) setExpanded(true); }, [isThinking]);
-  useEffect(() => { if (!isThinking) { const t = setTimeout(() => setExpanded(false), 500); return () => clearTimeout(t); } }, [isThinking]);
-  if (!content && !isThinking) return null;
-  return (
-    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-2 ${className}`}>
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 text-left">
-        <span style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s', fontSize: '8px' }}>▶</span>
-        {isThinking && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
-        <span className="font-medium">{isThinking ? 'Thinking...' : 'Thought process'}</span>
-      </button>
-      {expanded && (
-        <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-pre-wrap max-h-96 overflow-auto">
-          {content}{isThinking && <span className="opacity-40 animate-pulse">▋</span>}
-        </div>
-      )}
-    </div>
-  );
-};
 const ToolCallDisplay: React.FC<any> = () => null; // Placeholder until wired
 import { GentleNotification } from './GentleNotification';
 import type { GentleNotificationType } from './GentleNotification';

@@ -1,14 +1,10 @@
 /**
  * ContentParser — Content type detection and structured parsing.
  *
- * MIGRATION NOTE (#281): Reduced from 542 lines to ~100.
- * Full implementation extracted to @isa/core ContentTypeDetector (isA_App_SDK#288).
- * When @isa/core is published, replace with:
- *
- *   export { ContentTypeDetector as ContentParser } from '@isa/core';
- *   export type { DetectedContent as ParsedContent, ContentType } from '@isa/core';
+ * Thin app compatibility wrapper around @isa/core ContentTypeDetector.
  */
 
+import { ContentTypeDetector } from '@isa/core';
 import { BaseParser } from './Parser';
 
 export type ContentType = 'text' | 'markdown' | 'code' | 'image' | 'mixed' | 'json' | 'html' | 'url';
@@ -39,7 +35,9 @@ export interface ParsedContent {
 
 export class ContentParser extends BaseParser<string, ParsedContent> {
   readonly name = 'content_parser';
-  readonly version = '2.0.0';
+  readonly version = '3.0.0-sdk';
+
+  private readonly detector = new ContentTypeDetector();
 
   canParse(data: string): boolean {
     return typeof data === 'string' && data.length > 0;
@@ -48,30 +46,18 @@ export class ContentParser extends BaseParser<string, ParsedContent> {
   parse(content: string): ParsedContent | null {
     if (!content || typeof content !== 'string') return null;
 
-    const hasCodeBlock = /```\w*\n[\s\S]*?\n```/.test(content);
-    const hasMarkdown = (content.match(/(?:^|\n)(#{1,6}\s|[*\-]\s|\d+\.\s|>\s|\*\*.*\*\*)/g) || []).length >= 2;
-    const hasImage = /https?:\/\/[^\s]*\.(jpg|jpeg|png|gif|webp|svg)/i.test(content);
-
-    let primaryType: ContentType = 'text';
-    if (hasCodeBlock) primaryType = 'code';
-    else if (hasImage) primaryType = 'image';
-    else if (hasMarkdown) primaryType = 'markdown';
-
-    const isMixed = [hasCodeBlock, hasMarkdown, hasImage].filter(Boolean).length > 1;
+    const detected = this.detector.detect(content);
+    const typeDistribution = detected.elements.reduce<Record<string, number>>((acc, element) => {
+      acc[element.type] = (acc[element.type] || 0) + 1;
+      return acc;
+    }, {});
 
     return {
-      raw: content,
-      primaryType: isMixed ? 'mixed' : primaryType,
-      elements: [{ type: primaryType, content }],
-      isMixed,
-      renderHints: {
-        variant: primaryType === 'code' ? 'artifact' : 'chat',
-        complexity: content.length > 2000 ? 'complex' : content.length > 500 ? 'moderate' : 'simple',
-      },
+      ...detected,
       stats: {
         totalLength: content.length,
-        elementCount: 1,
-        typeDistribution: { [primaryType]: 1 },
+        elementCount: detected.elements.length,
+        typeDistribution,
       },
     };
   }
