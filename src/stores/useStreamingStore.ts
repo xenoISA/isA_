@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Streaming State Store (useStreamingStore.ts) — Buffers, timers, typing, loading
+ * Streaming State Store (useStreamingStore.ts) — app-specific streaming bridge
  * ============================================================================
  *
  * Extracted from useChatStore as part of #124.
@@ -12,8 +12,8 @@
  *   - useTaskProgress() — typed task progress
  *
  * This store remains because it coordinates cross-store state (useMessageStore,
- * useSessionStore) which is isA_-specific. When @isa/hooks is published,
- * this store should delegate to the SDK hooks internally.
+ * useSessionStore) which is isA_-specific. Generic buffer/timer state is kept
+ * outside Zustand so the store no longer owns streaming protocol internals.
  *
  * Does NOT handle:
  *   - Message array CRUD or history (useMessageStore)
@@ -37,11 +37,15 @@ import { createContentParser, ParsedContent } from '../api/parsing/ContentParser
 // and referenced from ChatModule.tsx).  Encapsulated here.
 // ---------------------------------------------------------------------------
 const _streamingFlushTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+const _streamingBuffers: Map<string, string[]> = new Map();
+const _streamingLastFlush: Map<string, number> = new Map();
 
 /** Expose for external callers that need to clear all timers (e.g. clearMessages). */
 export function clearAllFlushTimers(): void {
   _streamingFlushTimers.forEach(t => clearTimeout(t));
   _streamingFlushTimers.clear();
+  _streamingBuffers.clear();
+  _streamingLastFlush.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -49,10 +53,6 @@ export function clearAllFlushTimers(): void {
 // ---------------------------------------------------------------------------
 
 export interface StreamingStoreState {
-  /** Per-message buffered chunks awaiting flush */
-  streamingBuffers: Record<string, string[]>;
-  /** Timestamp of last flush per message id */
-  streamingLastFlush: Record<string, number>;
   /** Whether the assistant is "typing" */
   isTyping: boolean;
   /** Generic loading flag for chat operations */
@@ -99,8 +99,6 @@ export type StreamingStore = StreamingStoreState & StreamingActions;
 export const useStreamingStore = create<StreamingStore>()(
   subscribeWithSelector((set, get) => ({
     // Initial state
-    streamingBuffers: {},
-    streamingLastFlush: {},
     isTyping: false,
     chatLoading: false,
     activeAbortController: null,
@@ -151,11 +149,8 @@ export const useStreamingStore = create<StreamingStore>()(
       // Write messages back to message store
       useMessageStore.setState({ messages: newMessages });
 
-      // Update local buffers
-      set((state) => ({
-        streamingBuffers: { ...state.streamingBuffers, [id]: [] },
-        streamingLastFlush: { ...state.streamingLastFlush, [id]: Date.now() }
-      }));
+      _streamingBuffers.set(id, []);
+      _streamingLastFlush.set(id, Date.now());
 
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message started', { id, status });
     },
@@ -170,45 +165,37 @@ export const useStreamingStore = create<StreamingStore>()(
 
       const messageId = lastMessage.id;
 
-      set((state) => {
-        const existingBuffer = state.streamingBuffers[messageId] || [];
-        const updatedBuffer = [...existingBuffer, content];
+      const existingBuffer = _streamingBuffers.get(messageId) || [];
+      const updatedBuffer = [...existingBuffer, content];
+      const now = Date.now();
+      const lastFlush = _streamingLastFlush.get(messageId) || 0;
+      const shouldFlush = updatedBuffer.length >= 20 || now - lastFlush >= 50;
+      const flushContent = shouldFlush ? updatedBuffer.join('') : '';
+      const nextBuffer = shouldFlush ? [] : updatedBuffer;
 
-        const now = Date.now();
-        const lastFlush = state.streamingLastFlush[messageId] || 0;
-        const shouldFlush = updatedBuffer.length >= 20 || now - lastFlush >= 50;
-        const flushContent = shouldFlush ? updatedBuffer.join('') : '';
-        const nextBuffer = shouldFlush ? [] : updatedBuffer;
+      _streamingBuffers.set(messageId, nextBuffer);
+      if (shouldFlush) {
+        _streamingLastFlush.set(messageId, now);
+        flushedMessageId = messageId;
+      } else {
+        flushedMessageId = null;
+      }
 
-        if (shouldFlush) {
-          flushedMessageId = messageId;
-        } else {
-          flushedMessageId = null;
-        }
-
-        if (shouldFlush) {
-          // Flush content into the message store's messages array
-          const msgs = useMessageStore.getState().messages;
-          const last = msgs[msgs.length - 1];
-          if (last && last.id === messageId && last.isStreaming) {
-            const updatedMsgs = [...msgs];
-            if (last.type === 'regular') {
-              updatedMsgs[updatedMsgs.length - 1] = { ...last, content: last.content + flushContent };
-            } else if (last.type === 'artifact') {
-              const currentArtifactContent = typeof last.artifact.content === 'string' ? last.artifact.content : '';
-              updatedMsgs[updatedMsgs.length - 1] = { ...last, artifact: { ...last.artifact, content: currentArtifactContent + flushContent } };
-            }
-            useMessageStore.setState({ messages: updatedMsgs });
+      if (shouldFlush) {
+        // Flush content into the message store's messages array
+        const msgs = useMessageStore.getState().messages;
+        const last = msgs[msgs.length - 1];
+        if (last && last.id === messageId && last.isStreaming) {
+          const updatedMsgs = [...msgs];
+          if (last.type === 'regular') {
+            updatedMsgs[updatedMsgs.length - 1] = { ...last, content: last.content + flushContent };
+          } else if (last.type === 'artifact') {
+            const currentArtifactContent = typeof last.artifact.content === 'string' ? last.artifact.content : '';
+            updatedMsgs[updatedMsgs.length - 1] = { ...last, artifact: { ...last.artifact, content: currentArtifactContent + flushContent } };
           }
+          useMessageStore.setState({ messages: updatedMsgs });
         }
-
-        return {
-          streamingBuffers: { ...state.streamingBuffers, [messageId]: nextBuffer },
-          streamingLastFlush: shouldFlush
-            ? { ...state.streamingLastFlush, [messageId]: now }
-            : state.streamingLastFlush
-        };
-      });
+      }
 
       // Manage auto-flush timer
       const mid = messageId;
@@ -218,8 +205,7 @@ export const useStreamingStore = create<StreamingStore>()(
       if (!flushedMessageId) {
         const timer = setTimeout(() => {
           _streamingFlushTimers.delete(mid);
-          const sState = get();
-          const buf = sState.streamingBuffers[mid];
+          const buf = _streamingBuffers.get(mid);
           if (!buf || buf.length === 0) return;
           const flushContent = buf.join('');
 
@@ -235,10 +221,8 @@ export const useStreamingStore = create<StreamingStore>()(
           }
           useMessageStore.setState({ messages: updatedMessages });
 
-          set((s) => ({
-            streamingBuffers: { ...s.streamingBuffers, [mid]: [] },
-            streamingLastFlush: { ...s.streamingLastFlush, [mid]: Date.now() },
-          }));
+          _streamingBuffers.set(mid, []);
+          _streamingLastFlush.set(mid, Date.now());
         }, 100);
         _streamingFlushTimers.set(mid, timer);
       } else {
@@ -261,8 +245,7 @@ export const useStreamingStore = create<StreamingStore>()(
         _streamingFlushTimers.delete(messageId);
       }
 
-      const state = get();
-      const buffer = state.streamingBuffers[messageId] || [];
+      const buffer = _streamingBuffers.get(messageId) || [];
       const flushContent = buffer.length > 0 ? buffer.join('') : '';
 
       const finalizedMessage =
@@ -329,14 +312,8 @@ export const useStreamingStore = create<StreamingStore>()(
         });
       }
 
-      // Clear buffers
-      set((s) => {
-        const nextBuffers = { ...s.streamingBuffers };
-        const nextLastFlush = { ...s.streamingLastFlush };
-        delete nextBuffers[messageId];
-        delete nextLastFlush[messageId];
-        return { streamingBuffers: nextBuffers, streamingLastFlush: nextLastFlush };
-      });
+      _streamingBuffers.delete(messageId);
+      _streamingLastFlush.delete(messageId);
 
       logger.debug(LogCategory.CHAT_FLOW, 'Streaming message finished');
     },

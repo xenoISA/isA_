@@ -328,6 +328,23 @@ describe('ChatService', () => {
       expect(callbacks.onStreamComplete).toHaveBeenCalledWith('final');
     });
 
+    test('canonical done event completes without a separate DONE sentinel', async () => {
+      mockConnection.stream.mockReturnValue(
+        createAsyncIterable([
+          `data: ${JSON.stringify({ type: 'done' })}`,
+        ])
+      );
+      mockParser.parse.mockReturnValueOnce({
+        type: 'done',
+        data: { finalContent: 'final from sdk' },
+      });
+
+      await service.sendMessage('Hi', defaultMetadata, defaultToken, callbacks);
+
+      expect(callbacks.onStreamComplete).toHaveBeenCalledWith('final from sdk');
+      expect(mockConnection.close).toHaveBeenCalled();
+    });
+
     test('run_error → onError', async () => {
       await streamEvent({ type: 'run_error', error: { message: 'boom' } });
       expect(callbacks.onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }));
@@ -536,6 +553,12 @@ describe('ChatService', () => {
       expect(callbacks.onArtifactUpdated).toHaveBeenCalledWith(artifact);
     });
 
+    test('canonical artifact update → onArtifactUpdated', async () => {
+      const artifact = { id: 'a1', title: 'code.py', version: 2 };
+      await streamEvent({ type: 'artifact', data: { action: 'updated', artifact } });
+      expect(callbacks.onArtifactUpdated).toHaveBeenCalledWith(artifact);
+    });
+
     test('status_update → onStreamStatus', async () => {
       await streamEvent({ type: 'status_update', status: 'Thinking...' });
       expect(callbacks.onStreamStatus).toHaveBeenCalledWith('Thinking...');
@@ -644,6 +667,23 @@ describe('ChatService', () => {
       await service.sendMessageViaMate('Hi', mateMetadata, defaultToken, callbacks);
 
       expect(callbacks.onStreamComplete).toHaveBeenCalled();
+    });
+
+    test('completes when Mate adapter emits a terminal event without DONE sentinel', async () => {
+      mockConnection.stream.mockReturnValue(
+        createAsyncIterable([
+          `data: ${JSON.stringify({ type: 'result', content: 'done' })}`,
+        ])
+      );
+      mockAdaptMateEvent.mockReturnValue({
+        events: [{ type: 'run_finished', content: 'mate final' }],
+        updatedContext: { runId: 'mate-run-1', sessionId: 'mate-session-1', currentMessageId: null },
+      });
+
+      await service.sendMessageViaMate('Hi', mateMetadata, defaultToken, callbacks);
+
+      expect(callbacks.onStreamComplete).toHaveBeenCalledWith('mate final');
+      expect(mockConnection.close).toHaveBeenCalled();
     });
   });
 

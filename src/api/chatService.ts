@@ -83,6 +83,8 @@ export class ChatService {
   private readonly version = '3.0.0';
   /** Tracks whether onStreamStart has been called for the current request */
   private _streamStarted = false;
+  /** Tracks whether a typed/legacy event already emitted completion */
+  private _streamCompleted = false;
   
   /**
    * 发送消息 - 符合 how_to_chat.md 标准格式
@@ -107,6 +109,7 @@ export class ChatService {
     
     try {
       this._streamStarted = false; // Reset for new request
+      this._streamCompleted = false;
       // 构建标准的Chat API payload (符合 how_to_chat.md)
       const payload = {
         message,
@@ -176,7 +179,10 @@ export class ChatService {
           if (!streamEnded) {
             streamEnded = true;
             await connection.close();
-            callbacks.onStreamComplete?.(finalContent);
+            if (!this._streamCompleted) {
+              callbacks.onStreamComplete?.(finalContent);
+              this._streamCompleted = true;
+            }
             resolve();
           }
         };
@@ -217,6 +223,10 @@ export class ChatService {
                     
                     // 直接调用相应的回调函数
                     this.handleAGUIEvent(aguiEvent, callbacks);
+                    if (this.isTerminalStreamEvent(aguiEvent)) {
+                      await handleComplete();
+                      return;
+                    }
                     
                   } catch (parseError) {
                     log.warn('Failed to parse event', parseError);
@@ -255,11 +265,95 @@ export class ChatService {
     }
     
     switch (event.type) {
+      // Canonical SDK streaming protocol
+      case 'status': {
+        const data = event.data || {};
+        const phase = data.phase || data.status;
+        const message = data.message || data.status;
+        if (!this._streamStarted && ['connecting', 'preparing', 'generating'].includes(phase)) {
+          this._streamStarted = true;
+          callbacks.onStreamStart?.(event.id || data.messageId || data.message_id || data.runId || `stream-${Date.now()}`, message || 'Starting...');
+        } else if (message) {
+          callbacks.onStreamStatus?.(message);
+        }
+        break;
+      }
+
+      case 'content': {
+        const data = event.data || {};
+        const delta = data.delta || data.content || '';
+        if (delta) {
+          if (!this._streamStarted) {
+            this._streamStarted = true;
+            callbacks.onStreamStart?.(event.id || data.messageId || data.message_id || data.runId || `stream-${Date.now()}`, 'Generating...');
+          }
+          callbacks.onStreamContent?.(delta);
+        }
+        break;
+      }
+
+      case 'thinking': {
+        const data = event.data || {};
+        callbacks.onStreamStatus?.(data.message || 'Thinking...');
+        break;
+      }
+
+      case 'done': {
+        const data = event.data || {};
+        callbacks.onStreamComplete?.(data.finalContent || data.content);
+        this._streamCompleted = true;
+        break;
+      }
+
+      case 'tool_call': {
+        const data = event.data || {};
+        const status = data.status;
+        if (status === 'result' || status === 'error') {
+          callbacks.onToolCompleted?.(data.toolName, data.result, data.error);
+        } else if (status === 'calling') {
+          callbacks.onToolStart?.(data.toolName, data.callId, data.arguments);
+        } else {
+          callbacks.onToolExecuting?.(data.toolName, status, data.progress);
+        }
+        break;
+      }
+
+      case 'task_progress':
+        callbacks.onTaskProgress?.(event.data);
+        break;
+
+      case 'artifact': {
+        const data = event.data || {};
+        if (data.action === 'updated') {
+          callbacks.onArtifactUpdated?.(data.artifact || data);
+        } else {
+          callbacks.onArtifactCreated?.(data.artifact || data);
+        }
+        break;
+      }
+
+      case 'billing': {
+        const data = event.data || event;
+        callbacks.onBillingUpdate?.({
+          creditsRemaining: data.creditsRemaining ?? data.credits_remaining,
+          totalCredits: data.totalCredits ?? data.total_credits,
+          modelCalls: data.modelCalls ?? data.model_calls,
+          toolCalls: data.toolCalls ?? data.tool_calls,
+          cost: data.creditsUsed ?? data.cost,
+        });
+        break;
+      }
+
+      case 'hil_request':
+        callbacks.onHILInterruptDetected?.(event.data || event);
+        break;
+
       // 基础流程事件
       case 'run_started':
-        // Don't call onStreamStart here — wait for text_message_start or first content.
-        // The placeholder in messageHandlers handles the "waiting" UX.
-        log.debug('Run started', { runId: event.run_id });
+        if (!this._streamStarted) {
+          this._streamStarted = true;
+          callbacks.onStreamStart?.(event.message_id || event.run_id, 'Starting...');
+        }
         break;
 
       case 'text_message_start':
@@ -277,6 +371,8 @@ export class ChatService {
           callbacks.onStreamStart?.(event.message_id || event.run_id, 'Generating...');
           callbacks.onStreamContent?.(event.final_content || event.content);
         }
+        callbacks.onStreamComplete?.(event.final_content || event.content);
+        this._streamCompleted = true;
         break;
 
       case 'text_delta':
@@ -293,9 +389,8 @@ export class ChatService {
         
       case 'run_finished':
       case 'run_completed':
-        // Don't call onStreamComplete here — handleComplete does it when stream ends.
-        // Calling it here causes duplicate finishStreamingMessage().
-        log.debug('Run finished', { runId: event.run_id });
+        callbacks.onStreamComplete?.(event.final_content || event.content);
+        this._streamCompleted = true;
         break;
         
       case 'run_error':
@@ -304,8 +399,8 @@ export class ChatService {
         break;
         
       case 'stream_done':
-        // Don't call onStreamComplete here — handleComplete does it once when SSE ends.
-        log.debug('Stream done event received');
+        callbacks.onStreamComplete?.(event.final_content || event.content);
+        this._streamCompleted = true;
         break;
         
       // 工具执行事件
@@ -350,16 +445,6 @@ export class ChatService {
       // 业务功能事件
       case 'memory_update':
         callbacks.onMemoryUpdate?.(event.memory_data, event.operation);
-        break;
-        
-      case 'billing':
-        callbacks.onBillingUpdate?.({
-          creditsRemaining: event.credits_remaining,
-          totalCredits: event.total_credits,
-          modelCalls: event.model_calls,
-          toolCalls: event.tool_calls,
-          cost: event.cost
-        });
         break;
         
       // Resume事件
@@ -628,6 +713,10 @@ export class ChatService {
       durationMs: event?.durationMs || event?.duration_ms || data?.durationMs || data?.duration_ms,
     };
   }
+
+  private isTerminalStreamEvent(event: any): boolean {
+    return ['done', 'stream_done', 'run_finished', 'run_completed'].includes(event?.type);
+  }
   
   /**
    * Send message via isA_Mate backend (streaming SSE).
@@ -670,6 +759,7 @@ export class ChatService {
       return new Promise<void>((resolve, reject) => {
         let streamEnded = false;
         this._streamStarted = false; // Reset for new request
+        this._streamCompleted = false;
         const { startEvent, context } = createMateStreamContext(metadata.session_id);
         let adaptCtx = context;
 
@@ -680,7 +770,10 @@ export class ChatService {
           if (!streamEnded) {
             streamEnded = true;
             await connection.close();
-            callbacks.onStreamComplete?.(finalContent);
+            if (!this._streamCompleted) {
+              callbacks.onStreamComplete?.(finalContent);
+              this._streamCompleted = true;
+            }
             resolve();
           }
         };
@@ -719,6 +812,10 @@ export class ChatService {
 
                     for (const aguiEvent of events) {
                       this.handleAGUIEvent(aguiEvent, callbacks);
+                      if (this.isTerminalStreamEvent(aguiEvent)) {
+                        await handleComplete();
+                        return;
+                      }
                     }
                   } catch (parseError) {
                     log.warn('Failed to parse Mate event', parseError);
