@@ -41,6 +41,8 @@ export interface MessageHandlerDeps {
   setCurrentApp: (appId: AppId | null) => void;
   setShowRightSidebar: (show: boolean) => void;
   setHuntSearchResults: (results: any[]) => void;
+  onBrowserScreenshot?: (event: any) => void;
+  onBrowserAction?: (event: any) => void;
 }
 
 export function createMessageHandlers(deps: MessageHandlerDeps) {
@@ -54,6 +56,8 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     setCurrentApp,
     setShowRightSidebar,
     setHuntSearchResults,
+    onBrowserScreenshot,
+    onBrowserAction,
   } = deps;
 
   // Commit message timing to the performance store and log in dev mode (#277).
@@ -303,6 +307,8 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
               useMessageStore.getState().completeDelegation(active.toolCallId, result, error);
             }
           },
+          onBrowserScreenshot,
+          onBrowserAction,
           onError: (error: Error) => {
             logger.error(LogCategory.CHAT_FLOW, 'Message sending failed', { error: error.message });
             useStreamingStore.getState().setSendStartedAt(null);
@@ -407,6 +413,8 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
           commitMessageTiming(timing);
           consumeCreditsAfterSend('multimodal_send');
         },
+        onBrowserScreenshot,
+        onBrowserAction,
         onError: (error: Error) => {
           logger.error(LogCategory.CHAT_FLOW, 'Multimodal message sending failed', { error: error.message });
           useStreamingStore.getState().setSendStartedAt(null);

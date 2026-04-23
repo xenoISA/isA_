@@ -979,6 +979,31 @@ div.input-area-container .suggestions-panel {
   .isa-chat-layout .flex {
     gap: 8px !important;
   }
+
+  .isa-chat-layout.isa-mode-browse .isa-chat-grid,
+  .isa-chat-layout.isa-mode-design .isa-chat-grid {
+    display: block !important;
+  }
+
+  .isa-chat-layout .isa-mode-resizer {
+    display: none !important;
+  }
+
+  .isa-chat-layout .isa-mode-panel {
+    position: fixed !important;
+    left: max(10px, var(--sal, 0px)) !important;
+    right: max(10px, var(--sar, 0px)) !important;
+    bottom: max(10px, var(--sab, 0px)) !important;
+    height: min(58vh, 520px) !important;
+    z-index: 45 !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--glass-border) !important;
+    background: var(--glass-primary) !important;
+    backdrop-filter: blur(22px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(120%) !important;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32) !important;
+    overflow: hidden !important;
+  }
   
   /* Hide sidebars on mobile by default - show them as overlays */
   .isa-chat-sidebar {

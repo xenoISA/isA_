@@ -122,6 +122,106 @@ describe('adaptMateEvent — tool events', () => {
     expect(events[0].type).toBe('tool_call_end');
     expect(events[0].error).toEqual({ code: 'TOOL_ERROR', message: 'Timeout after 10s' });
   });
+
+  test('ComputerUseAgent tool_use also emits pending browser action', () => {
+    const event: MateSSEEvent = {
+      type: 'tool_use',
+      tool_name: 'ComputerUseAgent',
+      tool_call_id: 'tc_browser',
+      content: 'Click Submit',
+      parameters: { action: 'click', target: 'button[type=submit]', x: 44, y: 52 },
+    };
+    const { events } = adaptMateEvent(event, ctx);
+
+    expect(events[0].type).toBe('tool_call_start');
+    expect(events[1].type).toBe('custom_event');
+    expect(events[1].metadata?.custom_type).toBe('browser_action');
+    expect(events[1].metadata?.custom_data).toMatchObject({
+      id: 'tc_browser',
+      type: 'click',
+      status: 'pending',
+      description: 'Click Submit',
+      target: 'button[type=submit]',
+      x: 44,
+      y: 52,
+    });
+  });
+
+  test('ComputerUseAgent tool_result with screenshot emits browser screenshot', () => {
+    const event: MateSSEEvent = {
+      type: 'tool_result',
+      tool_name: 'ComputerUseAgent',
+      tool_call_id: 'tc_browser',
+      result: {
+        action: 'navigate',
+        url: 'https://example.com',
+        screenshot_url: 'data:image/png;base64,abc',
+      },
+    };
+    const { events } = adaptMateEvent(event, ctx);
+
+    expect(events.map((e) => e.type)).toEqual(['tool_call_end', 'custom_event', 'custom_event']);
+    expect(events[1].metadata?.custom_type).toBe('browser_action');
+    expect(events[1].metadata?.custom_data).toMatchObject({
+      id: 'tc_browser',
+      type: 'navigate',
+      status: 'completed',
+      target: 'https://example.com',
+    });
+    expect(events[2].metadata?.custom_type).toBe('browser_screenshot');
+    expect(events[2].metadata?.custom_data).toMatchObject({
+      screenshot: 'data:image/png;base64,abc',
+      url: 'https://example.com',
+    });
+  });
+});
+
+describe('adaptMateEvent — browser control events', () => {
+  const ctx = { runId: 'run_1', sessionId: 'sess_1', currentMessageId: null };
+
+  test('browser_screenshot maps to browser custom event', () => {
+    const event: MateSSEEvent = {
+      type: 'browser_screenshot',
+      screenshot_url: 'data:image/png;base64,abc',
+      url: 'https://example.com',
+      active_tab_id: 'tab-1',
+    };
+    const { events } = adaptMateEvent(event, ctx);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe('custom_event');
+    expect(events[0].metadata?.custom_type).toBe('browser_screenshot');
+    expect(events[0].metadata?.custom_data).toMatchObject({
+      screenshot: 'data:image/png;base64,abc',
+      url: 'https://example.com',
+      active_tab_id: 'tab-1',
+    });
+  });
+
+  test('browser_action_pending maps to browser action custom event', () => {
+    const event: MateSSEEvent = {
+      type: 'browser_action_pending',
+      id: 'act-1',
+      action_type: 'click',
+      description: 'Click Approve',
+      target: '#approve',
+      x: 20,
+      y: 30,
+    };
+    const { events } = adaptMateEvent(event, ctx);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].metadata?.custom_type).toBe('browser_action_pending');
+    expect(events[0].metadata?.custom_data).toMatchObject({
+      id: 'act-1',
+      type: 'click',
+      status: 'pending',
+      description: 'Click Approve',
+      target: '#approve',
+      x: 20,
+      y: 30,
+    });
+  });
 });
 
 describe('adaptMateEvent — lifecycle events', () => {

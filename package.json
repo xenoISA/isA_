@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@isa/core": "^0.1.0",
+    "@isa/hooks": "file:../isA_App_SDK/packages/hooks",
     "@isa/transport": "^0.1.0",
     "@isa/theme": "^2.0.0",
     "@isa/ui-web": "^0.1.0",
