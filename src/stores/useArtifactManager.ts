@@ -5,7 +5,7 @@
  * All artifacts flow through this store — widgets create, panel displays, chat previews.
  */
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 import type {
   ArtifactNode,
   ArtifactContentType,
@@ -36,6 +36,7 @@ interface ArtifactManagerActions {
     filename?: string;
     sessionId?: string;
     sourceMessageId?: string;
+    a2uiState?: Record<string, unknown>;
   }) => string;
 
   /** Add a new version to an existing artifact */
@@ -65,87 +66,98 @@ interface ArtifactManagerActions {
 
 type ArtifactManagerStore = ArtifactManagerState & ArtifactManagerActions;
 
+export const ARTIFACT_MANAGER_STORAGE_KEY = 'isa-artifact-manager';
+
 export const useArtifactManager = create<ArtifactManagerStore>()(
-  subscribeWithSelector((set, get) => ({
-    artifacts: {},
-    openArtifactId: null,
-    panelLayout: 'closed',
+  subscribeWithSelector(
+    persist(
+      (set, get) => ({
+        artifacts: {},
+        openArtifactId: null,
+        panelLayout: 'closed',
 
-    createArtifact: (params) => {
-      const node = createArtifactNode(params);
-      set(state => ({
-        artifacts: { ...state.artifacts, [node.id]: node },
-      }));
-      return node.id;
-    },
+        createArtifact: (params) => {
+          const node = createArtifactNode(params);
+          set(state => ({
+            artifacts: { ...state.artifacts, [node.id]: node },
+          }));
+          return node.id;
+        },
 
-    addVersion: (artifactId, content, instruction) => {
-      set(state => {
-        const artifact = state.artifacts[artifactId];
-        if (!artifact) return state;
-        const updated = addArtifactVersion(artifact, content, instruction);
-        return {
-          artifacts: { ...state.artifacts, [artifactId]: updated },
-        };
-      });
-    },
+        addVersion: (artifactId, content, instruction) => {
+          set(state => {
+            const artifact = state.artifacts[artifactId];
+            if (!artifact) return state;
+            const updated = addArtifactVersion(artifact, content, instruction);
+            return {
+              artifacts: { ...state.artifacts, [artifactId]: updated },
+            };
+          });
+        },
 
-    setActiveVersion: (artifactId, versionIndex) => {
-      set(state => {
-        const artifact = state.artifacts[artifactId];
-        if (!artifact || versionIndex < 0 || versionIndex >= artifact.versions.length) return state;
-        return {
-          artifacts: {
-            ...state.artifacts,
-            [artifactId]: { ...artifact, activeVersionIndex: versionIndex },
-          },
-        };
-      });
-    },
+        setActiveVersion: (artifactId, versionIndex) => {
+          set(state => {
+            const artifact = state.artifacts[artifactId];
+            if (!artifact || versionIndex < 0 || versionIndex >= artifact.versions.length) return state;
+            return {
+              artifacts: {
+                ...state.artifacts,
+                [artifactId]: { ...artifact, activeVersionIndex: versionIndex },
+              },
+            };
+          });
+        },
 
-    forkArtifact: (artifactId) => {
-      const artifact = get().artifacts[artifactId];
-      if (!artifact) return null;
-      const activeVersion = getActiveVersion(artifact);
-      const forked = createArtifactNode({
-        title: `${artifact.title} (fork)`,
-        content: activeVersion.content,
-        contentType: artifact.contentType,
-        language: activeVersion.language,
-        widgetType: artifact.widgetType,
-        sessionId: artifact.sessionId,
-      });
-      const forkedWithParent = { ...forked, parentId: artifactId };
-      set(state => ({
-        artifacts: { ...state.artifacts, [forkedWithParent.id]: forkedWithParent },
-      }));
-      return forkedWithParent.id;
-    },
+        forkArtifact: (artifactId) => {
+          const artifact = get().artifacts[artifactId];
+          if (!artifact) return null;
+          const activeVersion = getActiveVersion(artifact);
+          const forked = createArtifactNode({
+            title: `${artifact.title} (fork)`,
+            content: activeVersion.content,
+            contentType: artifact.contentType,
+            language: activeVersion.language,
+            widgetType: artifact.widgetType,
+            sessionId: artifact.sessionId,
+            a2uiState: activeVersion.a2uiState,
+          });
+          const forkedWithParent = { ...forked, parentId: artifactId };
+          set(state => ({
+            artifacts: { ...state.artifacts, [forkedWithParent.id]: forkedWithParent },
+          }));
+          return forkedWithParent.id;
+        },
 
-    openArtifact: (artifactId, layout = 'inspect') => {
-      set({ openArtifactId: artifactId, panelLayout: layout });
-    },
+        openArtifact: (artifactId, layout = 'inspect') => {
+          set({ openArtifactId: artifactId, panelLayout: layout });
+        },
 
-    closePanel: () => {
-      set({ openArtifactId: null, panelLayout: 'closed' });
-    },
+        closePanel: () => {
+          set({ openArtifactId: null, panelLayout: 'closed' });
+        },
 
-    removeArtifact: (artifactId) => {
-      set(state => {
-        const { [artifactId]: _, ...rest } = state.artifacts;
-        return {
-          artifacts: rest,
-          openArtifactId: state.openArtifactId === artifactId ? null : state.openArtifactId,
-          panelLayout: state.openArtifactId === artifactId ? 'closed' : state.panelLayout,
-        };
-      });
-    },
+        removeArtifact: (artifactId) => {
+          set(state => {
+            const { [artifactId]: _, ...rest } = state.artifacts;
+            return {
+              artifacts: rest,
+              openArtifactId: state.openArtifactId === artifactId ? null : state.openArtifactId,
+              panelLayout: state.openArtifactId === artifactId ? 'closed' : state.panelLayout,
+            };
+          });
+        },
 
-    getArtifact: (artifactId) => get().artifacts[artifactId],
+        getArtifact: (artifactId) => get().artifacts[artifactId],
 
-    getSessionArtifacts: (sessionId) =>
-      Object.values(get().artifacts).filter(a => a.sessionId === sessionId),
-  }))
+        getSessionArtifacts: (sessionId) =>
+          Object.values(get().artifacts).filter(a => a.sessionId === sessionId),
+      }),
+      {
+        name: ARTIFACT_MANAGER_STORAGE_KEY,
+        partialize: state => ({ artifacts: state.artifacts }),
+      },
+    ),
+  )
 );
 
 // Selectors

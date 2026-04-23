@@ -172,12 +172,14 @@ export function addArtifactVersion(
   createdBy: 'user' | 'agent' = 'agent',
 ): ArtifactNode {
   const now = new Date().toISOString();
+  const activeVersion = getActiveVersion(artifact);
   const newVersion: ArtifactVersion = {
     versionId: `v_${Date.now().toString(36)}`,
     number: artifact.versions.length + 1,
     content,
     contentType: artifact.contentType,
-    language: artifact.versions[0]?.language,
+    language: activeVersion.language,
+    a2uiState: activeVersion.a2uiState,
     instruction,
     createdBy,
     createdAt: now,

@@ -193,13 +193,15 @@ export const useChatStore = create<ChatStore>()(
             // Only register if not already in the store
             const existing = Object.values(am.artifacts).find(a => a.sourceMessageId === message.id);
             if (!existing) {
+              const a2uiState = art.a2uiState ?? art.metadata?.a2uiState ?? art.metadata?.surfaceState;
               am.createArtifact({
                 title: art.widgetName || art.widgetType || 'Artifact',
                 content: typeof art.content === 'string' ? art.content : JSON.stringify(art.content, null, 2),
-                contentType: art.contentType || 'text',
+                contentType: art.contentType || (a2uiState ? 'a2ui_surface' : 'text'),
                 widgetType: art.widgetType,
                 sessionId: (message as any).sessionId,
                 sourceMessageId: message.id,
+                a2uiState,
               });
             }
           }
