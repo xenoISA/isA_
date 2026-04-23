@@ -1,9 +1,6 @@
 /**
  * Types for the isA_Mate /v1/observability/* capability router
  * (xenoISA/isA_Mate#406 / #426).
- *
- * TODO: Replace with `import { ... } from '@isa/transport'` once
- * @isa/transport publishes ObservabilityClient.
  */
 
 export interface TokenUsage {

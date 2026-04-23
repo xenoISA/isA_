@@ -17,6 +17,7 @@ import { AppId } from '../../types/appTypes';
 import { CreditConsumption } from '../../types/userTypes';
 import { isDelegationTool } from '../../constants/delegationTeams';
 import { MessageTimingTracker, formatTimingLog } from '../../utils/messageTiming';
+import { emitObservabilityRefresh } from '../../utils/observabilityEvents';
 
 const log = createLogger('ChatModule:Message');
 
@@ -59,6 +60,10 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     onBrowserScreenshot,
     onBrowserAction,
   } = deps;
+
+  const refreshObservability = (reason: string) => {
+    emitObservabilityRefresh({ sessionId: currentSessionId, reason });
+  };
 
   // Commit message timing to the performance store and log in dev mode (#277).
   const commitMessageTiming = (tracker: MessageTimingTracker) => {
@@ -277,6 +282,7 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
             commitMessageTiming(timing);
             consumeCreditsAfterSend('message_send');
+            refreshObservability('stream_complete');
 
             // Artifact edit-to-version: if this was an artifact edit, create new version (#256)
             if (typeof window !== 'undefined' && (window as any).__pendingArtifactEdit) {
@@ -306,7 +312,10 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
             if (active) {
               useMessageStore.getState().completeDelegation(active.toolCallId, result, error);
             }
+            refreshObservability('tool_completed');
           },
+          onLLMCompleted: () => refreshObservability('llm_completed'),
+          onBillingUpdate: () => refreshObservability('billing_update'),
           onBrowserScreenshot,
           onBrowserAction,
           onError: (error: Error) => {
@@ -412,7 +421,11 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
           commitMessageTiming(timing);
           consumeCreditsAfterSend('multimodal_send');
+          refreshObservability('multimodal_stream_complete');
         },
+        onToolCompleted: () => refreshObservability('multimodal_tool_completed'),
+        onLLMCompleted: () => refreshObservability('multimodal_llm_completed'),
+        onBillingUpdate: () => refreshObservability('multimodal_billing_update'),
         onBrowserScreenshot,
         onBrowserAction,
         onError: (error: Error) => {
