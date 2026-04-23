@@ -3,7 +3,6 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { GATEWAY_ENDPOINTS } from '../config/gatewayConfig';
-import { gatewayFetch } from '../config/gatewayConfig';
 
 export interface AvailableModel {
   id: string;
