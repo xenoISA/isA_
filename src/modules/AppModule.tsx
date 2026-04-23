@@ -42,6 +42,7 @@ import { RightSidebarLayout } from '../components/ui/chat/RightSidebarLayout';
 import UserButtonContainer from '../components/ui/user/UserButtonContainer';
 import { UserPortal } from '../components/ui/user/UserPortal';
 import { CommandPalette } from '../components/ui/chat/CommandPalette';
+import type { SearchResult } from '../components/ui/chat/CommandPalette';
 import { SettingsModal } from '../components/ui/settings/SettingsModal';
 import { ArtifactCanvas } from '../components/ui/chat/ArtifactCanvas';
 import { ArtifactSheet } from '../components/ui/chat/ArtifactSheet';
@@ -54,6 +55,9 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useChat } from '../hooks/useChat';
 import { useArtifactLogic } from './ArtifactModule';
 import { useAppStore } from '../stores/useAppStore';
+import { useChatStore } from '../stores/useChatStore';
+import { useSessionStore } from '../stores/useSessionStore';
+import type { ChatSession } from '../stores/useSessionStore';
 import { widgetHandler } from '../components/core/WidgetHandler';
 import { logger, LogCategory } from '../utils/logger';
 import { AppId } from '../types/appTypes';
@@ -128,6 +132,47 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
     setShowRightSidebar,
     setTriggeredAppInput
   } = useAppStore();
+
+  const handleSelectConversation = useCallback((sessionId: string, result?: SearchResult) => {
+    const sessionStore = useSessionStore.getState();
+    let selectedSession = sessionStore.getSessionById(sessionId);
+
+    if (!selectedSession && result) {
+      const fallbackSession: ChatSession = {
+        id: sessionId,
+        title: result.title || 'Untitled',
+        lastMessage: result.snippet || 'No messages',
+        timestamp: result.timestamp || new Date().toISOString(),
+        messageCount: 0,
+        artifacts: [],
+        messages: [],
+        metadata: {
+          api_session_id: sessionId,
+          source: 'command_palette_search',
+        },
+      };
+
+      useSessionStore.setState((state) => ({
+        sessions: [...state.sessions, fallbackSession],
+      }));
+      selectedSession = fallbackSession;
+    } else if (!selectedSession) {
+      logger.warn(LogCategory.CHAT_FLOW, 'Command palette selected a session that is not loaded locally', {
+        sessionId,
+      });
+    }
+
+    sessionStore.selectSession(sessionId);
+    useChatStore.getState().loadMessagesFromSession(sessionId);
+    setTriggeredAppInput('');
+    setCurrentApp(null);
+    setShowRightSidebar(false);
+
+    logger.info(LogCategory.CHAT_FLOW, 'Command palette selected conversation', {
+      sessionId,
+      sessionLoaded: !!selectedSession,
+    });
+  }, [setCurrentApp, setShowRightSidebar, setTriggeredAppInput]);
 
   // Create translated available apps
   const availableApps = useMemo(() => [
@@ -356,6 +401,7 @@ export const AppModule: React.FC<AppModuleProps> = (props) => {
         <CommandPalette
           open={showCommandPalette}
           onClose={() => setShowCommandPalette(false)}
+          onSelectConversation={handleSelectConversation}
           onAction={(id) => {
             if (id === 'new-chat') handleStartNewChat();
             if (id === 'settings') setShowSettings(true);
