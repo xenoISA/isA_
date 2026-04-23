@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
 import {
   CalendarService,
   type CalendarEvent as SDKCalendarEvent,
@@ -28,8 +28,8 @@ export interface CalendarEvent {
   metadata?: Record<string, any>;
 }
 
-type CalendarEventDraft = Omit<CalendarEvent, 'id'>;
-type CalendarEventPatch = Partial<CalendarEventDraft>;
+export type CalendarEventDraft = Omit<CalendarEvent, 'id'>;
+export type CalendarEventPatch = Partial<CalendarEventDraft>;
 
 export interface CalendarState {
   events: CalendarEvent[];
@@ -150,7 +150,7 @@ export const selectUpcomingEvents = (state: CalendarState): CalendarEvent[] => {
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 };
 
-export const useCalendarStore = create<CalendarState>((set) => ({
+const createCalendarState: StateCreator<CalendarState> = (set, get) => ({
   events: [],
   todayEvents: [],
   providers: [],
@@ -205,7 +205,7 @@ export const useCalendarStore = create<CalendarState>((set) => ({
     }
 
     const pending = optimisticEvent(event);
-    const previous = useCalendarStore.getState();
+    const previous = get();
     set((state) => ({
       error: null,
       events: [...state.events, pending],
@@ -236,7 +236,7 @@ export const useCalendarStore = create<CalendarState>((set) => ({
       throw new Error(message);
     }
 
-    const previous = useCalendarStore.getState();
+    const previous = get();
     set((s) => ({
       error: null,
       events: patchEvent(s.events, id, updates),
@@ -267,7 +267,7 @@ export const useCalendarStore = create<CalendarState>((set) => ({
       throw new Error(message);
     }
 
-    const previous = useCalendarStore.getState();
+    const previous = get();
     set((s) => ({
       error: null,
       events: removeEvent(s.events, id),
@@ -286,9 +286,11 @@ export const useCalendarStore = create<CalendarState>((set) => ({
     }
   },
   addEvent: async (event) => {
-    return useCalendarStore.getState().createEvent(event);
+    return get().createEvent(event);
   },
   removeEvent: async (id) => {
-    return useCalendarStore.getState().deleteEvent(id);
+    return get().deleteEvent(id);
   },
-}));
+});
+
+export const useCalendarStore = create<CalendarState>(createCalendarState);
