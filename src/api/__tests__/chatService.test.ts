@@ -138,6 +138,8 @@ describe('ChatService', () => {
       onTaskProgress: vi.fn(),
       onHILInterruptDetected: vi.fn(),
       onHILCheckpointCreated: vi.fn(),
+      onBrowserScreenshot: vi.fn(),
+      onBrowserAction: vi.fn(),
       onArtifactCreated: vi.fn(),
       onArtifactUpdated: vi.fn(),
     };
@@ -429,6 +431,97 @@ describe('ChatService', () => {
       const event = { type: 'hil_approval_required', action: 'file_write' };
       await streamEvent(event);
       expect(callbacks.onHILInterruptDetected).toHaveBeenCalledWith(event);
+    });
+
+    test('browser_screenshot → onBrowserScreenshot', async () => {
+      await streamEvent({
+        type: 'browser_screenshot',
+        screenshot_url: 'data:image/png;base64,abc',
+        url: 'https://example.com',
+        tabs: [{ id: 'tab-1', title: 'Example', url: 'https://example.com' }],
+        active_tab_id: 'tab-1',
+      });
+
+      expect(callbacks.onBrowserScreenshot).toHaveBeenCalledWith(
+        expect.objectContaining({
+          screenshotUrl: 'data:image/png;base64,abc',
+          currentUrl: 'https://example.com',
+          activeTabId: 'tab-1',
+        }),
+      );
+    });
+
+    test('custom browser_action_pending → onBrowserAction', async () => {
+      await streamEvent({
+        type: 'custom_event',
+        metadata: {
+          custom_type: 'browser_action_pending',
+          custom_data: {
+            id: 'act-1',
+            action_type: 'click',
+            description: 'Click Submit',
+            target: 'button[type=submit]',
+            x: 42,
+            y: 55,
+          },
+        },
+      });
+
+      expect(callbacks.onBrowserAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'act-1',
+          type: 'click',
+          status: 'pending',
+          description: 'Click Submit',
+          target: 'button[type=submit]',
+          x: 42,
+          y: 55,
+        }),
+      );
+    });
+
+    test('custom browser_action preserves SDK adapter action type', async () => {
+      await streamEvent({
+        type: 'custom_event',
+        metadata: {
+          custom_type: 'browser_action',
+          custom_data: {
+            id: 'tc-browser',
+            type: 'navigate',
+            status: 'completed',
+            description: 'Navigation completed',
+            target: 'https://example.com',
+          },
+        },
+      });
+
+      expect(callbacks.onBrowserAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'tc-browser',
+          type: 'navigate',
+          status: 'completed',
+          target: 'https://example.com',
+        }),
+      );
+    });
+
+    test('browser hil_approval_required also creates pending browser action', async () => {
+      const event = {
+        type: 'hil_approval_required',
+        tool_name: 'ComputerUseAgent',
+        action_type: 'navigate',
+        target: 'https://example.com',
+      };
+      await streamEvent(event);
+
+      expect(callbacks.onHILInterruptDetected).toHaveBeenCalledWith(event);
+      expect(callbacks.onBrowserAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'navigate',
+          status: 'pending',
+          target: 'https://example.com',
+        }),
+      );
     });
 
     test('artifact_created → onArtifactCreated', async () => {

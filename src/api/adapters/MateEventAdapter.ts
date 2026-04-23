@@ -24,6 +24,22 @@ export interface MateSSEEvent {
   parameters?: Record<string, unknown>;
   result?: unknown;
   error?: string;
+  id?: string;
+  task_id?: string;
+  title?: string;
+  description?: string;
+  due_at?: string;
+  screenshot?: string;
+  screenshot_url?: string;
+  image_url?: string;
+  url?: string;
+  tabs?: unknown[];
+  active_tab_id?: string;
+  action_type?: string;
+  status?: string;
+  target?: string;
+  x?: number;
+  y?: number;
   // Autonomous event fields
   source?: 'scheduler' | 'trigger' | 'channel';
   job_id?: string;
@@ -122,6 +138,28 @@ export function adaptMateEvent(
         parameters: event.parameters,
       });
 
+      if (/browser|computer[_ -]?use/i.test(toolName)) {
+        results.push({
+          type: 'custom_event' as AGUIEventType,
+          thread_id: threadId,
+          timestamp: now,
+          run_id: context.runId,
+          metadata: {
+            custom_type: 'browser_action',
+            custom_data: {
+              id: event.tool_call_id,
+              type: event.parameters?.action || event.parameters?.type || event.action_type || 'wait',
+              status: 'pending',
+              description: event.content || `Approve ${toolName}`,
+              target: event.parameters?.target || event.parameters?.url,
+              x: event.parameters?.x,
+              y: event.parameters?.y,
+              tool_name: toolName,
+            },
+          },
+        });
+      }
+
       if (isMemoryTool && event.result) {
         // Synthesize a memory_recall custom event from the tool result
         const resultData = typeof event.result === 'object' ? event.result as Record<string, unknown> : {};
@@ -145,16 +183,61 @@ export function adaptMateEvent(
     }
 
     case 'tool_result': {
+      const toolName = event.tool_name || 'unknown';
       results.push({
         type: 'tool_call_end',
         thread_id: threadId,
         timestamp: now,
         run_id: context.runId,
-        tool_name: event.tool_name || 'unknown',
+        tool_name: toolName,
         tool_call_id: event.tool_call_id || '',
         result: event.result,
         error: event.error ? { code: 'TOOL_ERROR', message: event.error } : undefined,
       });
+
+      if (/browser|computer[_ -]?use/i.test(toolName)) {
+        const resultData = typeof event.result === 'object' && event.result
+          ? event.result as Record<string, unknown>
+          : {};
+
+        results.push({
+          type: 'custom_event' as AGUIEventType,
+          thread_id: threadId,
+          timestamp: now,
+          run_id: context.runId,
+          metadata: {
+            custom_type: 'browser_action',
+            custom_data: {
+              id: event.tool_call_id,
+              type: resultData.action || resultData.type || 'wait',
+              status: event.error ? 'failed' : 'completed',
+              description: event.content || `${toolName} completed`,
+              target: resultData.target || resultData.url,
+              tool_name: toolName,
+              error: event.error,
+            },
+          },
+        });
+
+        const screenshot = resultData.screenshot || resultData.screenshot_url || resultData.image_url;
+        if (screenshot) {
+          results.push({
+            type: 'custom_event' as AGUIEventType,
+            thread_id: threadId,
+            timestamp: now,
+            run_id: context.runId,
+            metadata: {
+              custom_type: 'browser_screenshot',
+              custom_data: {
+                screenshot,
+                url: resultData.url,
+                tabs: resultData.tabs,
+                active_tab_id: resultData.active_tab_id,
+              },
+            },
+          });
+        }
+      }
       break;
     }
 
@@ -311,6 +394,55 @@ case 'memory_recall': {
       break;
     }
 
+    case 'browser_screenshot':
+    case 'computer_use_screenshot':
+    case 'computer_screenshot':
+    case 'screenshot': {
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        metadata: {
+          custom_type: 'browser_screenshot',
+          custom_data: {
+            ...event.metadata,
+            screenshot: event.screenshot || event.screenshot_url || event.image_url || event.content,
+            url: event.url || (event.metadata?.url as string | undefined),
+            tabs: event.tabs || event.metadata?.tabs,
+            active_tab_id: event.active_tab_id || (event.metadata?.active_tab_id as string | undefined),
+          },
+        },
+      });
+      break;
+    }
+
+    case 'browser_action':
+    case 'browser_action_pending':
+    case 'computer_use_action':
+    case 'computer_action': {
+      results.push({
+        type: 'custom_event' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
+        metadata: {
+          custom_type: event.type === 'browser_action_pending' ? 'browser_action_pending' : 'browser_action',
+          custom_data: {
+            ...event.metadata,
+            id: event.id || event.tool_call_id,
+            type: event.action_type || event.metadata?.action_type || 'wait',
+            status: event.status || 'pending',
+            description: event.description || event.content || 'Browser action',
+            target: event.target || event.url || event.metadata?.target,
+            x: event.x,
+            y: event.y,
+          },
+        },
+      });
+      break;
+    }
+
     case 'autonomous_result': {
       // Background autonomous action result from Mate (scheduled tasks, triggers, etc.)
       // Mapped to a custom AGUI event that the autonomousEventService will handle.
@@ -337,7 +469,10 @@ case 'memory_recall': {
     case 'updateDataModel':
     case 'deleteSurface': {
       results.push({
-        type: 'a2ui_surface',
+        type: 'a2ui_surface' as AGUIEventType,
+        thread_id: threadId,
+        timestamp: now,
+        run_id: context.runId,
         data: {
           messageType: event.type,
           payload: event,

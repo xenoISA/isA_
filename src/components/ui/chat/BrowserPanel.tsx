@@ -7,18 +7,17 @@
  * @module
  */
 
-import React, { useState } from 'react';
-// Placeholder until @isa/ui-web dist is rebuilt (#293, #294)
-const BrowserViewport: React.FC<any> = ({ isConnected }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#1e1e2e', color: '#6b7280', fontSize: 14, borderRadius: 8 }}>
-    {isConnected ? 'Waiting for screenshot...' : 'Browser Viewport — rebuild @isa/ui-web to activate'}
-  </div>
-);
-const ActionLogPanel: React.FC<any> = ({ actions = [] }) => (
-  <div style={{ padding: 12, color: '#6b7280', fontSize: 13, border: '1px solid #e5e7eb', borderRadius: 8, height: '100%' }}>
-    Action Log — {actions.length} actions
-  </div>
-);
+import React, { useEffect, useState } from 'react';
+import {
+  ActionLogPanel as SDKActionLogPanel,
+  BrowserViewport as SDKBrowserViewport,
+  type BrowserAction,
+  type BrowserTab,
+  type PendingAction,
+} from '@isa/ui-web';
+
+const ActionLogPanel = SDKActionLogPanel as React.ComponentType<any>;
+const BrowserViewport = SDKBrowserViewport as React.ComponentType<any>;
 
 export interface BrowserPanelProps {
   /** Current screenshot */
@@ -30,15 +29,15 @@ export interface BrowserPanelProps {
   /** Current URL */
   currentUrl?: string;
   /** Open tabs */
-  tabs?: Array<{ id: string; title: string; url: string; favicon?: string }>;
+  tabs?: BrowserTab[];
   /** Active tab */
   activeTabId?: string;
   /** Action overlay */
-  actionOverlay?: { type: string; x?: number; y?: number; description: string };
+  actionOverlay?: PendingAction;
   /** Action history */
-  actions?: Array<any>;
+  actions?: BrowserAction[];
   /** Pending action */
-  pendingAction?: any;
+  pendingAction?: BrowserAction | null;
   /** Auto-approve enabled */
   autoApproveEnabled?: boolean;
   /** Callbacks */
@@ -70,6 +69,25 @@ export const BrowserPanel: React.FC<BrowserPanelProps> = ({
   className = '',
 }) => {
   const [viewportHeight, setViewportHeight] = useState(65); // % of panel
+
+  useEffect(() => {
+    if (!pendingAction) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onApprove?.(pendingAction.id);
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onReject?.(pendingAction.id, 'Rejected from keyboard');
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onApprove, onReject, pendingAction]);
 
   return (
     <div
@@ -125,7 +143,7 @@ export const BrowserPanel: React.FC<BrowserPanelProps> = ({
       <div style={{ flex: 1, minHeight: 0 }}>
         <ActionLogPanel
           actions={actions}
-          pendingAction={pendingAction}
+          pendingAction={pendingAction || undefined}
           onApprove={onApprove}
           onReject={onReject}
           autoApproveEnabled={autoApproveEnabled}

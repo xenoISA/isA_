@@ -39,7 +39,11 @@ import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { ChatLayout, ChatLayoutProps } from '../components/ui/chat/ChatLayout';
 import { RightPanel } from '../components/ui/chat/RightPanel';
 import { RightSidebarLayout } from '../components/ui/chat/RightSidebarLayout';
+import { BrowserPanel } from '../components/ui/chat/BrowserPanel';
+import { DesignPanel } from '../components/ui/chat/DesignPanel';
+import { ModeSwitcher, type AppMode } from '../components/ui/chat/ModeSwitcher';
 import { AppId } from '../types/appTypes';
+import { useBrowserControl } from '@isa/hooks';
 import { useChat } from '../hooks/useChat';
 import { useChatStore } from '../stores/useChatStore';
 import { useAuth } from '../hooks/useAuth';
@@ -85,6 +89,11 @@ import { createMessageHandlers } from './handlers/messageHandlers';
 // 🆕 Autonomous background message listener (#126)
 import { mateAutonomousListener } from '../api/mateAutonomousListener';
 
+export function shouldActivateBrowseMode(content: string): boolean {
+  return /\b(browser|browse|website|web page|go to|navigate|open url|open website|click)\b/i.test(content)
+    || /(网页|浏览器|打开网站)/.test(content);
+}
+
 interface ChatModuleProps extends Omit<ChatLayoutProps, 'messages' | 'isLoading' | 'isTyping' | 'onSendMessage' | 'onSendMultimodal'> {
   // All ChatLayout props except the data and callback props that we'll provide from business logic
   /** Whether the session sidebar is open (injected by AppLayout) */
@@ -124,6 +133,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
   // Widget system state (managed internally)
   const [currentWidgetMode, setCurrentWidgetMode] = useState<'half' | 'full' | null>(null);
+  const [appMode, setAppMode] = useState<AppMode>('chat');
 
   // 🆕 HIL (Human-in-the-Loop) 状态管理
   const [hilStatus, setHilStatus] = useState<HILExecutionStatusData | null>(null);
@@ -243,6 +253,104 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     setIsProcessingHilAction,
   }), [currentSession?.id]);
 
+  const browserControl = useBrowserControl();
+  const {
+    currentScreenshot,
+    currentUrl,
+    tabs,
+    activeTabId,
+    actions: browserActions,
+    pendingAction,
+    autoApprove,
+    isConnected,
+    startSession,
+    approveAction,
+    rejectAction,
+    clickAt,
+    switchTab,
+    updateScreenshot,
+    addAction,
+    setAutoApprove,
+  } = browserControl;
+
+  const handleBrowserScreenshot = useCallback((event: any) => {
+    const screenshot =
+      event?.screenshotUrl ||
+      event?.screenshot_url ||
+      event?.screenshot ||
+      event?.image_url ||
+      event?.content ||
+      event?.data?.screenshot;
+
+    if (!screenshot) return;
+
+    const url = event?.currentUrl || event?.current_url || event?.url || event?.data?.url;
+    const tabs = event?.tabs || event?.data?.tabs;
+    updateScreenshot(screenshot, url, Array.isArray(tabs) ? tabs : undefined);
+
+    const activeTabId = event?.activeTabId || event?.active_tab_id || event?.data?.activeTabId;
+    if (activeTabId) {
+      switchTab(activeTabId);
+    }
+
+    setAppMode('browse');
+  }, [switchTab, updateScreenshot]);
+
+  const handleBrowserAction = useCallback((event: any) => {
+    const rawType = String(event?.action_type || event?.actionType || event?.action || event?.type || 'wait');
+    const actionType = ['navigate', 'click', 'type', 'scroll', 'extract', 'screenshot', 'wait'].includes(rawType)
+      ? rawType
+      : 'wait';
+    const status = ['pending', 'approved', 'rejected', 'completed', 'failed'].includes(event?.status)
+      ? event.status
+      : 'pending';
+    const backendActionId = event?.id || event?.tool_call_id || event?.toolCallId;
+
+    addAction({
+      ...(backendActionId && { backendActionId }),
+      type: actionType as any,
+      description: event?.description || event?.message || event?.target || `Browser ${actionType}`,
+      status,
+      target: event?.target || event?.url,
+      durationMs: event?.durationMs || event?.duration_ms,
+      ...(event?.x != null && { x: event.x }),
+      ...(event?.y != null && { y: event.y }),
+    } as any);
+
+    if (autoApprove && status === 'pending') {
+      void hilHandlers.handleHILApprove(backendActionId || `browser-${Date.now()}`);
+    }
+
+    if (status === 'pending') {
+      setAppMode('browse');
+    }
+  }, [addAction, autoApprove, hilHandlers]);
+
+  const handleBrowserApprove = useCallback((actionId: string) => {
+    const action = browserActions.find((item) => item.id === actionId) as any;
+    approveAction(actionId);
+    void hilHandlers.handleHILApprove(action?.backendActionId || actionId);
+  }, [approveAction, browserActions, hilHandlers]);
+
+  const handleBrowserReject = useCallback((actionId: string, reason?: string) => {
+    const action = browserActions.find((item) => item.id === actionId) as any;
+    rejectAction(actionId, reason);
+    void hilHandlers.handleHILReject(action?.backendActionId || actionId, reason);
+  }, [browserActions, hilHandlers, rejectAction]);
+
+  const browserActionOverlay = useMemo(() => {
+    const action = pendingAction as any;
+    if (!action) return undefined;
+
+    const overlayType = ['navigate', 'click', 'type', 'scroll'].includes(action.type) ? action.type : 'click';
+    return {
+      type: overlayType,
+      description: action.description,
+      ...(action.x != null && { x: action.x }),
+      ...(action.y != null && { y: action.y }),
+    };
+  }, [pendingAction]);
+
   // Widget handlers
   const widgetHandlers = useMemo(() => createWidgetHandlers({
     authUserSub: authUser?.sub,
@@ -270,7 +378,65 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
     setCurrentApp,
     setShowRightSidebar,
     setHuntSearchResults,
-  }), [authUser?.sub, currentSession?.id, sessionActions, userModule, getChatService, setCurrentApp, setShowRightSidebar, setHuntSearchResults]);
+    onBrowserScreenshot: handleBrowserScreenshot,
+    onBrowserAction: handleBrowserAction,
+  }), [authUser?.sub, currentSession?.id, sessionActions, userModule, getChatService, setCurrentApp, setShowRightSidebar, setHuntSearchResults, handleBrowserScreenshot, handleBrowserAction]);
+
+  const handleSendMessageWithMode = useCallback(async (content: string, metadata?: Record<string, any>) => {
+    if (shouldActivateBrowseMode(content)) {
+      setAppMode('browse');
+      startSession();
+    }
+
+    await messageHandlers.handleSendMessage(content, metadata);
+  }, [messageHandlers, startSession]);
+
+  const modePanelContent = useMemo(() => {
+    if (appMode === 'browse') {
+      return (
+        <BrowserPanel
+          screenshotUrl={currentScreenshot || undefined}
+          isConnected={isConnected || Boolean(currentScreenshot)}
+          isLive={chatInterface.hasStreamingMessage}
+          currentUrl={currentUrl}
+          tabs={tabs}
+          activeTabId={activeTabId || undefined}
+          actionOverlay={browserActionOverlay as any}
+          actions={browserActions as any}
+          pendingAction={pendingAction as any}
+          autoApproveEnabled={autoApprove}
+          onTabSwitch={switchTab}
+          onClickAt={clickAt}
+          onApprove={handleBrowserApprove}
+          onReject={handleBrowserReject}
+          onAutoApproveToggle={setAutoApprove}
+        />
+      );
+    }
+
+    if (appMode === 'design') {
+      return <DesignPanel />;
+    }
+
+    return null;
+  }, [
+    activeTabId,
+    appMode,
+    autoApprove,
+    browserActionOverlay,
+    browserActions,
+    chatInterface.hasStreamingMessage,
+    clickAt,
+    currentScreenshot,
+    currentUrl,
+    handleBrowserApprove,
+    handleBrowserReject,
+    isConnected,
+    pendingAction,
+    setAutoApprove,
+    switchTab,
+    tabs,
+  ]);
 
   // 🆕 初始化Plugin模式监听
   useEffect(() => {
@@ -508,7 +674,7 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
         isLoading={chatInterface.isLoading}
         isTyping={chatInterface.isTyping}
         currentTasks={currentTasks}
-        onSendMessage={messageHandlers.handleSendMessage}
+        onSendMessage={handleSendMessageWithMode}
         onSendMultimodal={messageHandlers.handleSendMultimodal}
         onMessageClick={messageHandlers.handleMessageClick}
         onNewChat={messageHandlers.handleNewChat}
@@ -527,6 +693,17 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
         // Responsive layout: props passed only if ChatLayout supports them
         showHeader={!isMobile} // Hide ChatLayout header on mobile (AppLayout controls desktop header)
+        appMode={appMode}
+        modeSwitcherContent={
+          <ModeSwitcher
+            activeMode={appMode}
+            onModeChange={setAppMode}
+            designAvailable
+            browseAvailable
+          />
+        }
+        modePanelContent={modePanelContent}
+        modePanelLabel={appMode === 'browse' ? 'Browser control panel' : 'Design panel'}
 
         // Right Panel (会话信息管理)
         showRightPanel={showRightPanel}

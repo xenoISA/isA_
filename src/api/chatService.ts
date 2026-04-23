@@ -64,6 +64,10 @@ export interface ChatServiceCallbacks {
   onHILInterruptDetected?: (hilEvent: any) => void;
   onHILCheckpointCreated?: (checkpoint: any) => void;
   onHILExecutionStatusChanged?: (statusData: any) => void;
+
+  // Browser control callbacks
+  onBrowserScreenshot?: (event: any) => void;
+  onBrowserAction?: (event: any) => void;
   
   // Artifact回调
   onArtifactCreated?: (artifact: any) => void;
@@ -384,6 +388,23 @@ export class ChatService {
       case 'hil_approval_required':
         // 使用现有的HIL interrupt回调处理approval required事件
         callbacks.onHILInterruptDetected?.(event);
+        if (this.isBrowserControlEvent(event)) {
+          callbacks.onBrowserAction?.(this.normalizeBrowserAction({ ...event, status: 'pending' }));
+        }
+        break;
+
+      // Browser control events
+      case 'browser_screenshot':
+      case 'computer_use_screenshot':
+      case 'computer_screenshot':
+        callbacks.onBrowserScreenshot?.(this.normalizeBrowserScreenshot(event));
+        break;
+
+      case 'browser_action':
+      case 'browser_action_pending':
+      case 'computer_use_action':
+      case 'computer_action':
+        callbacks.onBrowserAction?.(this.normalizeBrowserAction(event));
         break;
         
       // 图像生成事件
@@ -441,6 +462,19 @@ export class ChatService {
     const customData = event.metadata?.custom_data || {};
     
     switch (customType) {
+      case 'browser_screenshot':
+      case 'computer_use_screenshot':
+      case 'computer_screenshot':
+        callbacks.onBrowserScreenshot?.(this.normalizeBrowserScreenshot(event));
+        break;
+
+      case 'browser_action':
+      case 'browser_action_pending':
+      case 'computer_use_action':
+      case 'computer_action':
+        callbacks.onBrowserAction?.(this.normalizeBrowserAction(event));
+        break;
+
       case 'content':
         // 处理streaming内容 - 这是关键的修复！
         if (event.metadata?.content || customData.content) {
@@ -526,6 +560,73 @@ export class ChatService {
         log.debug('Custom event', { customType, customData });
         break;
     }
+  }
+
+  private isBrowserControlEvent(event: any): boolean {
+    const data = event?.metadata?.custom_data || event?.metadata || event?.data || {};
+    const haystack = [
+      event?.tool_name,
+      event?.agent_name,
+      event?.type,
+      event?.metadata?.custom_type,
+      data?.tool_name,
+      data?.agent_name,
+      data?.type,
+    ].filter(Boolean).join(' ');
+
+    return /browser|computer[_ -]?use|screenshot|viewport/i.test(haystack);
+  }
+
+  private normalizeBrowserScreenshot(event: any): any {
+    const data = event?.metadata?.custom_data || event?.metadata || event?.data || {};
+    return {
+      ...data,
+      screenshotUrl:
+        event?.screenshotUrl ||
+        event?.screenshot_url ||
+        event?.screenshot ||
+        event?.image_url ||
+        event?.content ||
+        data?.screenshotUrl ||
+        data?.screenshot_url ||
+        data?.screenshot ||
+        data?.image_url,
+      currentUrl: event?.currentUrl || event?.current_url || event?.url || data?.currentUrl || data?.current_url || data?.url,
+      tabs: event?.tabs || data?.tabs,
+      activeTabId: event?.activeTabId || event?.active_tab_id || data?.activeTabId || data?.active_tab_id,
+    };
+  }
+
+  private normalizeBrowserAction(event: any): any {
+    const data = event?.metadata?.custom_data || event?.metadata || event?.data || {};
+    const rawType =
+      event?.action_type ||
+      event?.actionType ||
+      event?.action ||
+      data?.action_type ||
+      data?.actionType ||
+      data?.action ||
+      data?.type;
+    const description =
+      event?.description ||
+      event?.message ||
+      data?.description ||
+      data?.message ||
+      data?.target ||
+      event?.tool_name ||
+      'Browser action requires approval';
+
+    return {
+      ...data,
+      id: event?.id || event?.tool_call_id || data?.id || data?.tool_call_id,
+      type: rawType,
+      status: event?.status || data?.status || 'pending',
+      description,
+      target: event?.target || event?.url || data?.target || data?.url,
+      x: event?.x ?? data?.x,
+      y: event?.y ?? data?.y,
+      durationMs: event?.durationMs || event?.duration_ms || data?.durationMs || data?.duration_ms,
+    };
   }
   
   /**

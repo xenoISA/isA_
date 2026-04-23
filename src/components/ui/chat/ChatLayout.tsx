@@ -40,6 +40,7 @@ import { ChatContentLayout } from './ChatContentLayout';
 import { InputAreaLayout } from './InputAreaLayout';
 import { SmartWidgetSelector } from '../widgets/SmartWidgetSelector';
 import { THEME_COLORS } from '../../../constants/theme';
+import type { AppMode } from './ModeSwitcher';
 
 // Pure interface - no dependency on stores
 export interface ChatMessage {
@@ -81,6 +82,10 @@ export interface ChatLayoutProps {
   sidebarMode?: 'exclusive' | 'inclusive';
   
   inputSuggestionsContent?: React.ReactNode;
+  modeSwitcherContent?: React.ReactNode;
+  appMode?: AppMode;
+  modePanelContent?: React.ReactNode;
+  modePanelLabel?: string;
   className?: string;
   fullscreen?: boolean;
   onFullscreenToggle?: (fullscreen: boolean) => void;
@@ -161,6 +166,10 @@ export const ChatLayout = memo<ChatLayoutProps>(({
   sidebarMode = 'exclusive',
   
   inputSuggestionsContent,
+  modeSwitcherContent,
+  appMode = 'chat',
+  modePanelContent,
+  modePanelLabel,
   conversationProps = {},
   inputProps = {},
   className = '',
@@ -201,6 +210,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
   onSidebarOpenChange
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(fullscreen);
+  const [modePanelSplit, setModePanelSplit] = useState(40);
   
   // Left sidebar is now handled by ResponsiveSidebar (persistent on desktop, drawer on mobile)
   // so it is removed from the CSS grid. The grid only contains chat + optional right areas.
@@ -209,6 +219,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
   // Determine if the sidebar is open. If sidebarOpen is not provided, fall back to showSidebar legacy prop.
   const isSidebarOpen = sidebarOpen !== undefined ? sidebarOpen : (showSidebar ?? true);
   const handleSidebarOpenChange = onSidebarOpenChange ?? (() => {});
+  const showModePanel = appMode !== 'chat' && Boolean(modePanelContent) && !showRightSidebar;
 
   // Optimized CSS Grid layout configuration (left sidebar removed -- see ResponsiveSidebar below)
   const gridConfig = useMemo(() => {
@@ -217,6 +228,14 @@ export const ChatLayout = memo<ChatLayoutProps>(({
       return {
         templateAreas: '"chat widget"',
         templateColumns: '1fr 1fr',
+        showRightPanel: false,
+      };
+    }
+
+    if (showModePanel) {
+      return {
+        templateAreas: '"chat mode-resizer mode-panel"',
+        templateColumns: `${modePanelSplit}% 6px minmax(0, 1fr)`,
         showRightPanel: false,
       };
     }
@@ -234,7 +253,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
       templateColumns: columns.join(' '),
       showRightPanel: showRightPanel,
     };
-  }, [showRightPanel, showRightSidebar]);
+  }, [modePanelSplit, showModePanel, showRightPanel, showRightSidebar]);
 
   // Right sidebar mode determines overlay vs inline
   const isRightSidebarFullscreen = rightSidebarMode === 'fullscreen';
@@ -249,11 +268,31 @@ export const ChatLayout = memo<ChatLayoutProps>(({
       onFullscreenToggle(newValue);
     }
   }, [isFullscreen, onFullscreenToggle]);
+
+  const startModePanelResize = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const grid = event.currentTarget.parentElement;
+    if (!grid) return;
+
+    const rect = grid.getBoundingClientRect();
+
+    const onMove = (moveEvent: MouseEvent) => {
+      const next = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      setModePanelSplit(Math.min(Math.max(next, 30), 55));
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
   
   // Layout classes
   const layoutClass = useMemo(() => 
-    `isa-chat-layout ${className} ${isFullscreen ? 'isa-fullscreen' : ''}`,
-    [className, isFullscreen]
+    `isa-chat-layout flex flex-col h-full ${className} ${isFullscreen ? 'isa-fullscreen' : ''} isa-mode-${appMode}`,
+    [appMode, className, isFullscreen]
   );
   
   // Responsive grid styles (removed invalid inline media queries)
@@ -298,7 +337,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
 
   return (
     <div 
-      className={`flex flex-col h-full ${className}`}
+      className={layoutClass}
       style={{
         width: '100%',
         maxWidth: '100%',
@@ -329,7 +368,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
         )}
 
         {/* CSS Grid for chat + optional right panels */}
-        <div style={gridStyles} className="flex-1 overflow-hidden relative z-10 min-w-0">
+        <div style={gridStyles} className="isa-chat-grid flex-1 overflow-hidden relative z-10 min-w-0">
           {/* Center Chat Area */}
           <div
             className="flex flex-col overflow-hidden min-w-0"
@@ -351,6 +390,11 @@ export const ChatLayout = memo<ChatLayoutProps>(({
 
             {/* Input Area */}
             <div className="flex-shrink-0" style={{ borderTop: '1px solid var(--glass-border)' }}>
+              {modeSwitcherContent && (
+                <div className="flex justify-center px-4 pt-3 pb-2">
+                  {modeSwitcherContent}
+                </div>
+              )}
               <InputAreaLayout
                 onSend={onSendMessage}
                 onSendMultimodal={onSendMultimodal}
@@ -368,6 +412,40 @@ export const ChatLayout = memo<ChatLayoutProps>(({
               style={{ borderLeft: '1px solid var(--glass-border)', gridArea: 'widget' }}
             >
               {rightSidebarContent}
+            </div>
+          )}
+
+          {showModePanel && (
+            <div
+              className="isa-mode-resizer"
+              style={{
+                gridArea: 'mode-resizer',
+                cursor: 'col-resize',
+                background: 'var(--glass-border)',
+                opacity: 0.75,
+                borderRadius: '999px',
+                width: '2px',
+                justifySelf: 'center',
+                alignSelf: 'stretch',
+              }}
+              aria-hidden="true"
+              onMouseDown={startModePanelResize}
+            />
+          )}
+
+          {showModePanel && modePanelContent && (
+            <div
+              className="isa-mode-panel glass-tertiary overflow-hidden"
+              style={{
+                borderLeft: '1px solid var(--glass-border)',
+                gridArea: 'mode-panel',
+                minWidth: 0,
+                maxWidth: '100%',
+              }}
+              role="complementary"
+              aria-label={modePanelLabel || `${appMode} panel`}
+            >
+              {modePanelContent}
             </div>
           )}
 
@@ -404,7 +482,7 @@ export const ChatLayout = memo<ChatLayoutProps>(({
           )}
 
           {/* Ultra-Transparent Floating Toggle */}
-          {!showRightSidebar && (
+          {!showRightSidebar && !showModePanel && (
             <div className="fixed right-3 top-1/2 transform -translate-y-1/2 z-30">
               <button
                 onClick={onToggleRightPanel}
