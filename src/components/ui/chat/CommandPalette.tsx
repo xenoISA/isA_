@@ -7,9 +7,10 @@
  * - Backdrop: rgba(0,0,0,0.5)
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GATEWAY_ENDPOINTS } from '../../../config/gatewayConfig';
+import { GATEWAY_ENDPOINTS, getAuthHeaders } from '../../../config/gatewayConfig';
+import { getCredentialsMode } from '../../../utils/authCookieHelper';
 
-interface SearchResult {
+export interface SearchResult {
   id: string;
   title: string;
   snippet?: string;
@@ -25,8 +26,45 @@ const DEFAULT_ACTIONS: SearchResult[] = [
 interface CommandPaletteProps {
   open: boolean;
   onClose: () => void;
-  onSelectConversation?: (sessionId: string) => void;
+  onSelectConversation?: (sessionId: string, result: SearchResult) => void;
   onAction?: (actionId: string) => void;
+}
+
+interface CommandPaletteActivationHandlers {
+  onClose: () => void;
+  onSelectConversation?: (sessionId: string, result: SearchResult) => void;
+  onAction?: (actionId: string) => void;
+}
+
+export function buildCommandPaletteSearchRequest(query: string, limit = 10): {
+  url: string;
+  init: RequestInit;
+} {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(limit),
+  });
+
+  return {
+    url: `${GATEWAY_ENDPOINTS.SESSIONS.SEARCH}?${params.toString()}`,
+    init: {
+      credentials: getCredentialsMode(),
+      headers: getAuthHeaders(),
+    },
+  };
+}
+
+export function activateCommandPaletteResult(
+  item: SearchResult,
+  handlers: CommandPaletteActivationHandlers,
+): void {
+  if (item.type === 'conversation') {
+    handlers.onSelectConversation?.(item.id, item);
+  } else {
+    handlers.onAction?.(item.id);
+  }
+
+  handlers.onClose();
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -58,7 +96,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }
     setLoading(true);
     try {
-      const res = await fetch(`${GATEWAY_ENDPOINTS.SESSIONS.SEARCH}?q=${encodeURIComponent(q)}&limit=10`);
+      const { url, init } = buildCommandPaletteSearchRequest(q);
+      const res = await fetch(url, init);
       if (res.ok) {
         const data = await res.json();
         const sessions = (data.results || data.sessions || []).map((s: any) => ({
@@ -69,13 +108,24 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           timestamp: s.created_at || s.timestamp,
         }));
         setResults(sessions.length > 0 ? sessions : DEFAULT_ACTIONS);
+      } else {
+        setResults(DEFAULT_ACTIONS);
       }
     } catch {
       // Silently fail — show default actions
+      setResults(DEFAULT_ACTIONS);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const activateResult = useCallback((item: SearchResult) => {
+    activateCommandPaletteResult(item, {
+      onSelectConversation,
+      onAction,
+      onClose,
+    });
+  }, [onAction, onClose, onSelectConversation]);
 
   // Debounced search
   const handleQueryChange = (value: string) => {
@@ -95,10 +145,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       setSelectedIndex(i => Math.max(i - 1, 0));
     } else if (e.key === 'Enter' && results[selectedIndex]) {
       e.preventDefault();
-      const item = results[selectedIndex];
-      if (item.type === 'conversation') onSelectConversation?.(item.id);
-      else onAction?.(item.id);
-      onClose();
+      activateResult(results[selectedIndex]);
     } else if (e.key === 'Escape') {
       onClose();
     }
@@ -135,11 +182,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           {results.map((item, i) => (
             <button
               key={item.id}
-              onClick={() => {
-                if (item.type === 'conversation') onSelectConversation?.(item.id);
-                else onAction?.(item.id);
-                onClose();
-              }}
+              onClick={() => activateResult(item)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                 i === selectedIndex
                   ? 'bg-gray-100 dark:bg-white/10'
