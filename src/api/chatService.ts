@@ -294,7 +294,7 @@ export class ChatService {
 
       case 'thinking': {
         const data = event.data || {};
-        callbacks.onStreamStatus?.(data.message || 'Thinking...');
+        callbacks.onStreamStatus?.(data.delta || data.message || 'Thinking...');
         break;
       }
 
@@ -309,7 +309,7 @@ export class ChatService {
         const data = event.data || {};
         const status = data.status;
         if (status === 'result' || status === 'error') {
-          callbacks.onToolCompleted?.(data.toolName, data.result, data.error);
+          callbacks.onToolCompleted?.(data.toolName, data.result, data.error, data.durationMs ?? data.duration_ms);
         } else if (status === 'calling') {
           callbacks.onToolStart?.(data.toolName, data.callId, data.arguments);
         } else {
@@ -345,7 +345,10 @@ export class ChatService {
       }
 
       case 'hil_request':
-        callbacks.onHILInterruptDetected?.(event.data || event);
+        callbacks.onHILInterruptDetected?.(event);
+        if (this.isBrowserControlEvent(event)) {
+          callbacks.onBrowserAction?.(this.normalizeBrowserAction({ ...event, status: 'pending' }));
+        }
         break;
 
       // 基础流程事件
@@ -395,7 +398,7 @@ export class ChatService {
         
       case 'run_error':
       case 'error':
-        callbacks.onError?.(new Error(event.error?.message || event.message || 'Unknown error'));
+        callbacks.onError?.(new Error(event.data?.message || event.error?.message || event.message || 'Unknown error'));
         break;
         
       case 'stream_done':

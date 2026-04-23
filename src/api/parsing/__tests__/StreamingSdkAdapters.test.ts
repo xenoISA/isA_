@@ -43,6 +43,32 @@ describe('streaming SDK parser adapters', () => {
       type: 'artifact_updated',
       artifact: { id: 'artifact-1', title: 'Plan' },
     });
+    const toolExecuting = parser.parse({
+      type: 'tool_executing',
+      tool_name: 'search',
+      tool_call_id: 'tool-1',
+      status: 'running',
+      progress: 42,
+    });
+    const taskProgress = parser.parse({
+      type: 'task_progress_update',
+      task: {
+        id: 'task-1',
+        name: 'Search web',
+        status: 'running',
+        progress: 50,
+        totalSteps: 4,
+      },
+      thread_id: 'thread-1',
+    });
+    const hilRequest = parser.parse({
+      type: 'hil_approval_required',
+      thread_id: 'thread-1',
+      checkpoint_id: 'cp-1',
+      tool_name: 'ComputerUseAgent',
+      action_type: 'navigate',
+      target: 'https://example.com',
+    });
 
     expect(done).toMatchObject({
       type: 'done',
@@ -67,6 +93,36 @@ describe('streaming SDK parser adapters', () => {
       data: {
         action: 'updated',
         artifact: { id: 'artifact-1', title: 'Plan' },
+      },
+    });
+    expect(toolExecuting).toMatchObject({
+      type: 'tool_call',
+      data: {
+        toolName: 'search',
+        tool_name: 'search',
+        callId: 'tool-1',
+        tool_call_id: 'tool-1',
+        status: 'running',
+        progress: 42,
+      },
+    });
+    expect(taskProgress).toMatchObject({
+      type: 'task_progress',
+      thread_id: 'thread-1',
+      data: {
+        thread_id: 'thread-1',
+        currentStepName: 'Search web',
+        percentage: 50,
+      },
+    });
+    expect(hilRequest).toMatchObject({
+      type: 'hil_request',
+      thread_id: 'thread-1',
+      data: {
+        checkpoint_id: 'cp-1',
+        tool_name: 'ComputerUseAgent',
+        action_type: 'navigate',
+        target: 'https://example.com',
       },
     });
   });
