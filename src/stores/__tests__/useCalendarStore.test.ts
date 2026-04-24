@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const {
   mockGetTodayEvents,
@@ -101,6 +101,8 @@ function deferred<T>() {
 describe('useCalendarStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-24T00:30:00.000Z'));
     useCalendarStore.setState({
       events: [],
       todayEvents: [],
@@ -110,6 +112,10 @@ describe('useCalendarStore', () => {
     });
     useUserStore.getState().clearUserState();
     useUserStore.getState().setExternalUser({ auth0_id: 'user-1' } as any);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test('fetches today events from the SDK-backed calendar service', async () => {

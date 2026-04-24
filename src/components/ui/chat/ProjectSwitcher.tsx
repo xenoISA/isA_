@@ -5,10 +5,19 @@
  * Dropdown to switch projects or create new ones.
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { useProjects, Project } from '../../../hooks/useProjects';
+import { useProjects } from '../../../hooks/useProjects';
 
 export const ProjectSwitcher: React.FC = () => {
-  const { projects, activeProject, selectProject, createProject, deleteProject, loading } = useProjects();
+  const {
+    projects,
+    activeProject,
+    selectProject,
+    createProject,
+    loading,
+    creatingProject,
+    error,
+    clearError,
+  } = useProjects();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -34,9 +43,12 @@ export const ProjectSwitcher: React.FC = () => {
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
-    await createProject(newName.trim());
+    clearError();
+    const project = await createProject(newName.trim());
+    if (!project) return;
     setNewName('');
     setCreating(false);
+    setOpen(false);
   };
 
   if (loading) return null;
@@ -99,20 +111,43 @@ export const ProjectSwitcher: React.FC = () => {
           {/* Create new */}
           <div className="border-t border-gray-100 dark:border-gray-700">
             {creating ? (
-              <div className="px-3 py-2 flex gap-2">
-                <input
-                  ref={inputRef}
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setCreating(false); }}
-                  placeholder="Project name"
-                  className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button onClick={handleCreate} className="text-xs px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Create</button>
+              <div className="px-3 py-2 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    ref={inputRef}
+                    value={newName}
+                    onChange={e => {
+                      setNewName(e.target.value);
+                      if (error) clearError();
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleCreate();
+                      if (e.key === 'Escape') {
+                        setCreating(false);
+                        clearError();
+                      }
+                    }}
+                    placeholder="Project name"
+                    className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleCreate}
+                    disabled={!newName.trim() || creatingProject}
+                    className="text-xs px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                  >
+                    {creatingProject ? 'Creating...' : 'Create'}
+                  </button>
+                </div>
+                {error && (
+                  <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+                )}
               </div>
             ) : (
               <button
-                onClick={() => setCreating(true)}
+                onClick={() => {
+                  clearError();
+                  setCreating(true);
+                }}
                 className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
