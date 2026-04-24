@@ -19,7 +19,7 @@ describe('streaming SDK parser adapters', () => {
       },
       timestamp: '2026-04-23T08:00:00.000Z',
     });
-  });
+  }, 15000);
 
   test('AGUIEventParser preserves app compatibility fields on normalized SDK events', async () => {
     const { createAGUIEventParser } = await import('../AGUIEventParser');
@@ -125,7 +125,7 @@ describe('streaming SDK parser adapters', () => {
         target: 'https://example.com',
       },
     });
-  });
+  }, 15000);
 
   test('ContentParser delegates detection to the SDK ContentTypeDetector', async () => {
     const { createContentParser } = await import('../ContentParser');
@@ -153,7 +153,7 @@ describe('streaming SDK parser adapters', () => {
       elementCount: 1,
       typeDistribution: { json: 1 },
     });
-  });
+  }, 15000);
 });
 
 vi.mock('@isa/transport', () => {

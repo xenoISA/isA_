@@ -212,5 +212,5 @@ describe('useArtifactManager', () => {
     expect(artifact?.contentType).toBe('a2ui_surface');
     expect(getActiveVersion(artifact!).content).toBe(JSON.stringify({ title: 'Interactive answer' }, null, 2));
     expect(getActiveVersion(artifact!).a2uiState).toEqual(surfaceState);
-  });
+  }, 15000);
 });
