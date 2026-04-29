@@ -155,8 +155,6 @@ export class DocWidgetPlugin implements WidgetPlugin {
    * Perform document operation via document processing service.
    *
    * Routes to the appropriate DocumentService method based on the action.
-   * Falls back to a local-only response when the document processing backend
-   * is unreachable so the UI remains functional during development.
    */
   private async performDocumentOperation(prompt: string, options: any = {}): Promise<any> {
     const action: string = options.action || 'create';
@@ -236,24 +234,8 @@ export class DocWidgetPlugin implements WidgetPlugin {
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      log.warn('Document service call failed, using local fallback', { action, error: msg });
-
-      // Local fallback so the widget stays usable without the backend
-      return {
-        action,
-        document: {
-          id: `doc_local_${Date.now()}`,
-          title: options.title || 'Untitled Document',
-          content: prompt,
-          format: options.format || 'markdown',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          wordCount: prompt.split(/\s+/).filter(Boolean).length,
-          tags: [],
-        },
-        _fallback: true,
-        message: 'Document service unavailable — created locally',
-      };
+      log.error('Document service call failed', { action, error: msg });
+      throw error instanceof Error ? error : new Error(msg);
     }
   }
 }

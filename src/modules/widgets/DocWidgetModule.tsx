@@ -340,8 +340,8 @@ const docWidgetConfig = createWidgetConfig<DocWidgetParams, DocWidgetResult>({
  * Doc Widget Module - Uses BaseWidgetModule with Doc-specific configuration
  *
  * Provides document creation, editing, and export capabilities.
- * Calls the document processing service for all operations, with graceful
- * fallback to local-only mode when the backend is unreachable.
+ * Calls the document processing service for all operations and surfaces
+ * backend failures instead of synthesizing local-only documents.
  */
 export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
   triggeredInput,
@@ -430,19 +430,7 @@ export const DocWidgetModule: React.FC<DocWidgetModuleProps> = ({
                 setCurrentDocument(doc);
               } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
-                log.warn('Document service unavailable, using local document', { error: msg });
-                const { markWidgetWithArtifacts } = useAppStore.getState();
-                markWidgetWithArtifacts('doc');
-                setCurrentDocument({
-                  id: `doc_local_${Date.now()}`,
-                  title: params.title || 'Untitled Document',
-                  content: params.prompt || '',
-                  format: params.format || 'markdown',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  wordCount: (params.prompt || '').split(/\s+/).filter(Boolean).length,
-                  tags: []
-                });
+                log.error('Document creation failed', { error: msg });
               }
             },
             onEditDocument: async (params: DocWidgetParams) => {

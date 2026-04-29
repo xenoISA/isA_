@@ -10,6 +10,8 @@ import type { ArtifactNode } from '../../../types/artifactTypes';
 import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
 import { useArtifactManager } from '../../../stores/useArtifactManager';
 import { shouldDismissFromSwipe } from '../../../utils/swipeDismiss';
+import { CodeSandboxPanel } from './CodeSandboxPanel';
+import { FileCreationPanel } from './FileCreationPanel';
 
 export const ArtifactSheet: React.FC = () => {
   const openArtifactId = useArtifactManager(s => s.openArtifactId);
@@ -19,6 +21,7 @@ export const ArtifactSheet: React.FC = () => {
 
   const artifact = openArtifactId ? artifacts[openArtifactId] : null;
   const activeVersion = artifact ? getActiveVersion(artifact) : null;
+  const generatedFiles = activeVersion?.generatedFiles || artifact?.generatedFiles || [];
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [dragOffset, setDragOffset] = useState(0);
   const dragStartY = useRef<number | null>(null);
@@ -100,9 +103,21 @@ export const ArtifactSheet: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-4">
+          {generatedFiles.length > 0 && (
+            <FileCreationPanel files={generatedFiles} />
+          )}
           {activeTab === 'preview' ? (
             artifact.contentType === 'image' ? (
               <img src={activeVersion.content} alt={artifact.title} className="w-full rounded-lg" />
+            ) : artifact.contentType === 'code' ? (
+              <div className="min-h-[320px]">
+                <CodeSandboxPanel
+                  code={activeVersion.content}
+                  language={activeVersion.language}
+                  filename={activeVersion.filename || artifact.filename}
+                  embedded
+                />
+              </div>
             ) : (
               <div className="text-[15px] leading-[1.6] text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{activeVersion.content}</div>
             )

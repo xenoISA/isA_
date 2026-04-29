@@ -213,4 +213,129 @@ describe('useArtifactManager', () => {
     expect(getActiveVersion(artifact!).content).toBe(JSON.stringify({ title: 'Interactive answer' }, null, 2));
     expect(getActiveVersion(artifact!).a2uiState).toEqual(surfaceState);
   }, 15000);
+
+  test('syncArtifactMessage creates artifacts with backend file metadata', () => {
+    const artifactId = useArtifactManager.getState().syncArtifactMessage({
+      id: 'artifact-msg-art-1-v1',
+      type: 'artifact',
+      role: 'assistant',
+      timestamp: '2026-04-29T00:00:00Z',
+      sessionId: 'session-1',
+      userPrompt: 'Create a report',
+      artifact: {
+        id: 'art-1',
+        widgetType: 'artifact',
+        widgetName: 'Quarterly Report',
+        version: 1,
+        contentType: 'code',
+        content: 'export default function App() { return <div>v1</div>; }',
+        language: 'tsx',
+        filename: 'Report.tsx',
+        downloadUrl: 'http://localhost:4100/__artifacts/report-v1.pdf',
+        generatedFiles: [
+          {
+            id: 'file-v1',
+            filename: 'report-v1.pdf',
+            type: 'pdf',
+            url: 'http://localhost:4100/__artifacts/report-v1.pdf',
+          },
+        ],
+      },
+    });
+
+    expect(artifactId).toBe('art-1');
+    const artifact = useArtifactManager.getState().getArtifact('art-1');
+    expect(artifact?.filename).toBe('Report.tsx');
+    expect(artifact?.downloadUrl).toBe('http://localhost:4100/__artifacts/report-v1.pdf');
+    expect(getActiveVersion(artifact!).generatedFiles?.[0]?.filename).toBe('report-v1.pdf');
+  });
+
+  test('syncArtifactMessage appends a new version for backend artifact updates', () => {
+    const store = useArtifactManager.getState();
+
+    store.syncArtifactMessage({
+      id: 'artifact-msg-art-2-v1',
+      type: 'artifact',
+      role: 'assistant',
+      timestamp: '2026-04-29T00:00:00Z',
+      sessionId: 'session-1',
+      userPrompt: 'Create a todo component',
+      artifact: {
+        id: 'art-2',
+        widgetType: 'artifact',
+        widgetName: 'Todo Component',
+        version: 1,
+        contentType: 'code',
+        content: 'export default function App() { return <main>v1</main>; }',
+        language: 'tsx',
+      },
+    });
+
+    store.syncArtifactMessage({
+      id: 'artifact-msg-art-2-v2',
+      type: 'artifact',
+      role: 'assistant',
+      timestamp: '2026-04-29T00:01:00Z',
+      sessionId: 'session-1',
+      userPrompt: 'Add dark mode',
+      artifact: {
+        id: 'art-2',
+        widgetType: 'artifact',
+        widgetName: 'Todo Component',
+        version: 2,
+        contentType: 'code',
+        content: 'export default function App() { return <main className="dark">v2</main>; }',
+        language: 'tsx',
+        generatedFiles: [
+          {
+            id: 'file-v2',
+            filename: 'todo-v2.pdf',
+            type: 'pdf',
+            url: 'http://localhost:4100/__artifacts/todo-v2.pdf',
+          },
+        ],
+      },
+    });
+
+    const artifact = store.getArtifact('art-2');
+    expect(artifact?.versions).toHaveLength(2);
+    expect(getActiveVersion(artifact!).content).toContain('className="dark"');
+    expect(getActiveVersion(artifact!).generatedFiles?.[0]?.filename).toBe('todo-v2.pdf');
+  });
+
+  test('syncArtifactMessage does not duplicate versions when the same backend update is replayed', () => {
+    const store = useArtifactManager.getState();
+    const updateMessage = {
+      id: 'artifact-msg-art-3-v2',
+      type: 'artifact' as const,
+      role: 'assistant' as const,
+      timestamp: '2026-04-29T00:01:00Z',
+      sessionId: 'session-1',
+      userPrompt: 'Refine the document',
+      artifact: {
+        id: 'art-3',
+        widgetType: 'artifact',
+        widgetName: 'Refined Document',
+        version: 2,
+        contentType: 'text' as const,
+        content: 'Version 2 body',
+      },
+    };
+
+    store.syncArtifactMessage({
+      ...updateMessage,
+      id: 'artifact-msg-art-3-v1',
+      artifact: {
+        ...updateMessage.artifact,
+        version: 1,
+        content: 'Version 1 body',
+      },
+    });
+    store.syncArtifactMessage(updateMessage);
+    store.syncArtifactMessage(updateMessage);
+
+    const artifact = store.getArtifact('art-3');
+    expect(artifact?.versions).toHaveLength(2);
+    expect(getActiveVersion(artifact!).content).toBe('Version 2 body');
+  });
 });

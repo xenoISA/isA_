@@ -88,18 +88,19 @@ export const ArtifactPeekCard: React.FC<ArtifactPeekCardProps> = ({
           a => a.sourceMessageId === artifactMessage.id || a.id === artifactMessage.artifact.id,
         )
       : undefined);
+  const activeVersion = managedArtifact ? getActiveVersion(managedArtifact) : null;
 
   // Normalised display values
   const widgetType  = managedArtifact?.widgetType ?? artifactMessage?.artifact.widgetType ?? '';
   const contentType = managedArtifact?.contentType ?? artifactMessage?.artifact.contentType ?? 'text';
   const title       = managedArtifact?.title ?? artifactMessage?.artifact.widgetName ?? widgetType;
   const content     = managedArtifact
-    ? getActiveVersion(managedArtifact).content
+    ? activeVersion?.content
     : artifactMessage?.artifact.content;
   const versionNumber = managedArtifact
     ? getVersionCount(managedArtifact)
     : (artifactMessage?.artifact.version ?? 1);
-  const language    = managedArtifact ? getActiveVersion(managedArtifact).language : undefined;
+  const language    = activeVersion?.language;
   const isLoading   = content === 'Loading...' || (artifactMessage?.isStreaming ?? false);
 
   const meta      = WIDGET_META[widgetType] ?? DEFAULT_WIDGET_META;
@@ -144,7 +145,27 @@ export const ArtifactPeekCard: React.FC<ArtifactPeekCardProps> = ({
   const handleDownload = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!content || isLoading) return;
+      if (isLoading) return;
+      const remoteDownloadUrl = activeVersion?.downloadUrl
+        || managedArtifact?.downloadUrl
+        || activeVersion?.generatedFiles?.[0]?.url
+        || artifactMessage?.artifact.downloadUrl
+        || artifactMessage?.artifact.generatedFiles?.[0]?.url;
+      const remoteFilename = activeVersion?.filename
+        || managedArtifact?.filename
+        || activeVersion?.generatedFiles?.[0]?.filename
+        || artifactMessage?.artifact.filename
+        || artifactMessage?.artifact.generatedFiles?.[0]?.filename;
+      if (remoteDownloadUrl) {
+        const a = document.createElement('a');
+        a.href = remoteDownloadUrl;
+        if (remoteFilename) a.download = remoteFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+      if (!content) return;
       const text = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -156,7 +177,7 @@ export const ArtifactPeekCard: React.FC<ArtifactPeekCardProps> = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     },
-    [content, isLoading, title, versionNumber],
+    [activeVersion, artifactMessage?.artifact.downloadUrl, artifactMessage?.artifact.filename, artifactMessage?.artifact.generatedFiles, content, isLoading, managedArtifact?.downloadUrl, managedArtifact?.filename, title, versionNumber],
   );
 
   // --- Render -------------------------------------------------------------

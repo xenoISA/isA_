@@ -22,7 +22,7 @@
  *   - 用户认证类型（由auth_types.ts处理）
  */
 
-import type { ArtifactContentType } from './artifactTypes';
+import type { ArtifactContentType, ArtifactGeneratedFile } from './artifactTypes';
 
 // Schedule confirmation data — attached to assistant messages when a job is created
 export interface ScheduleConfirmationData {
@@ -101,8 +101,12 @@ export interface ArtifactMessage extends BaseMessage {
     widgetType: string; // 'dream', 'hunt', 'omni', etc.
     widgetName?: string; // 显示名称
     version: number;
-    contentType: ArtifactContentType | 'knowledge';
+    contentType: ArtifactContentType;
     content: any; // 工件的实际内容 - can be 'Loading...' during streaming
+    language?: string;
+    filename?: string;
+    downloadUrl?: string;
+    generatedFiles?: ArtifactGeneratedFile[];
     a2uiState?: Record<string, unknown>;
     metadata?: {
       originalInput?: string;

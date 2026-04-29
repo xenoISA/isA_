@@ -10,6 +10,7 @@ import type {
   ArtifactNode,
   ArtifactContentType,
 } from '../types/artifactTypes';
+import type { ArtifactMessage } from '../types/chatTypes';
 import {
   createArtifactNode,
   addArtifactVersion,
@@ -33,14 +34,21 @@ interface ArtifactManagerActions {
     contentType: ArtifactContentType;
     language?: string;
     widgetType?: string;
+    id?: string;
     filename?: string;
+    downloadUrl?: string;
+    generatedFiles?: import('../types/artifactTypes').ArtifactGeneratedFile[];
     sessionId?: string;
     sourceMessageId?: string;
     a2uiState?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
   }) => string;
 
   /** Add a new version to an existing artifact */
   addVersion: (artifactId: string, content: string, instruction: string) => void;
+
+  /** Sync an artifact message from the chat stream into the manager */
+  syncArtifactMessage: (message: ArtifactMessage) => string | null;
 
   /** Set the active version index */
   setActiveVersion: (artifactId: string, versionIndex: number) => void;
@@ -95,6 +103,89 @@ export const useArtifactManager = create<ArtifactManagerStore>()(
           });
         },
 
+        syncArtifactMessage: (message) => {
+          const streamArtifact = message.artifact;
+          if (!streamArtifact?.id) return null;
+
+          const content = typeof streamArtifact.content === 'string'
+            ? streamArtifact.content
+            : JSON.stringify(streamArtifact.content, null, 2);
+
+          const existing = get().artifacts[streamArtifact.id];
+          if (!existing) {
+            const node = createArtifactNode({
+              id: streamArtifact.id,
+              title: streamArtifact.widgetName || streamArtifact.filename || 'Artifact',
+              content,
+              contentType: streamArtifact.contentType,
+              language: streamArtifact.language,
+              widgetType: streamArtifact.widgetType,
+              filename: streamArtifact.filename,
+              downloadUrl: streamArtifact.downloadUrl,
+              generatedFiles: streamArtifact.generatedFiles,
+              sessionId: message.sessionId,
+              sourceMessageId: message.id,
+              a2uiState: streamArtifact.a2uiState,
+              metadata: streamArtifact.metadata,
+            });
+
+            set(state => ({
+              artifacts: { ...state.artifacts, [node.id]: node },
+            }));
+            return node.id;
+          }
+
+          const activeVersion = getActiveVersion(existing);
+          const incomingVersion = streamArtifact.version || existing.versions.length;
+          const shouldAddVersion =
+            incomingVersion > existing.versions.length ||
+            content !== activeVersion.content ||
+            streamArtifact.downloadUrl !== activeVersion.downloadUrl ||
+            JSON.stringify(streamArtifact.generatedFiles || []) !== JSON.stringify(activeVersion.generatedFiles || []);
+
+          set(state => {
+            const current = state.artifacts[streamArtifact.id];
+            if (!current) return state;
+
+            const updated = shouldAddVersion
+              ? addArtifactVersion(
+                  current,
+                  content,
+                  String(streamArtifact.metadata?.instruction || streamArtifact.metadata?.action || 'Artifact updated'),
+                  'agent',
+                  {
+                    contentType: streamArtifact.contentType,
+                    language: streamArtifact.language,
+                    filename: streamArtifact.filename,
+                    downloadUrl: streamArtifact.downloadUrl,
+                    generatedFiles: streamArtifact.generatedFiles,
+                    a2uiState: streamArtifact.a2uiState,
+                  },
+                )
+              : {
+                  ...current,
+                  title: streamArtifact.widgetName || current.title,
+                  contentType: streamArtifact.contentType || current.contentType,
+                  widgetType: streamArtifact.widgetType || current.widgetType,
+                  filename: streamArtifact.filename || current.filename,
+                  downloadUrl: streamArtifact.downloadUrl || current.downloadUrl,
+                  generatedFiles: streamArtifact.generatedFiles || current.generatedFiles,
+                  sourceMessageId: message.id,
+                  metadata: {
+                    ...(current.metadata || {}),
+                    ...(streamArtifact.metadata || {}),
+                  },
+                  updatedAt: new Date().toISOString(),
+                };
+
+            return {
+              artifacts: { ...state.artifacts, [streamArtifact.id]: updated },
+            };
+          });
+
+          return streamArtifact.id;
+        },
+
         setActiveVersion: (artifactId, versionIndex) => {
           set(state => {
             const artifact = state.artifacts[artifactId];
@@ -118,8 +209,12 @@ export const useArtifactManager = create<ArtifactManagerStore>()(
             contentType: artifact.contentType,
             language: activeVersion.language,
             widgetType: artifact.widgetType,
+            filename: activeVersion.filename || artifact.filename,
+            downloadUrl: activeVersion.downloadUrl || artifact.downloadUrl,
+            generatedFiles: activeVersion.generatedFiles || artifact.generatedFiles,
             sessionId: artifact.sessionId,
             a2uiState: activeVersion.a2uiState,
+            metadata: artifact.metadata,
           });
           const forkedWithParent = { ...forked, parentId: artifactId };
           set(state => ({
@@ -171,6 +266,7 @@ export const usePanelLayout = () => useArtifactManager(s => s.panelLayout);
 export const useArtifactActions = () => useArtifactManager(s => ({
   createArtifact: s.createArtifact,
   addVersion: s.addVersion,
+  syncArtifactMessage: s.syncArtifactMessage,
   setActiveVersion: s.setActiveVersion,
   forkArtifact: s.forkArtifact,
   openArtifact: s.openArtifact,
