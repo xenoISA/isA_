@@ -16,6 +16,7 @@
  * - Non-intrusive but highly functional
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { useTaskStore } from '../../stores/useTaskStore';
 
 // Glass Button Style Creator for Task Toolbar
 const createGlassButtonStyle = (color: string, size: 'sm' | 'md' = 'md', isDisabled: boolean = false) => ({
@@ -54,16 +55,6 @@ const createGlassButtonHoverHandlers = (color: string, isDisabled: boolean = fal
   }
 });
 
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: Date;
-  createdAt: Date;
-  assistantGenerated?: boolean;
-}
-
 interface TaskToolbarProps {
   className?: string;
 }
@@ -72,31 +63,11 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
   className = '' 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Review project proposal',
-      completed: false,
-      priority: 'high',
-      dueDate: new Date(Date.now() + 86400000), // Tomorrow
-      createdAt: new Date(),
-      assistantGenerated: true
-    },
-    {
-      id: '2', 
-      title: 'Schedule team meeting',
-      completed: false,
-      priority: 'medium',
-      createdAt: new Date()
-    },
-    {
-      id: '3',
-      title: 'Update documentation',
-      completed: true,
-      priority: 'low',
-      createdAt: new Date()
-    }
-  ]);
+  const tasks = useTaskStore((state) => state.tasks);
+  const syncTasks = useTaskStore((state) => state.syncTasks);
+  const createBackendTask = useTaskStore((state) => state.createBackendTask);
+  const syncTaskStatus = useTaskStore((state) => state.syncTaskStatus);
+  const deleteBackendTask = useTaskStore((state) => state.deleteBackendTask);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -129,45 +100,56 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
   }, [isOpen]);
 
   const toggleTaskPanel = () => {
-    setIsOpen(prev => !prev);
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    if (nextOpen) {
+      void syncTasks();
+    }
   };
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTaskTitle.trim()) return;
-    
-    const newTask: Task = {
-      id: Date.now().toString(),
+
+    const createdTask = await createBackendTask({
       title: newTaskTitle.trim(),
-      completed: false,
-      priority: 'medium',
-      createdAt: new Date()
-    };
-    
-    setTasks(prev => [newTask, ...prev]);
-    setNewTaskTitle('');
+      priority: 'normal',
+    });
+    if (createdTask) {
+      setNewTaskTitle('');
+    }
   };
 
-  const toggleTask = (taskId: string) => {
-    setTasks(prev => prev.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+  const toggleTask = async (taskId: string) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
+    await syncTaskStatus(taskId, nextStatus);
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+  const deleteTask = async (taskId: string) => {
+    await deleteBackendTask(taskId);
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'text-red-400';
-      case 'medium': return 'text-yellow-400';
+      case 'urgent': return 'text-red-300';
+      case 'normal': return 'text-yellow-400';
       case 'low': return 'text-green-400';
       default: return 'text-gray-400';
     }
   };
 
   const getPriorityIcon = (priority: string) => {
-    const color = priority === 'high' ? '239, 68, 68' : priority === 'medium' ? '251, 191, 36' : '34, 197, 94';
+    const color =
+      priority === 'high' || priority === 'urgent'
+        ? '239, 68, 68'
+        : priority === 'normal'
+          ? '251, 191, 36'
+          : '34, 197, 94';
     return (
       <div
         style={createGlassButtonStyle(color, 'sm')}
@@ -179,8 +161,14 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
     );
   };
 
-  const pendingTasksCount = tasks.filter(t => !t.completed).length;
-  const hasHighPriorityTasks = tasks.some(t => !t.completed && t.priority === 'high');
+  const pendingTasksCount = tasks.filter(
+    (task) => !['completed', 'failed', 'cancelled'].includes(task.status),
+  ).length;
+  const hasHighPriorityTasks = tasks.some(
+    (task) =>
+      !['completed', 'failed', 'cancelled'].includes(task.status)
+      && ['high', 'urgent'].includes(task.priority),
+  );
 
   return (
     <div className={`relative ${className}`}>
@@ -232,7 +220,7 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
                 <div>
                   <h3 className="text-sm font-semibold text-white">Tasks</h3>
                   <p className="text-xs text-gray-400">
-                    {pendingTasksCount} pending, {tasks.filter(t => t.completed).length} completed
+                    {pendingTasksCount} pending, {tasks.filter(t => t.status === 'completed').length} completed
                   </p>
                 </div>
               </div>
@@ -295,11 +283,18 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
                 </div>
               ) : (
                 <div className="divide-y divide-gray-700/50">
-                  {tasks.map((task) => (
+                  {tasks.map((task) => {
+                    const completed = task.status === 'completed';
+                    const dueAt = task.metadata?.dueAt
+                      ? new Date(task.metadata.dueAt as string)
+                      : null;
+                    const assistantGenerated = Boolean(task.metadata?.assistantGenerated);
+
+                    return (
                     <div
                       key={task.id}
                       className={`p-3 hover:bg-gray-800/30 transition-colors ${
-                        task.completed ? 'opacity-60' : ''
+                        completed ? 'opacity-60' : ''
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -307,12 +302,12 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
                         <button
                           onClick={() => toggleTask(task.id)}
                           className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            task.completed
+                            completed
                               ? 'bg-green-500 border-green-500 text-white'
                               : 'border-gray-500 hover:border-gray-400'
                           }`}
                         >
-                          {task.completed && '✓'}
+                          {completed && '✓'}
                         </button>
 
                         {/* Task Content */}
@@ -321,14 +316,14 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
                             {getPriorityIcon(task.priority)}
                             <span
                               className={`text-sm ${
-                                task.completed 
+                                completed 
                                   ? 'line-through text-gray-400' 
                                   : 'text-white'
                               }`}
                             >
                               {task.title}
                             </span>
-                            {task.assistantGenerated && (
+                            {assistantGenerated && (
                               <span className="text-xs bg-purple-500/20 text-purple-300 px-1 rounded">
                                 AI
                               </span>
@@ -336,9 +331,9 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
                           </div>
                           
                           {/* Due Date */}
-                          {task.dueDate && (
+                          {dueAt && (
                             <div className="text-xs text-gray-400">
-                              Due: {task.dueDate.toLocaleDateString()}
+                              Due: {dueAt.toLocaleDateString()}
                             </div>
                           )}
                         </div>
@@ -356,7 +351,8 @@ export const TaskToolbar: React.FC<TaskToolbarProps> = ({
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

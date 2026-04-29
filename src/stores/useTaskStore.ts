@@ -30,6 +30,8 @@ import {
 import { logger, LogCategory } from '../utils/logger';
 import * as TaskAdapter from '../api/adapters/TaskAdapter';
 
+type BackendTask = TaskAdapter.BackendTask;
+
 // ================================================================================
 // 任务管理Actions接口
 // ================================================================================
@@ -37,6 +39,15 @@ import * as TaskAdapter from '../api/adapters/TaskAdapter';
 interface TaskActions {
   // Backend sync
   syncTasks: () => Promise<void>;
+  createBackendTask: (task: {
+    title: string;
+    description?: string;
+    priority?: BackendTask['priority'];
+    dueAt?: string;
+    metadata?: Record<string, any>;
+  }) => Promise<TaskItem | null>;
+  syncTaskStatus: (taskId: string, status: BackendTask['status']) => Promise<TaskItem | null>;
+  deleteBackendTask: (taskId: string) => Promise<void>;
   addTask: (task: { id: string; title: string; description?: string; status: string; dueAt?: string; createdAt: string }) => void;
 
   // 任务创建和管理
@@ -81,6 +92,56 @@ interface TaskActions {
 
 export type TaskStore = TaskManagerState & TaskActions;
 
+function mapBackendStatus(status: BackendTask['status']): TaskStatus {
+  if (status === 'in_progress') {
+    return 'running';
+  }
+
+  return status as TaskStatus;
+}
+
+function toTaskItem(task: BackendTask): TaskItem {
+  return {
+    id: task.id,
+    title: task.title,
+    type: 'background' as TaskType,
+    status: mapBackendStatus(task.status),
+    priority: (task.priority || 'normal') as TaskPriority,
+    progress: {
+      currentStep: 0,
+      totalSteps: 1,
+      percentage: task.status === 'completed' ? 100 : 0,
+      currentStepName: task.status === 'completed' ? 'Completed' : 'Pending sync',
+    },
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt || task.createdAt,
+    completedAt: task.completedAt,
+    canPause: false,
+    canResume: false,
+    canCancel: task.status === 'pending' || task.status === 'in_progress',
+    canRetry: task.status === 'failed',
+    metadata: {
+      ...task.metadata,
+      description: task.description,
+      dueAt: task.dueAt,
+      synced: true,
+    },
+  };
+}
+
+function applyTaskCollection(taskItems: TaskItem[]) {
+  return {
+    tasks: taskItems,
+    totalTasks: taskItems.length,
+    activeTasks: taskItems.filter((task) => ['running', 'pending'].includes(task.status)),
+    completedTasks: taskItems.filter((task) =>
+      ['completed', 'failed', 'cancelled'].includes(task.status),
+    ),
+    completedTasksCount: taskItems.filter((task) => task.status === 'completed').length,
+    failedTasksCount: taskItems.filter((task) => task.status === 'failed').length,
+  };
+}
+
 // ================================================================================
 // 任务管理Store实现
 // ================================================================================
@@ -106,33 +167,78 @@ export const useTaskStore = create<TaskStore>()(
     syncTasks: async () => {
       try {
         const backendTasks = await TaskAdapter.getTasks();
-        const mapped: TaskItem[] = backendTasks.map((bt) => ({
-          id: bt.id,
-          title: bt.title,
-          type: 'background' as TaskType,
-          status: (bt.status === 'in_progress' ? 'running' : bt.status) as TaskStatus,
-          priority: (bt.priority || 'normal') as TaskPriority,
-          progress: { currentStep: 0, totalSteps: 1, percentage: bt.status === 'completed' ? 100 : 0 },
-          createdAt: bt.createdAt,
-          updatedAt: bt.updatedAt || bt.createdAt,
-          completedAt: bt.completedAt,
-          canPause: false,
-          canResume: false,
-          canCancel: bt.status === 'pending' || bt.status === 'in_progress',
-          canRetry: bt.status === 'failed',
-          metadata: { ...bt.metadata, description: bt.description, dueAt: bt.dueAt, synced: true },
-        }));
-        set({
-          tasks: mapped,
-          totalTasks: mapped.length,
-          activeTasks: mapped.filter((t) => ['running', 'pending'].includes(t.status)),
-          completedTasks: mapped.filter((t) => ['completed', 'failed', 'cancelled'].includes(t.status)),
-          completedTasksCount: mapped.filter((t) => t.status === 'completed').length,
-          failedTasksCount: mapped.filter((t) => t.status === 'failed').length,
-        });
+        const mapped = backendTasks.map(toTaskItem);
+        set(applyTaskCollection(mapped));
         logger.info(LogCategory.TASK_MANAGEMENT, 'Tasks synced from backend', { count: mapped.length });
       } catch (err) {
         logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to sync tasks from backend', { error: err });
+      }
+    },
+
+    createBackendTask: async ({ title, description, priority, dueAt, metadata }) => {
+      try {
+        const backendTask = await TaskAdapter.createTask({
+          title,
+          description,
+          priority,
+          dueAt,
+          metadata,
+        });
+        const mapped = toTaskItem(backendTask);
+        set((state) => applyTaskCollection([mapped, ...state.tasks.filter((task) => task.id !== mapped.id)]));
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Task created on backend', {
+          taskId: mapped.id,
+          title,
+        });
+        return mapped;
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to create backend task', {
+          title,
+          error: err,
+        });
+        return null;
+      }
+    },
+
+    syncTaskStatus: async (taskId, status) => {
+      try {
+        const backendTask =
+          status === 'completed'
+            ? await TaskAdapter.completeTask(taskId)
+            : await TaskAdapter.updateTask(taskId, { status });
+        const mapped = toTaskItem(backendTask);
+        set((state) =>
+          applyTaskCollection(
+            state.tasks.some((task) => task.id === mapped.id)
+              ? state.tasks.map((task) => (task.id === mapped.id ? mapped : task))
+              : [mapped, ...state.tasks],
+          ),
+        );
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Task status synced to backend', {
+          taskId,
+          status,
+        });
+        return mapped;
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to sync task status', {
+          taskId,
+          status,
+          error: err,
+        });
+        return null;
+      }
+    },
+
+    deleteBackendTask: async (taskId) => {
+      try {
+        await TaskAdapter.deleteTask(taskId);
+        set((state) => applyTaskCollection(state.tasks.filter((task) => task.id !== taskId)));
+        logger.info(LogCategory.TASK_MANAGEMENT, 'Task deleted on backend', { taskId });
+      } catch (err) {
+        logger.warn(LogCategory.TASK_MANAGEMENT, 'Failed to delete backend task', {
+          taskId,
+          error: err,
+        });
       }
     },
 
@@ -143,7 +249,12 @@ export const useTaskStore = create<TaskStore>()(
         type: 'background' as TaskType,
         status: (task.status === 'in_progress' ? 'running' : task.status || 'pending') as TaskStatus,
         priority: 'normal',
-        progress: { currentStep: 0, totalSteps: 1, percentage: 0 },
+        progress: {
+          currentStep: 0,
+          totalSteps: 1,
+          percentage: 0,
+          currentStepName: 'Pending sync',
+        },
         createdAt: task.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         canPause: false,
@@ -571,6 +682,10 @@ export const useSelectedTaskId = () => useTaskStore(state => state.selectedTaskI
 
 // 操作选择器
 export const useTaskActions = () => useTaskStore(state => ({
+  syncTasks: state.syncTasks,
+  createBackendTask: state.createBackendTask,
+  syncTaskStatus: state.syncTaskStatus,
+  deleteBackendTask: state.deleteBackendTask,
   createTask: state.createTask,
   updateTask: state.updateTask,
   removeTask: state.removeTask,
