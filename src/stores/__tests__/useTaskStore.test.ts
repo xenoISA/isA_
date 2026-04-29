@@ -1,10 +1,33 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { useTaskStore } from '../useTaskStore';
+
+const {
+  mockGetTasks,
+  mockCreateTask,
+  mockUpdateTask,
+  mockDeleteTask,
+  mockCompleteTask,
+} = vi.hoisted(() => ({
+  mockGetTasks: vi.fn(),
+  mockCreateTask: vi.fn(),
+  mockUpdateTask: vi.fn(),
+  mockDeleteTask: vi.fn(),
+  mockCompleteTask: vi.fn(),
+}));
+
+vi.mock('../../api/adapters/TaskAdapter', () => ({
+  getTasks: mockGetTasks,
+  createTask: mockCreateTask,
+  updateTask: mockUpdateTask,
+  deleteTask: mockDeleteTask,
+  completeTask: mockCompleteTask,
+}));
 
 describe('useTaskStore', () => {
   beforeEach(() => {
     // Reset store between tests
     useTaskStore.getState().clearTasks();
+    vi.clearAllMocks();
   });
 
   describe('createTask', () => {
@@ -140,6 +163,117 @@ describe('useTaskStore', () => {
       const task = useTaskStore.getState().getTask(id);
       expect(task!.progress.percentage).toBe(50);
       expect(task!.progress.currentStep).toBe(2);
+    });
+  });
+
+  describe('backend sync', () => {
+    test('syncTasks maps backend tasks into store state', async () => {
+      mockGetTasks.mockResolvedValue([
+        {
+          id: 'task-1',
+          title: 'Synced task',
+          status: 'in_progress',
+          priority: 'high',
+          createdAt: '2026-04-29T00:00:00Z',
+          updatedAt: '2026-04-29T00:10:00Z',
+        },
+      ]);
+
+      await useTaskStore.getState().syncTasks();
+
+      const task = useTaskStore.getState().getTask('task-1');
+      expect(task?.status).toBe('running');
+      expect(task?.priority).toBe('high');
+      expect(useTaskStore.getState().totalTasks).toBe(1);
+    });
+
+    test('createBackendTask persists a task and adds it to the store', async () => {
+      mockCreateTask.mockResolvedValue({
+        id: 'task-backend-1',
+        title: 'Backend task',
+        status: 'pending',
+        priority: 'normal',
+        createdAt: '2026-04-29T00:00:00Z',
+        metadata: {},
+      });
+
+      const created = await useTaskStore.getState().createBackendTask({
+        title: 'Backend task',
+      });
+
+      expect(mockCreateTask).toHaveBeenCalledWith({
+        title: 'Backend task',
+        description: undefined,
+        priority: undefined,
+        dueAt: undefined,
+        metadata: undefined,
+      });
+      expect(created?.id).toBe('task-backend-1');
+      expect(useTaskStore.getState().getTask('task-backend-1')?.title).toBe('Backend task');
+    });
+
+    test('syncTaskStatus completes a task through the backend', async () => {
+      useTaskStore.setState({
+        tasks: [
+          {
+            id: 'task-1',
+            title: 'Task',
+            type: 'background',
+            status: 'pending',
+            priority: 'normal',
+            progress: { currentStep: 0, totalSteps: 1, percentage: 0 },
+            createdAt: '2026-04-29T00:00:00Z',
+            updatedAt: '2026-04-29T00:00:00Z',
+            canPause: false,
+            canResume: false,
+            canCancel: true,
+            canRetry: false,
+            metadata: {},
+          },
+        ],
+      } as any);
+      mockCompleteTask.mockResolvedValue({
+        id: 'task-1',
+        title: 'Task',
+        status: 'completed',
+        priority: 'normal',
+        createdAt: '2026-04-29T00:00:00Z',
+        completedAt: '2026-04-29T00:10:00Z',
+        metadata: {},
+      });
+
+      await useTaskStore.getState().syncTaskStatus('task-1', 'completed');
+
+      expect(mockCompleteTask).toHaveBeenCalledWith('task-1');
+      expect(useTaskStore.getState().getTask('task-1')?.status).toBe('completed');
+    });
+
+    test('deleteBackendTask removes a task from the store', async () => {
+      useTaskStore.setState({
+        tasks: [
+          {
+            id: 'task-1',
+            title: 'Task',
+            type: 'background',
+            status: 'pending',
+            priority: 'normal',
+            progress: { currentStep: 0, totalSteps: 1, percentage: 0 },
+            createdAt: '2026-04-29T00:00:00Z',
+            updatedAt: '2026-04-29T00:00:00Z',
+            canPause: false,
+            canResume: false,
+            canCancel: true,
+            canRetry: false,
+            metadata: {},
+          },
+        ],
+      } as any);
+      mockDeleteTask.mockResolvedValue(undefined);
+
+      await useTaskStore.getState().deleteBackendTask('task-1');
+
+      expect(mockDeleteTask).toHaveBeenCalledWith('task-1');
+      expect(useTaskStore.getState().getTask('task-1')).toBeUndefined();
     });
   });
 

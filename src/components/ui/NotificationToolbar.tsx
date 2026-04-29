@@ -17,6 +17,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { createLogger } from '../../utils/logger';
+import { useAlertStore } from '../../stores/useAlertStore';
 const log = createLogger('NotificationToolbar');
 
 // Glass Button Style Creator for Notification Toolbar
@@ -56,21 +57,6 @@ const createGlassButtonHoverHandlers = (color: string, isDisabled: boolean = fal
   }
 });
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'error' | 'assistant';
-  timestamp: Date;
-  read: boolean;
-  actionable?: boolean;
-  actions?: Array<{
-    id: string;
-    label: string;
-    action: () => void;
-  }>;
-}
-
 interface NotificationToolbarProps {
   className?: string;
 }
@@ -79,52 +65,21 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
   className = '' 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Task Reminder',
-      message: 'Review project proposal is due in 1 hour',
-      type: 'warning',
-      timestamp: new Date(Date.now() - 300000), // 5 minutes ago
-      read: false,
-      actionable: true,
-      actions: [
-        { id: 'complete', label: 'Mark Done', action: () => log.info('Mark done') },
-        { id: 'snooze', label: 'Snooze', action: () => log.info('Snooze') }
-      ]
-    },
-    {
-      id: '2',
-      title: 'AI Suggestion',
-      message: 'Based on your schedule, I recommend moving the 3pm meeting to tomorrow',
-      type: 'assistant',
-      timestamp: new Date(Date.now() - 600000), // 10 minutes ago
-      read: false,
-      actionable: true,
-      actions: [
-        { id: 'accept', label: 'Accept', action: () => log.info('Accept suggestion') },
-        { id: 'dismiss', label: 'Dismiss', action: () => log.info('Dismiss') }
-      ]
-    },
-    {
-      id: '3',
-      title: 'System Update',
-      message: 'Your widgets have been updated with new features',
-      type: 'success',
-      timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
-      read: true
-    },
-    {
-      id: '4',
-      title: 'Meeting Starting',
-      message: 'Team Standup begins in 15 minutes',
-      type: 'info',
-      timestamp: new Date(Date.now() - 900000), // 15 minutes ago
-      read: false
-    }
-  ]);
+  const notifications = useAlertStore((state) => state.notifications);
+  const unreadCount = useAlertStore((state) => state.unreadCount);
+  const loading = useAlertStore((state) => state.loading);
+  const error = useAlertStore((state) => state.error);
+  const loadNotifications = useAlertStore((state) => state.loadNotifications);
+  const refreshUnreadCount = useAlertStore((state) => state.refreshUnreadCount);
+  const markAllAsRead = useAlertStore((state) => state.markAllAsRead);
+  const dismissNotification = useAlertStore((state) => state.dismissNotification);
+  const clearAllNotifications = useAlertStore((state) => state.clearAllNotifications);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    void refreshUnreadCount();
+  }, [refreshUnreadCount]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -146,10 +101,13 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
   }, [isOpen]);
 
   const toggleNotificationPanel = () => {
-    setIsOpen(prev => !prev);
-    // Mark all as read when opened
-    if (!isOpen) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    if (nextOpen) {
+      void loadNotifications();
+      if (unreadCount > 0) {
+        void markAllAsRead();
+      }
     }
   };
 
@@ -159,7 +117,9 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
       case 'warning': return '⚠️';
       case 'success': return '✅';
       case 'error': return '❌';
-      case 'assistant': return '🤖';
+      case 'task': return '✅';
+      case 'calendar': return '📅';
+      case 'channel': return '🔔';
       default: return '📢';
     }
   };
@@ -170,12 +130,15 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
       case 'warning': return 'border-l-yellow-500';
       case 'success': return 'border-l-green-500';
       case 'error': return 'border-l-red-500';
-      case 'assistant': return 'border-l-purple-500';
+      case 'task': return 'border-l-green-500';
+      case 'calendar': return 'border-l-blue-500';
+      case 'channel': return 'border-l-purple-500';
       default: return 'border-l-gray-500';
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateLike: string) => {
+    const date = new Date(dateLike);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
@@ -188,16 +151,10 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
     return `${days}d ago`;
   };
 
-  const deleteNotification = (notificationId: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
   const hasNotifications = notifications.length > 0;
+  const actionableNotifications = notifications.filter((notification) =>
+    notification.type === 'task' || notification.type === 'calendar',
+  ).length;
 
   return (
     <div className={`relative ${className}`}>
@@ -256,7 +213,7 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
                 <div>
                   <h3 className="text-sm font-semibold text-white">Notifications</h3>
                   <p className="text-xs text-gray-400">
-                    {hasNotifications ? `${notifications.length} total` : 'No notifications'}
+                    {loading ? 'Loading…' : hasNotifications ? `${notifications.length} total` : 'No notifications'}
                   </p>
                 </div>
               </div>
@@ -264,7 +221,7 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
               <div className="flex items-center gap-1">
                 {hasNotifications && (
                   <button
-                    onClick={clearAllNotifications}
+                    onClick={() => void clearAllNotifications()}
                     className="text-xs text-gray-400 hover:text-white transition-colors mr-2"
                   >
                     Clear All
@@ -286,7 +243,11 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
 
             {/* Notification List */}
             <div className="max-h-96 overflow-y-auto">
-              {notifications.length === 0 ? (
+              {error ? (
+                <div className="p-4 text-center text-red-300 text-sm">
+                  <div>{error}</div>
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="p-4 text-center text-gray-400 text-sm">
                   <div className="text-2xl mb-2">🔕</div>
                   <div>No notifications</div>
@@ -314,33 +275,34 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
                               {notification.title}
                             </span>
                             <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
-                              {formatTime(notification.timestamp)}
+                              {formatTime(notification.createdAt)}
                             </span>
                           </div>
                           
                           <p className="text-xs text-gray-300 mb-2 line-clamp-2">
-                            {notification.message}
+                            {notification.body}
                           </p>
 
                           {/* Actions */}
-                          {notification.actionable && notification.actions && (
+                          {notification.route && (
                             <div className="flex items-center gap-2">
-                              {notification.actions.map((action) => (
-                                <button
-                                  key={action.id}
-                                  onClick={action.action}
-                                  className="px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 rounded text-xs text-gray-300 transition-colors"
-                                >
-                                  {action.label}
-                                </button>
-                              ))}
+                              <button
+                                onClick={() => {
+                                  if (typeof window !== 'undefined') {
+                                    window.location.href = notification.route!;
+                                  }
+                                }}
+                                className="px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 rounded text-xs text-gray-300 transition-colors"
+                              >
+                                Open
+                              </button>
                             </div>
                           )}
                         </div>
 
                         {/* Delete Button */}
                         <button
-                          onClick={() => deleteNotification(notification.id)}
+                          onClick={() => void dismissNotification(notification.id)}
                           className="w-6 h-6 flex items-center justify-center hover:bg-red-500/20 rounded text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
                         >
                           ✕
@@ -372,7 +334,7 @@ export const NotificationToolbar: React.FC<NotificationToolbarProps> = ({
                 <div>
                   {hasNotifications ? (
                     <span>
-                      {notifications.filter(n => n.type === 'assistant').length} AI suggestions
+                      {actionableNotifications} actionable alerts
                     </span>
                   ) : (
                     <span className="text-green-400">All clear</span>

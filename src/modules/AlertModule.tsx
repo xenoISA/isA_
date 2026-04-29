@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useCalendarStore } from '../stores/useCalendarStore';
 import { useTaskStore } from '../stores/useTaskStore';
+import * as NotificationAdapter from '../api/adapters/NotificationAdapter';
+import { useAlertStore } from '../stores/useAlertStore';
 
 const isElectron = typeof window !== 'undefined' && !!(window as any).isElectron;
 const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : null;
@@ -10,6 +12,25 @@ function sendAlert(title: string, body: string, route?: string): void {
     electronAPI.send('notification:show', title, body, route);
   } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     new Notification(title, { body });
+  }
+}
+
+async function persistAlert(
+  type: NotificationAdapter.Notification['type'],
+  title: string,
+  body: string,
+  route?: string,
+): Promise<void> {
+  try {
+    const notification = await NotificationAdapter.send({
+      type,
+      title,
+      body,
+      route,
+    });
+    useAlertStore.getState().recordNotification(notification);
+  } catch {
+    // Keep local/browser alerts working even if backend persistence fails.
   }
 }
 
@@ -35,7 +56,10 @@ export const AlertModule: React.FC = () => {
           const key = `${event.id}-${mins}`;
           if (minutesUntil <= mins && minutesUntil > mins - 1 && !firedReminders.current.has(key)) {
             firedReminders.current.add(key);
-            sendAlert(`${event.title} in ${Math.round(minutesUntil)} min`, event.description || 'Event starting soon', '/app?view=calendar');
+            const title = `${event.title} in ${Math.round(minutesUntil)} min`;
+            const body = event.description || 'Event starting soon';
+            sendAlert(title, body, '/app?view=calendar');
+            void persistAlert('calendar', title, body, '/app?view=calendar');
           }
         }
       }
@@ -50,7 +74,10 @@ export const AlertModule: React.FC = () => {
       const prevIds = new Set((prev as any).tasks?.filter((t: any) => t.status === 'completed').map((t: any) => t.id) ?? []);
       for (const task of state.tasks ?? []) {
         if (task.status === 'completed' && !prevIds.has(task.id)) {
-          sendAlert('Task completed', task.title || task.id, '/app');
+          const title = 'Task completed';
+          const body = task.title || task.id;
+          sendAlert(title, body, '/app');
+          void persistAlert('task', title, body, '/app');
         }
       }
     });
