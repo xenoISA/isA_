@@ -14,6 +14,7 @@ const nextConfig = {
   webpack: (config) => {
     const path = require('path');
     const sdkRoot = path.resolve(__dirname, '../isA_App_SDK/packages');
+    const appNodeModules = path.join(__dirname, 'node_modules');
 
     // Resolve @isa/* packages to source (dist may not be built)
     config.resolve.alias = {
@@ -22,7 +23,14 @@ const nextConfig = {
       '@isa/ui-web': path.join(sdkRoot, 'ui-web/src'),
       '@isa/theme': path.join(sdkRoot, 'theme/src'),
       '@isa/transport': path.join(sdkRoot, 'transport/src'),
-      '@isa/hooks': path.join(sdkRoot, 'hooks/src'),
+      '@isa/hooks': path.join(__dirname, 'src/hooks/isaSdkHooks.web.ts'),
+      // SDK source lives outside this repo and otherwise resolves a second
+      // copy of React from isA_App_SDK/node_modules, which breaks hooks at
+      // runtime with a null dispatcher.
+      react: path.join(appNodeModules, 'react'),
+      'react-dom': path.join(appNodeModules, 'react-dom'),
+      'react/jsx-runtime': path.join(appNodeModules, 'react/jsx-runtime'),
+      'react/jsx-dev-runtime': path.join(appNodeModules, 'react/jsx-dev-runtime'),
     };
 
     config.resolve.fallback = {

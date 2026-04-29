@@ -21,6 +21,21 @@ export interface ProjectListResponse {
   total: number;
 }
 
+export interface ProjectFile {
+  id: string;
+  project_id: string;
+  filename: string;
+  file_type?: string;
+  file_size?: number;
+  storage_path: string;
+  created_at?: string;
+}
+
+export interface ProjectFileListResponse {
+  files: ProjectFile[];
+  total: number;
+}
+
 const buildProjectsBaseUrl = () =>
   `${GATEWAY_CONFIG.BASE_URL.replace(/\/$/, '')}/api/v1/projects`;
 
@@ -53,12 +68,39 @@ export const getProjectErrorMessage = (
 
 export class ProjectService {
   private coreProjectService: CoreProjectService;
+  private baseUrl: string;
+  private authorizedFetch: typeof fetch;
 
   constructor(baseUrl: string = buildProjectsBaseUrl()) {
+    this.baseUrl = baseUrl;
+    this.authorizedFetch = buildAuthorizedFetch();
     this.coreProjectService = new CoreProjectService(
       baseUrl,
-      buildAuthorizedFetch(),
+      this.authorizedFetch,
     );
+  }
+
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await this.authorizedFetch(`${this.baseUrl}${path}`, init);
+
+    if (!response.ok) {
+      let detail = response.statusText;
+
+      try {
+        const body = await response.json();
+        detail = body?.detail ?? body?.error ?? detail;
+      } catch {
+        // response may not be JSON
+      }
+
+      throw new Error(detail || 'Project request failed');
+    }
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    return response.json() as Promise<T>;
   }
 
   async listProjects(limit = 50, offset = 0): Promise<ProjectListResponse> {
@@ -75,6 +117,28 @@ export class ProjectService {
 
   async setProjectInstructions(projectId: string, instructions: string): Promise<void> {
     await this.coreProjectService.setInstructions(projectId, instructions);
+  }
+
+  async listProjectKnowledgeFiles(projectId: string): Promise<ProjectFileListResponse> {
+    return this.request<ProjectFileListResponse>(`/${projectId}/files`, {
+      method: 'GET',
+    });
+  }
+
+  async uploadProjectKnowledgeFile(projectId: string, file: File): Promise<ProjectFile> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.request<ProjectFile>(`/${projectId}/files`, {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  async deleteProjectKnowledgeFile(projectId: string, fileId: string): Promise<void> {
+    await this.request<void>(`/${projectId}/files/${fileId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

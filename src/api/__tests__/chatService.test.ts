@@ -622,12 +622,22 @@ describe('ChatService', () => {
   // ==========================================================================
 
   describe('sendMessageViaMate', () => {
-    const mateMetadata = { session_id: 'mate-session-1' };
+    const mateMetadata = {
+      session_id: 'mate-session-1',
+      prompt_args: {
+        project_context: {
+          project_id: 'project-1',
+          project_name: 'Alpha',
+          knowledge_file_ids: ['file-1'],
+        },
+      },
+    };
 
     beforeEach(() => {
       mockBuildMateRequest.mockReturnValue({
         prompt: 'Hello mate',
         session_id: 'mate-session-1',
+        prompt_args: mateMetadata.prompt_args,
       });
       mockCreateMateStreamContext.mockReturnValue({
         startEvent: { type: 'run_started', message_id: 'mate-run-1' },
@@ -635,17 +645,21 @@ describe('ChatService', () => {
       });
     });
 
-    test('calls buildMateRequest with message and session_id', async () => {
+    test('calls buildMateRequest with message, session_id, and prompt_args', async () => {
       mockConnection.stream.mockReturnValue(
         createAsyncIterable(['data: [DONE]'])
       );
 
       await service.sendMessageViaMate('Hello mate', mateMetadata, defaultToken, callbacks);
 
-      expect(mockBuildMateRequest).toHaveBeenCalledWith('Hello mate', 'mate-session-1');
+      expect(mockBuildMateRequest).toHaveBeenCalledWith(
+        'Hello mate',
+        'mate-session-1',
+        mateMetadata.prompt_args,
+      );
     });
 
-    test('builds Mate request format with prompt and session_id', async () => {
+    test('builds Mate request format with prompt, session_id, and prompt_args', async () => {
       mockConnection.stream.mockReturnValue(
         createAsyncIterable(['data: [DONE]'])
       );
@@ -653,7 +667,11 @@ describe('ChatService', () => {
       await service.sendMessageViaMate('Hello mate', mateMetadata, defaultToken, callbacks);
 
       const body = JSON.parse(mockTransport.connect.mock.calls[0][1].body);
-      expect(body).toEqual({ prompt: 'Hello mate', session_id: 'mate-session-1' });
+      expect(body).toEqual({
+        prompt: 'Hello mate',
+        session_id: 'mate-session-1',
+        prompt_args: mateMetadata.prompt_args,
+      });
     });
 
     test('uses MATE.CHAT gateway endpoint', async () => {

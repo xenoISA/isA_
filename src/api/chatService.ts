@@ -728,14 +728,18 @@ export class ChatService {
    */
   async sendMessageViaMate(
     message: string,
-    metadata: { session_id: string },
+    metadata: { session_id: string; prompt_args?: Record<string, unknown> },
     token: string,
     callbacks: ChatServiceCallbacks
   ): Promise<void> {
     log.info('Sending message via Mate backend');
 
     try {
-      const payload = buildMateRequest(message, metadata.session_id);
+      const payload = buildMateRequest(
+        message,
+        metadata.session_id,
+        metadata.prompt_args,
+      );
       const endpoint = GATEWAY_ENDPOINTS.MATE.CHAT;
 
       const transport = createSSETransport({

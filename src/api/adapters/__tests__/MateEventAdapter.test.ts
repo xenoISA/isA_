@@ -22,6 +22,28 @@ describe('buildMateRequest', () => {
     expect(req).toEqual({ prompt: 'hello' });
     expect('session_id' in req).toBe(false);
   });
+
+  test('includes prompt_args when project context is provided', () => {
+    const req = buildMateRequest('hello', 'sess_123', {
+      project_context: {
+        project_id: 'project-1',
+        project_name: 'Alpha',
+        knowledge_file_ids: ['file-1'],
+      },
+    });
+
+    expect(req).toEqual({
+      prompt: 'hello',
+      session_id: 'sess_123',
+      prompt_args: {
+        project_context: {
+          project_id: 'project-1',
+          project_name: 'Alpha',
+          knowledge_file_ids: ['file-1'],
+        },
+      },
+    });
+  });
 });
 
 describe('createMateStreamContext', () => {

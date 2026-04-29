@@ -42,3 +42,19 @@ export const getChatBackend = (): 'mate' | 'agent' => {
   const value = process.env.NEXT_PUBLIC_CHAT_BACKEND;
   return value === 'mate' ? 'mate' : 'agent';
 };
+
+/**
+ * Whether Mate-specific capabilities should be treated as configured in the
+ * current frontend runtime.
+ *
+ * Local dev frequently runs the default agent path without a Mate backend.
+ * In that case, Mate-only health probes and pollers should stay dormant
+ * instead of spamming 404/502 noise on page load.
+ */
+export const isMateConfigured = (): boolean => {
+  if (getChatBackend() === 'mate') {
+    return true;
+  }
+
+  return Boolean(process.env.NEXT_PUBLIC_MATE_URL?.trim());
+};

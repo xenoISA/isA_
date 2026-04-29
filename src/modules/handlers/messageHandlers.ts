@@ -18,6 +18,8 @@ import { CreditConsumption } from '../../types/userTypes';
 import { isDelegationTool } from '../../constants/delegationTeams';
 import { MessageTimingTracker, formatTimingLog } from '../../utils/messageTiming';
 import { emitObservabilityRefresh } from '../../utils/observabilityEvents';
+import { useProjectStore } from '../../stores/useProjectStore';
+import { mergeProjectPromptArgs } from '../../utils/projectContext';
 
 const log = createLogger('ChatModule:Message');
 
@@ -137,7 +139,11 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
     const enrichedMetadata = {
       ...metadata,
       user_id: authUserSub || (() => { throw new Error('User not authenticated') })(),
-      session_id: sessionId
+      session_id: sessionId,
+      prompt_args: mergeProjectPromptArgs(
+        metadata?.prompt_args,
+        useProjectStore.getState().getActiveProjectContext(),
+      ),
     };
 
     const userMessage = {
@@ -237,7 +243,10 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
         // Include selected model in the request (wiring gap fix — #194)
         const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('isa_selected_model') : null;
-        const matePayload: Record<string, any> = { session_id: enrichedMetadata.session_id };
+        const matePayload: Record<string, any> = {
+          session_id: enrichedMetadata.session_id,
+          prompt_args: enrichedMetadata.prompt_args,
+        };
         if (selectedModel) matePayload.model = selectedModel;
 
         const sendFn = useMate

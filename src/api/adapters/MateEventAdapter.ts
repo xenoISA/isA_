@@ -500,12 +500,29 @@ export function createMateStreamContext(sessionId: string): {
 /**
  * Build the request payload for Mate's /v1/chat endpoint.
  */
-export function buildMateRequest(message: string, sessionId?: string): {
+export function buildMateRequest(
+  message: string,
+  sessionId?: string,
+  promptArgs?: Record<string, unknown>,
+): {
   prompt: string;
   session_id?: string;
+  prompt_args?: Record<string, unknown>;
+}
+export function buildMateRequest(
+  message: string,
+  sessionId?: string,
+  promptArgs?: Record<string, unknown>,
+): {
+  prompt: string;
+  session_id?: string;
+  prompt_args?: Record<string, unknown>;
 } {
   return {
     prompt: message,
     ...(sessionId && { session_id: sessionId }),
+    ...(promptArgs && Object.keys(promptArgs).length > 0
+      ? { prompt_args: promptArgs }
+      : {}),
   };
 }
