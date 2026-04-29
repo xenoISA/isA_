@@ -66,14 +66,6 @@ export const ProjectSettings: React.FC = () => {
     return () => window.clearTimeout(timeout);
   }, [message]);
 
-  useEffect(() => {
-    if (!activeProjectId) {
-      return;
-    }
-
-    void loadProjectKnowledgeFiles(activeProjectId);
-  }, [activeProjectId, loadProjectKnowledgeFiles]);
-
   const handleSave = useCallback(async () => {
     if (!activeProjectId) return;
     clearError();

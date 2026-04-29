@@ -220,6 +220,58 @@ describe('useProjectStore', () => {
     });
   });
 
+  test('refresh hydrates knowledge files for the persisted active project', async () => {
+    localStorageMock.setItem(PROJECT_ACTIVE_STORAGE_KEY, 'project-1');
+    const service = createService();
+    service.listProjects.mockResolvedValue({
+      projects: [createProject({ id: 'project-1', name: 'Alpha' })],
+      total: 1,
+    });
+    service.listProjectKnowledgeFiles.mockResolvedValue({
+      files: [createProjectFile()],
+      total: 1,
+    });
+    const store = createProjectStore(service);
+
+    await store.getState().refresh();
+
+    expect(service.listProjectKnowledgeFiles).toHaveBeenCalledWith('project-1');
+    expect(store.getState().getActiveProjectKnowledgeFiles()).toEqual([
+      createProjectFile(),
+    ]);
+  });
+
+  test('selecting a project loads its knowledge files for chat context', async () => {
+    const service = createService();
+    service.listProjectKnowledgeFiles.mockResolvedValue({
+      files: [createProjectFile()],
+      total: 1,
+    });
+    const store = createProjectStore(service);
+    store.setState({
+      projects: [createProject({ id: 'project-1', name: 'Alpha' })],
+      activeProjectId: null,
+    });
+
+    store.getState().selectProject('project-1');
+    await Promise.resolve();
+
+    expect(service.listProjectKnowledgeFiles).toHaveBeenCalledWith('project-1');
+    expect(store.getState().getActiveProjectContext()).toEqual({
+      project_id: 'project-1',
+      project_name: 'Alpha',
+      knowledge_file_ids: ['file-1'],
+      knowledge_files: [
+        {
+          id: 'file-1',
+          filename: 'architecture.md',
+          file_type: 'text/markdown',
+          file_size: 512,
+        },
+      ],
+    });
+  });
+
   test('uploads a knowledge file into the active project state', async () => {
     const uploadedFile = createProjectFile({
       id: 'file-9',

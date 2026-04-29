@@ -134,6 +134,10 @@ export const createProjectStore = (
           activeProjectId: nextActiveProjectId,
           initialized: true,
         });
+
+        if (nextActiveProjectId) {
+          await get().loadProjectKnowledgeFiles(nextActiveProjectId);
+        }
       } catch (error) {
         set({
           error: getProjectErrorMessage(error, 'Failed to load projects'),
@@ -147,6 +151,10 @@ export const createProjectStore = (
     selectProject: (projectId) => {
       persistActiveProjectId(projectId);
       set({ activeProjectId: projectId, error: null });
+
+      if (projectId) {
+        void get().loadProjectKnowledgeFiles(projectId);
+      }
     },
 
     createProject: async (name, description) => {
