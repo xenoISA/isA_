@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react';
 import { getMateService } from '../api/mateService';
 import { useMessageStore } from '../stores/useMessageStore';
 import type { MateHealthResponse } from '../types/mateTypes';
+import { isMateConfigured } from '../config/runtimeEnv';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -92,6 +93,10 @@ async function poll() {
 
 function startPolling() {
   if (intervalId !== null) return;
+  if (!isMateConfigured()) {
+    emit(INITIAL_STATE);
+    return;
+  }
   void poll();
   intervalId = setInterval(() => void poll(), POLL_INTERVAL_MS);
   delegationUnsub = useMessageStore.subscribe(
@@ -122,6 +127,11 @@ export function useMatePresence(): MatePresenceState {
   const [state, setState] = useState<MatePresenceState>(currentState);
 
   useEffect(() => {
+    if (!isMateConfigured()) {
+      setState(INITIAL_STATE);
+      return;
+    }
+
     listeners.add(setState);
     if (listeners.size === 1) {
       startPolling();

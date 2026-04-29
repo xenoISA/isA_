@@ -50,6 +50,7 @@ import { useChatStore } from '../stores/useChatStore';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrentSession, useSessionActions } from '../stores/useSessionStore';
 import { logger, LogCategory, createLogger } from '../utils/logger';
+import { getChatBackend, isMateConfigured } from '../config/runtimeEnv';
 const log = createLogger('ChatModule');
 import { useUserModule } from './UserModule';
 import { UpgradeModal } from '../components/ui/UpgradeModal';
@@ -524,6 +525,12 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
 
         // REMOVED: HIL回调注册 - SSEParser已删除
 
+        // Skip Mate-only health probing when Mate isn't configured for this env.
+        if (!isMateConfigured()) {
+          log.debug('Mate HIL probe skipped — Mate is not configured for this environment');
+          return;
+        }
+
         // 检查HIL服务是否可用 (xenoISA/isA_Mate#404 → /v1/interactive/health)
         const isServiceAvailable = await executionControlService.isServiceAvailable();
         if (!isServiceAvailable) {
@@ -587,11 +594,10 @@ export const ChatModule: React.FC<ChatModuleProps> = (props) => {
   useEffect(() => {
     // Skip execution monitoring when using Mate backend — Mate doesn't have
     // the /agents/execution/status endpoint. HIL is handled via SSE events instead.
-    const isMateBackend = (() => {
-      try { const { getChatBackend } = require('../config/runtimeEnv'); return getChatBackend() === 'mate'; } catch { return false; }
-    })();
+    const isMateBackend = getChatBackend() === 'mate';
+    const hasServerBackedThreadId = currentSession?.id && currentSession.id !== 'default';
 
-    if (currentSession && hilMonitoringActive && !isMateBackend) {
+    if (currentSession && hilMonitoringActive && !isMateBackend && hasServerBackedThreadId) {
       const threadId = currentSession.id;
 
       // 清理之前会话的监控以避免重复polling

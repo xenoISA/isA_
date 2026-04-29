@@ -3,10 +3,12 @@ import type { Project, ProjectFile } from '../api/projectService';
 import { useProjectStore } from '../stores/useProjectStore';
 import { buildProjectChatContext } from '../utils/projectContext';
 import type { ProjectChatContext } from '../utils/projectContext';
+import { useAuth } from './useAuth';
 
 export type { Project, ProjectFile, ProjectChatContext };
 
 export function useProjects() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const projects = useProjectStore(state => state.projects);
   const activeProjectId = useProjectStore(state => state.activeProjectId);
   const activeProject = useProjectStore(
@@ -62,8 +64,12 @@ export function useProjects() {
   const clearError = useProjectStore(state => state.clearError);
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
     void ensureLoaded();
-  }, [ensureLoaded]);
+  }, [authLoading, isAuthenticated, ensureLoaded]);
 
   return {
     projects,
