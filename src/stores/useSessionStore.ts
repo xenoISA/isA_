@@ -46,6 +46,8 @@ import {
   ArtifactMessage,
   getMessageContent,
 } from '../types/chatTypes';
+import { useProjectStore } from './useProjectStore';
+import { buildProjectSessionMetadata } from '../utils/projectContext';
 
 // Re-export types for backward compatibility
 export type { ChatMessage, ChatSession, ArtifactMessage };
@@ -135,6 +137,7 @@ export const useSessionStore = create<SessionStore>()(
     // Session CRUD operations
     createSession: (title = 'New Chat') => {
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const projectContext = useProjectStore.getState().getActiveProjectContext();
       const newSession: ChatSession = {
         id: sessionId,
         title,
@@ -143,11 +146,14 @@ export const useSessionStore = create<SessionStore>()(
         messageCount: 0,
         artifacts: [],
         messages: [],
-        metadata: {
-          apps_used: [],
-          total_messages: 0,
-          last_activity: new Date().toISOString()
-        }
+        metadata: buildProjectSessionMetadata(
+          {
+            apps_used: [],
+            total_messages: 0,
+            last_activity: new Date().toISOString(),
+          },
+          projectContext,
+        ),
       };
       
       set((state) => ({
