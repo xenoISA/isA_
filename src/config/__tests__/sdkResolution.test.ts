@@ -41,4 +41,27 @@ describe('SDK package resolution config', () => {
       path.join(process.cwd(), 'src/hooks/isaSdkHooks.web.ts'),
     );
   });
+
+  test('next forces SDK source imports to use the app React runtime', () => {
+    const config = nextConfig.webpack(
+      {
+        resolve: {
+          alias: {},
+          fallback: {},
+        },
+      },
+      {},
+    );
+
+    expect(config.resolve.alias.react).toBe(path.join(process.cwd(), 'node_modules/react'));
+    expect(config.resolve.alias['react-dom']).toBe(
+      path.join(process.cwd(), 'node_modules/react-dom'),
+    );
+    expect(config.resolve.alias['react/jsx-runtime']).toBe(
+      path.join(process.cwd(), 'node_modules/react/jsx-runtime'),
+    );
+    expect(config.resolve.alias['react/jsx-dev-runtime']).toBe(
+      path.join(process.cwd(), 'node_modules/react/jsx-dev-runtime'),
+    );
+  });
 });
