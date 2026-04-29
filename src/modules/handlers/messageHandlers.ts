@@ -12,7 +12,7 @@ import { usePerformanceStore } from '../../stores/usePerformanceStore';
 import { useStreamingStore } from '../../stores/useStreamingStore';
 import { logger, LogCategory, createLogger } from '../../utils/logger';
 import { detectPluginTrigger, executePlugin } from '../../plugins';
-import { ArtifactMessage } from '../../types/chatTypes';
+import { ArtifactMessage, RegularMessage, ScheduleConfirmationData } from '../../types/chatTypes';
 import { AppId } from '../../types/appTypes';
 import { CreditConsumption } from '../../types/userTypes';
 import { isDelegationTool } from '../../constants/delegationTeams';
@@ -20,6 +20,7 @@ import { MessageTimingTracker, formatTimingLog } from '../../utils/messageTiming
 import { emitObservabilityRefresh } from '../../utils/observabilityEvents';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { mergeProjectPromptArgs } from '../../utils/projectContext';
+import { useTaskStore } from '../../stores/useTaskStore';
 
 const log = createLogger('ChatModule:Message');
 
@@ -322,6 +323,58 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
               useMessageStore.getState().completeDelegation(active.toolCallId, result, error);
             }
             refreshObservability('tool_completed');
+          },
+          onTaskCreated: (task: { id: string; title: string; description?: string; dueAt?: string }) => {
+            const taskStore = useTaskStore.getState();
+            taskStore.ingestBackendTask({
+              ...task,
+              status: 'pending',
+              createdAt: new Date().toISOString(),
+            });
+            void taskStore.syncTasks();
+            refreshObservability('task_created');
+          },
+          onScheduleCreated: (schedule: ScheduleConfirmationData) => {
+            const chatStore = useChatStore.getState();
+            const lastAssistantMessage = [...chatStore.messages]
+              .reverse()
+              .find((message): message is RegularMessage => message.role === 'assistant' && message.type === 'regular');
+
+            if (lastAssistantMessage) {
+              chatStore.addMessage({
+                ...lastAssistantMessage,
+                jobId: schedule.jobId,
+                scheduleData: schedule,
+                metadata: {
+                  ...(lastAssistantMessage.metadata || {}),
+                  job_id: schedule.jobId,
+                  job_name: schedule.name,
+                  cron_expression: schedule.cronExpression,
+                  next_run_at: schedule.nextRunAt,
+                  description: schedule.description,
+                },
+              });
+            } else {
+              const scheduleMessage: RegularMessage = {
+                id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+                type: 'regular',
+                role: 'assistant',
+                content: `Scheduled ${schedule.name}`,
+                timestamp: new Date().toISOString(),
+                sessionId: sessionId || 'default',
+                jobId: schedule.jobId,
+                scheduleData: schedule,
+                metadata: {
+                  job_id: schedule.jobId,
+                  job_name: schedule.name,
+                  cron_expression: schedule.cronExpression,
+                  next_run_at: schedule.nextRunAt,
+                  description: schedule.description,
+                },
+              };
+              chatStore.addMessage(scheduleMessage);
+            }
+            refreshObservability('schedule_created');
           },
           onLLMCompleted: () => refreshObservability('llm_completed'),
           onBillingUpdate: () => refreshObservability('billing_update'),

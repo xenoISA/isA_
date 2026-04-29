@@ -48,6 +48,14 @@ interface TaskActions {
   }) => Promise<TaskItem | null>;
   syncTaskStatus: (taskId: string, status: BackendTask['status']) => Promise<TaskItem | null>;
   deleteBackendTask: (taskId: string) => Promise<void>;
+  ingestBackendTask: (task: {
+    id: string;
+    title: string;
+    description?: string;
+    status: string;
+    dueAt?: string;
+    createdAt: string;
+  }) => void;
   addTask: (task: { id: string; title: string; description?: string; status: string; dueAt?: string; createdAt: string }) => void;
 
   // 任务创建和管理
@@ -126,6 +134,36 @@ function toTaskItem(task: BackendTask): TaskItem {
       dueAt: task.dueAt,
       synced: true,
     },
+  };
+}
+
+function toExternalTaskItem(task: {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  dueAt?: string;
+  createdAt: string;
+}): TaskItem {
+  return {
+    id: task.id,
+    title: task.title,
+    type: 'background' as TaskType,
+    status: (task.status === 'in_progress' ? 'running' : task.status || 'pending') as TaskStatus,
+    priority: 'normal',
+    progress: {
+      currentStep: 0,
+      totalSteps: 1,
+      percentage: 0,
+      currentStepName: 'Pending sync',
+    },
+    createdAt: task.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    canPause: false,
+    canResume: false,
+    canCancel: true,
+    canRetry: false,
+    metadata: { description: task.description, dueAt: task.dueAt },
   };
 }
 
@@ -242,32 +280,21 @@ export const useTaskStore = create<TaskStore>()(
       }
     },
 
+    ingestBackendTask: (task) => {
+      const ingestedTask = toExternalTaskItem(task);
+      set((state) =>
+        applyTaskCollection([ingestedTask, ...state.tasks.filter((item) => item.id !== ingestedTask.id)]),
+      );
+      logger.info(LogCategory.TASK_MANAGEMENT, 'Task ingested from backend event', {
+        taskId: ingestedTask.id,
+      });
+    },
+
     addTask: (task) => {
-      const newTask: TaskItem = {
-        id: task.id,
-        title: task.title,
-        type: 'background' as TaskType,
-        status: (task.status === 'in_progress' ? 'running' : task.status || 'pending') as TaskStatus,
-        priority: 'normal',
-        progress: {
-          currentStep: 0,
-          totalSteps: 1,
-          percentage: 0,
-          currentStepName: 'Pending sync',
-        },
-        createdAt: task.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        canPause: false,
-        canResume: false,
-        canCancel: true,
-        canRetry: false,
-        metadata: { description: task.description, dueAt: task.dueAt },
-      };
-      set((state) => ({
-        tasks: [...state.tasks, newTask],
-        totalTasks: state.totalTasks + 1,
-        activeTasks: [...state.activeTasks, newTask],
-      }));
+      const newTask = toExternalTaskItem(task);
+      set((state) =>
+        applyTaskCollection([newTask, ...state.tasks.filter((item) => item.id !== newTask.id)]),
+      );
       // Fire-and-forget backend create
       TaskAdapter.createTask({ title: task.title, description: task.description, dueAt: task.dueAt }).catch(() => {});
       logger.info(LogCategory.TASK_MANAGEMENT, 'Task added (from chat)', { taskId: task.id });

@@ -212,6 +212,19 @@ describe('useTaskStore', () => {
       expect(useTaskStore.getState().getTask('task-backend-1')?.title).toBe('Backend task');
     });
 
+    test('ingestBackendTask updates local state without creating a duplicate backend task', () => {
+      useTaskStore.getState().ingestBackendTask({
+        id: 'task-event-1',
+        title: 'Task from Mate',
+        status: 'pending',
+        createdAt: '2026-04-29T00:00:00Z',
+      });
+
+      expect(mockCreateTask).not.toHaveBeenCalled();
+      expect(useTaskStore.getState().getTask('task-event-1')?.title).toBe('Task from Mate');
+      expect(useTaskStore.getState().totalTasks).toBe(1);
+    });
+
     test('syncTaskStatus completes a task through the backend', async () => {
       useTaskStore.setState({
         tasks: [
