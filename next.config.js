@@ -22,7 +22,7 @@ const nextConfig = {
       '@isa/ui-web': path.join(sdkRoot, 'ui-web/src'),
       '@isa/theme': path.join(sdkRoot, 'theme/src'),
       '@isa/transport': path.join(sdkRoot, 'transport/src'),
-      '@isa/hooks': path.join(sdkRoot, 'hooks/src'),
+      '@isa/hooks': path.join(__dirname, 'src/hooks/isaSdkHooks.web.ts'),
     };
 
     config.resolve.fallback = {

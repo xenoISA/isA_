@@ -30,7 +30,7 @@
       "@isa/transport": ["../isA_App_SDK/packages/transport/src/index.ts"],
       "@isa/ui-web": ["../isA_App_SDK/packages/ui-web/src/index.ts"],
       "@isa/theme": ["../isA_App_SDK/packages/theme/src/index.ts"],
-      "@isa/hooks": ["../isA_App_SDK/packages/hooks/src/index.ts"]
+      "@isa/hooks": ["./src/hooks/isaSdkHooks.web.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
