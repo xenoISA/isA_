@@ -59,6 +59,14 @@ export interface ChatServiceCallbacks {
   onTaskProgress?: (progress: any) => void;
   onTaskListUpdate?: (tasks: any[]) => void;
   onTaskStatusUpdate?: (taskId: string, status: string, result?: any) => void;
+  onTaskCreated?: (task: { id: string; title: string; description?: string; dueAt?: string }) => void;
+  onScheduleCreated?: (schedule: {
+    jobId: string;
+    name: string;
+    cronExpression: string;
+    nextRunAt?: string;
+    description?: string;
+  }) => void;
   
   // HIL回调
   onHILInterruptDetected?: (hilEvent: any) => void;
@@ -614,16 +622,26 @@ export class ChatService {
       }
 
       case 'task_created': {
-        const { useTaskStore } = require('../stores/useTaskStore');
-        useTaskStore.getState().addTask({
+        callbacks.onTaskCreated?.({
           id: event.metadata?.task_id || `task-${Date.now()}`,
           title: event.metadata?.title || 'New task',
           description: event.metadata?.description,
-          status: 'pending',
           dueAt: event.metadata?.due_at,
-          createdAt: new Date().toISOString(),
         });
         log.info('Task created from conversation', { taskId: event.metadata?.task_id });
+        break;
+      }
+
+      case 'schedule_created': {
+        const scheduleData = {
+          jobId: event.metadata?.job_id || customData.job_id || `job-${Date.now()}`,
+          name: event.metadata?.name || customData.name || 'Scheduled Task',
+          cronExpression: event.metadata?.cron_expression || customData.cron_expression || '',
+          nextRunAt: event.metadata?.next_run_at || customData.next_run_at,
+          description: event.metadata?.description || customData.description,
+        };
+        callbacks.onScheduleCreated?.(scheduleData);
+        log.info('Schedule created from conversation', { jobId: scheduleData.jobId });
         break;
       }
 

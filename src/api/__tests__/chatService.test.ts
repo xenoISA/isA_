@@ -28,6 +28,9 @@ vi.mock('../parsing/AGUIEventParser', () => ({
 }));
 
 vi.mock('../../config/gatewayConfig', () => ({
+  GATEWAY_CONFIG: {
+    BASE_URL: 'http://localhost:9080',
+  },
   GATEWAY_ENDPOINTS: {
     AGENTS: {
       CHAT: 'http://localhost:9080/agents/chat',
@@ -136,6 +139,8 @@ describe('ChatService', () => {
       onResumeStart: vi.fn(),
       onResumeEnd: vi.fn(),
       onTaskProgress: vi.fn(),
+      onTaskCreated: vi.fn(),
+      onScheduleCreated: vi.fn(),
       onHILInterruptDetected: vi.fn(),
       onHILCheckpointCreated: vi.fn(),
       onBrowserScreenshot: vi.fn(),
@@ -539,6 +544,47 @@ describe('ChatService', () => {
           target: 'https://example.com',
         }),
       );
+    });
+
+    test('custom schedule_created forwards schedule confirmation payload', async () => {
+      await streamEvent({
+        type: 'custom_event',
+        thread_id: 'session-1',
+        metadata: {
+          custom_type: 'schedule_created',
+          job_id: 'job-1',
+          name: 'Daily digest',
+          cron_expression: '0 9 * * *',
+          next_run_at: '2026-04-30T01:00:00Z',
+        },
+      });
+
+      expect(callbacks.onScheduleCreated).toHaveBeenCalledWith({
+        jobId: 'job-1',
+        name: 'Daily digest',
+        cronExpression: '0 9 * * *',
+        nextRunAt: '2026-04-30T01:00:00Z',
+        description: undefined,
+      });
+    });
+
+    test('custom task_created forwards task payload', async () => {
+      await streamEvent({
+        type: 'custom_event',
+        metadata: {
+          custom_type: 'task_created',
+          task_id: 'task-1',
+          title: 'Follow up with design',
+          due_at: '2026-04-30T09:00:00Z',
+        },
+      });
+
+      expect(callbacks.onTaskCreated).toHaveBeenCalledWith({
+        id: 'task-1',
+        title: 'Follow up with design',
+        description: undefined,
+        dueAt: '2026-04-30T09:00:00Z',
+      });
     });
 
     test('browser hil_approval_required also creates pending browser action', async () => {

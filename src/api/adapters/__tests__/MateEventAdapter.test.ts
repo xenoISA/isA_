@@ -289,6 +289,52 @@ describe('adaptMateEvent — lifecycle events', () => {
   });
 });
 
+describe('adaptMateEvent — scheduling events', () => {
+  const ctx = { runId: 'run_1', sessionId: 'sess_1', currentMessageId: null };
+
+  test('schedule_created maps to a schedule confirmation custom event', () => {
+    const event: MateSSEEvent = {
+      type: 'schedule_created',
+      job_id: 'job-1',
+      metadata: {
+        name: 'Daily digest',
+        cron_expression: '0 9 * * *',
+        next_run_at: '2026-04-30T01:00:00Z',
+      },
+    };
+    const { events } = adaptMateEvent(event, ctx);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe('custom_event');
+    expect(events[0].metadata).toMatchObject({
+      custom_type: 'schedule_created',
+      job_id: 'job-1',
+      name: 'Daily digest',
+      cron_expression: '0 9 * * *',
+      next_run_at: '2026-04-30T01:00:00Z',
+    });
+  });
+
+  test('task_created maps to a task confirmation custom event', () => {
+    const event: MateSSEEvent = {
+      type: 'task_created',
+      task_id: 'task-1',
+      title: 'Follow up with design',
+      due_at: '2026-04-30T09:00:00Z',
+    };
+    const { events } = adaptMateEvent(event, ctx);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe('custom_event');
+    expect(events[0].metadata).toMatchObject({
+      custom_type: 'task_created',
+      task_id: 'task-1',
+      title: 'Follow up with design',
+      due_at: '2026-04-30T09:00:00Z',
+    });
+  });
+});
+
 describe('adaptMateEvent — informational events', () => {
   const ctx = { runId: 'run_1', sessionId: 'sess_1', currentMessageId: null };
 
