@@ -3,6 +3,7 @@ import { useCalendarStore } from '../stores/useCalendarStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import * as NotificationAdapter from '../api/adapters/NotificationAdapter';
 import { useAlertStore } from '../stores/useAlertStore';
+import { useUserStore } from '../stores/useUserStore';
 
 const isElectron = typeof window !== 'undefined' && !!(window as any).isElectron;
 const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : null;
@@ -34,16 +35,38 @@ async function persistAlert(
   }
 }
 
+export function resolveAlertUserId(externalUser: unknown): string | null {
+  if (!externalUser || typeof externalUser !== 'object') {
+    return null;
+  }
+
+  const candidate = externalUser as Record<string, unknown>;
+  return (
+    (typeof candidate.auth0_id === 'string' && candidate.auth0_id)
+    || (typeof candidate.sub === 'string' && candidate.sub)
+    || (typeof candidate.user_id === 'string' && candidate.user_id)
+    || (typeof candidate.id === 'string' && candidate.id)
+    || null
+  );
+}
+
 export const AlertModule: React.FC = () => {
   const todayEvents = useCalendarStore((s) => s.todayEvents);
   const fetchTodayEvents = useCalendarStore((s) => s.fetchTodayEvents);
+  const alertUserId = useUserStore((state) => resolveAlertUserId(state.externalUser));
   const firedReminders = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchTodayEvents();
-    const interval = setInterval(fetchTodayEvents, 5 * 60 * 1000);
+    if (!alertUserId) {
+      return;
+    }
+
+    void fetchTodayEvents();
+    const interval = setInterval(() => {
+      void fetchTodayEvents();
+    }, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchTodayEvents]);
+  }, [alertUserId, fetchTodayEvents]);
 
   useEffect(() => {
     const check = () => {
