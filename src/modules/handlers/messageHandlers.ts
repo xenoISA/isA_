@@ -21,6 +21,7 @@ import { emitObservabilityRefresh } from '../../utils/observabilityEvents';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { mergeProjectPromptArgs } from '../../utils/projectContext';
 import { useTaskStore } from '../../stores/useTaskStore';
+import { buildArtifactMessageFromEvent, type ArtifactEventPayload } from '../../utils/artifactEvents';
 
 const log = createLogger('ChatModule:Message');
 
@@ -66,6 +67,44 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
   const refreshObservability = (reason: string) => {
     emitObservabilityRefresh({ sessionId: currentSessionId, reason });
+  };
+
+  const syncArtifactEvent = (
+    payload: ArtifactEventPayload,
+    sessionId: string,
+    userPrompt: string,
+    action: 'created' | 'updated',
+  ) => {
+    if (!payload.id) return;
+
+    const existingArtifact = useChatStore.getState()
+      .messages
+      .filter((message): message is ArtifactMessage => message.type === 'artifact')
+      .filter(message => message.artifact.id === payload.id)
+      .sort((left, right) => right.artifact.version - left.artifact.version)[0];
+
+    const artifactMessage = buildArtifactMessageFromEvent(payload, {
+      sessionId,
+      userPrompt,
+      fallbackVersion: action === 'updated'
+        ? (existingArtifact?.artifact.version || 0) + 1
+        : 1,
+      action,
+    });
+
+    if (!artifactMessage) return;
+
+    useChatStore.getState().addMessage(artifactMessage);
+
+    if (
+      action === 'updated'
+      && typeof window !== 'undefined'
+      && (window as any).__pendingArtifactEdit?.artifactId === payload.id
+    ) {
+      (window as any).__pendingArtifactEdit.resolvedByArtifactEvent = true;
+    }
+
+    refreshObservability(action === 'updated' ? 'artifact_updated' : 'artifact_created');
   };
 
   // Commit message timing to the performance store and log in dev mode (#277).
@@ -296,8 +335,12 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
 
             // Artifact edit-to-version: if this was an artifact edit, create new version (#256)
             if (typeof window !== 'undefined' && (window as any).__pendingArtifactEdit) {
-              const { artifactId, instruction } = (window as any).__pendingArtifactEdit;
+              const { artifactId, instruction, resolvedByArtifactEvent } = (window as any).__pendingArtifactEdit;
               delete (window as any).__pendingArtifactEdit;
+              if (resolvedByArtifactEvent) {
+                log.info('Artifact edit resolved by backend artifact update event', { artifactId, instruction });
+                return;
+              }
               // Get the last assistant message content as the new version
               const messages = useMessageStore.getState().messages;
               const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
@@ -375,6 +418,12 @@ export function createMessageHandlers(deps: MessageHandlerDeps) {
               chatStore.addMessage(scheduleMessage);
             }
             refreshObservability('schedule_created');
+          },
+          onArtifactCreated: (artifact: ArtifactEventPayload) => {
+            syncArtifactEvent(artifact, sessionId || 'default', content, 'created');
+          },
+          onArtifactUpdated: (artifact: ArtifactEventPayload) => {
+            syncArtifactEvent(artifact, sessionId || 'default', content, 'updated');
           },
           onLLMCompleted: () => refreshObservability('llm_completed'),
           onBillingUpdate: () => refreshObservability('billing_update'),
@@ -629,6 +678,7 @@ Please apply the requested changes and return ONLY the updated content. Do not i
       (window as any).__pendingArtifactEdit = {
         artifactId,
         instruction,
+        resolvedByArtifactEvent: false,
       };
     }
 

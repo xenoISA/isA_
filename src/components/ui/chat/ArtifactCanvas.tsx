@@ -10,6 +10,8 @@ import React, { useEffect, useCallback, useState } from 'react';
 import type { ArtifactNode } from '../../../types/artifactTypes';
 import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
 import { useArtifactManager } from '../../../stores/useArtifactManager';
+import { CodeSandboxPanel } from './CodeSandboxPanel';
+import { FileCreationPanel } from './FileCreationPanel';
 
 export const ArtifactCanvas: React.FC = () => {
   const openArtifactId = useArtifactManager(s => s.openArtifactId);
@@ -22,6 +24,7 @@ export const ArtifactCanvas: React.FC = () => {
 
   const artifact = openArtifactId ? artifacts[openArtifactId] : null;
   const activeVersion = artifact ? getActiveVersion(artifact) : null;
+  const generatedFiles = activeVersion?.generatedFiles || artifact?.generatedFiles || [];
   const [copied, setCopied] = useState(false);
 
   // Escape to close
@@ -103,8 +106,12 @@ export const ArtifactCanvas: React.FC = () => {
             <button onClick={handleCopy} className="px-2 py-1 text-xs rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               {copied ? 'Copied!' : 'Copy'}
             </button>
-            {artifact.downloadUrl && (
-              <a href={artifact.downloadUrl} download={artifact.filename} className="px-2 py-1 text-xs rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            {(activeVersion.downloadUrl || artifact.downloadUrl || generatedFiles[0]?.url) && (
+              <a
+                href={activeVersion.downloadUrl || artifact.downloadUrl || generatedFiles[0]?.url}
+                download={activeVersion.filename || artifact.filename || generatedFiles[0]?.filename}
+                className="px-2 py-1 text-xs rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
                 Download
               </a>
             )}
@@ -116,10 +123,20 @@ export const ArtifactCanvas: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
+          {generatedFiles.length > 0 && (
+            <FileCreationPanel files={generatedFiles} />
+          )}
           {artifact.contentType === 'image' ? (
             <div className="flex items-center justify-center h-full">
               <img src={activeVersion.content} alt={artifact.title} className="max-w-full max-h-full object-contain rounded-lg" />
             </div>
+          ) : artifact.contentType === 'code' ? (
+            <CodeSandboxPanel
+              code={activeVersion.content}
+              language={activeVersion.language}
+              filename={activeVersion.filename || artifact.filename}
+              embedded
+            />
           ) : artifact.contentType === 'html' || artifact.contentType === 'svg' ? (
             <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-700 p-6 min-h-[400px]" dangerouslySetInnerHTML={{ __html: activeVersion.content }} />
           ) : (

@@ -34,6 +34,7 @@ export function registerDefaultRenderers(): void {
   registerArtifactRenderer('svg', HtmlRenderer);
   registerArtifactRenderer('chart', DataRenderer);
   registerArtifactRenderer('analysis', TextRenderer);
+  registerArtifactRenderer('knowledge', TextRenderer);
   registerArtifactRenderer('search_results', DataRenderer);
   registerArtifactRenderer('form', HtmlRenderer);
   registerArtifactRenderer('dashboard', HtmlRenderer);

@@ -23,6 +23,7 @@ export type ArtifactContentType =
   | 'dashboard'
   | 'search_results'
   | 'analysis'
+  | 'knowledge'
   | 'a2ui_surface';
 
 export type ArtifactLayout = 'peek' | 'inspect' | 'canvas';
@@ -33,6 +34,14 @@ export type ArtifactTransformType =
   | 'export'
   | 'annotate'
   | 'merge';
+
+export interface ArtifactGeneratedFile {
+  id: string;
+  filename: string;
+  type?: string;
+  size?: number;
+  url: string;
+}
 
 // ============================================================================
 // ArtifactVersion — immutable snapshot of artifact content
@@ -49,6 +58,12 @@ export interface ArtifactVersion {
   contentType: ArtifactContentType;
   /** Language hint for code artifacts */
   language?: string;
+  /** Optional filename for this version */
+  filename?: string;
+  /** Download URL supplied by the backend for this version */
+  downloadUrl?: string;
+  /** Backend-generated files associated with this version */
+  generatedFiles?: ArtifactGeneratedFile[];
   /** A2UI surface state (JSON) — if this artifact is a dynamic A2UI surface */
   a2uiState?: Record<string, unknown>;
   /** The instruction that created this version (empty for v1) */
@@ -90,6 +105,8 @@ export interface ArtifactNode {
   updatedAt: string;
   /** Download URL (if exportable) */
   downloadUrl?: string;
+  /** Backend-generated files associated with the latest version */
+  generatedFiles?: ArtifactGeneratedFile[];
   /** Metadata */
   metadata?: Record<string, unknown>;
 }
@@ -128,30 +145,39 @@ export function getVersionCount(artifact: ArtifactNode): number {
 
 /** Create a new artifact with initial content */
 export function createArtifactNode(params: {
+  id?: string;
   title: string;
   content: string;
   contentType: ArtifactContentType;
   language?: string;
   widgetType?: string;
   filename?: string;
+  downloadUrl?: string;
+  generatedFiles?: ArtifactGeneratedFile[];
   sessionId?: string;
   sourceMessageId?: string;
   a2uiState?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }): ArtifactNode {
   const now = new Date().toISOString();
   const versionId = `v_${Date.now().toString(36)}`;
   return {
-    id: `art_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+    id: params.id || `art_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     title: params.title,
     contentType: params.contentType,
     widgetType: params.widgetType,
     filename: params.filename,
+    downloadUrl: params.downloadUrl,
+    generatedFiles: params.generatedFiles,
     versions: [{
       versionId,
       number: 1,
       content: params.content,
       contentType: params.contentType,
       language: params.language,
+      filename: params.filename,
+      downloadUrl: params.downloadUrl,
+      generatedFiles: params.generatedFiles,
       a2uiState: params.a2uiState,
       createdBy: 'agent',
       createdAt: now,
@@ -161,6 +187,7 @@ export function createArtifactNode(params: {
     sourceMessageId: params.sourceMessageId,
     createdAt: now,
     updatedAt: now,
+    metadata: params.metadata,
   };
 }
 
@@ -170,6 +197,14 @@ export function addArtifactVersion(
   content: string,
   instruction: string,
   createdBy: 'user' | 'agent' = 'agent',
+  options?: {
+    contentType?: ArtifactContentType;
+    language?: string;
+    filename?: string;
+    downloadUrl?: string;
+    generatedFiles?: ArtifactGeneratedFile[];
+    a2uiState?: Record<string, unknown>;
+  },
 ): ArtifactNode {
   const now = new Date().toISOString();
   const activeVersion = getActiveVersion(artifact);
@@ -177,15 +212,22 @@ export function addArtifactVersion(
     versionId: `v_${Date.now().toString(36)}`,
     number: artifact.versions.length + 1,
     content,
-    contentType: artifact.contentType,
-    language: activeVersion.language,
-    a2uiState: activeVersion.a2uiState,
+    contentType: options?.contentType || artifact.contentType,
+    language: options?.language || activeVersion.language,
+    filename: options?.filename || activeVersion.filename || artifact.filename,
+    downloadUrl: options?.downloadUrl || activeVersion.downloadUrl || artifact.downloadUrl,
+    generatedFiles: options?.generatedFiles || activeVersion.generatedFiles || artifact.generatedFiles,
+    a2uiState: options?.a2uiState || activeVersion.a2uiState,
     instruction,
     createdBy,
     createdAt: now,
   };
   return {
     ...artifact,
+    contentType: newVersion.contentType,
+    filename: newVersion.filename,
+    downloadUrl: newVersion.downloadUrl,
+    generatedFiles: newVersion.generatedFiles,
     versions: [...artifact.versions, newVersion],
     activeVersionIndex: artifact.versions.length, // point to new version
     updatedAt: now,

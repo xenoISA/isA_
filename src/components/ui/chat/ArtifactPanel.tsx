@@ -11,6 +11,8 @@ import type { ArtifactNode } from '../../../types/artifactTypes';
 import { getActiveVersion, getVersionCount } from '../../../types/artifactTypes';
 import { useArtifactManager } from '../../../stores/useArtifactManager';
 import { RenderArtifact } from './renderers';
+import { CodeSandboxPanel } from './CodeSandboxPanel';
+import { FileCreationPanel } from './FileCreationPanel';
 
 // Lazy-load A2UI renderer — only imported when an artifact has a2uiState
 let A2UIRendererModule: typeof import('./A2UISurfacePanel') | null = null;
@@ -224,6 +226,7 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
 
   const activeVersion = artifact ? getActiveVersion(artifact) : null;
   const versionCount = artifact ? getVersionCount(artifact) : 0;
+  const generatedFiles = activeVersion?.generatedFiles || artifact?.generatedFiles || [];
 
   // --- Transform action handlers ---
 
@@ -236,13 +239,22 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
 
   const handleDownload = useCallback(() => {
     if (!activeVersion || !artifact) return;
+    const remoteDownloadUrl = activeVersion.downloadUrl || artifact.downloadUrl || generatedFiles[0]?.url;
+    const remoteFilename = activeVersion.filename || artifact.filename || generatedFiles[0]?.filename;
+    if (remoteDownloadUrl) {
+      const a = document.createElement('a');
+      a.href = remoteDownloadUrl;
+      if (remoteFilename) a.download = remoteFilename;
+      a.click();
+      return;
+    }
     const ext = activeVersion.language
       ? `.${activeVersion.language}`
       : artifact.contentType === 'html' ? '.html'
       : artifact.contentType === 'svg' ? '.svg'
       : artifact.contentType === 'image' ? '.png'
       : '.txt';
-    const filename = artifact.filename || `${artifact.title.replace(/\s+/g, '_')}${ext}`;
+    const filename = activeVersion.filename || artifact.filename || `${artifact.title.replace(/\s+/g, '_')}${ext}`;
     const blob = new Blob([activeVersion.content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -250,7 +262,7 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }, [activeVersion, artifact]);
+  }, [activeVersion, artifact, generatedFiles]);
 
   const handleFork = useCallback(() => {
     if (!artifact) return;
@@ -304,6 +316,7 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
             <select
               value={artifact.activeVersionIndex}
               onChange={e => setActiveVersion(artifact.id, Number(e.target.value))}
+              data-testid="artifact-version-select"
               className="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none"
               aria-label="Select version"
             >
@@ -367,12 +380,22 @@ export const ArtifactPanel: React.FC<ArtifactPanelInternalProps> = ({
       <div className="flex-1 overflow-auto">
         {activeTab === 'preview' && (
           <div className="p-4">
+            {generatedFiles.length > 0 && (
+              <FileCreationPanel files={generatedFiles} />
+            )}
             {/* A2UI surface rendering (#252) — takes priority when available */}
             {hasA2UI ? (
               <A2UIPreview
                 a2uiState={activeVersion.a2uiState ?? {}}
                 surfaceEvents={surfaceEvents}
                 onUserAction={onUserAction}
+              />
+            ) : artifact.contentType === 'code' ? (
+              <CodeSandboxPanel
+                code={activeVersion.content}
+                language={activeVersion.language}
+                filename={activeVersion.filename || artifact.filename}
+                embedded
               />
             ) : (
               // ArtifactRendererRegistry dispatch with widget + content fallback chain (#255)
